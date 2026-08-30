@@ -124,33 +124,6 @@
       "primary_lang": "Kotlin",
       "_doc_phase": "CLEAN-ROOM, SELF-CONTAINED (v1). libs/firewall is ORIGINAL code: a minimal no-root per-app outbound firewall. A local VpnService captures traffic into a tun; ALLOWED apps are added via addDisallowedApplication() so they bypass the tunnel onto the real network, while BLOCKED apps fall into the tun and their packets are dropped (no forwarding loop) — zero root, zero native code. The RethinkDNS repo above (Apache-2.0, Kotlin) is consulted ONLY as the cherry-pick source for FUTURE complex tooling (DoH/DoT/DNSCrypt filtering, per-connection tracker, WireGuard proxying via its Go firestack engine). NO upstream source is copied/vendored in v1, so the app keeps its own license. Single VPN slot: while the firewall holds the device VPN slot, the libs:net WireGuard tunnel cannot run; unifying them is the first firestack cherry-pick. Sync the reference clone with: ./build.sh sync-firewall."
     },
-    "firestack": {
-      "tracker": "ab_cloud-libs-shared/libs/firewall/firestack",
-      "repo": "https://github.com/celzero/firestack.git",
-      "ref": "n2",
-      "license": "MPL-2.0",
-      "feeds_into": "libs:firewall",
-      "primary_lang": "Go",
-      "build": {
-        "_doc": "Phase-2 firestack netstack build (`build.sh firestack`). VENDORED + hermetic like libwg-go: build.sh self-downloads the pinned Go (checksum-verified, cached under .cache/golang), then runs firestack's OWN `make <make_target>` (which go-installs gomobile@latest + gomobile init + gomobile bind) inside the Nix devShell for ANDROID_HOME + NDK. The built tun2socks.aar is copied to libs/firewall/firestack/<aar_out> — a flatDir aar folded INTO libs:firewall (NOT a standalone gradle module), consumed via `implementation(name:'firestack', ext:'aar')`. Java bindings land in package `java_pkg` (consumed by libs:firewall in Phase 3). gomobile@latest is upstream's pin choice — the one non-hermetic edge, tracked upstream.",
-        "go_version": "1.27.0",
-        "go_sha256_linux_amd64": "675c26c449cbb18fc24b74650de1eabbae6e16f64326fd85a283fb3b58280685",
-        "make_target": "intra",
-        "aar_built": "build/intra/tun2socks.aar",
-        "aar_out": "firestack.aar",
-        "java_pkg": "com.celzero.firestack",
-        "_doc_abi": "gomobile bind defaults to ALL android ABIs (arm,arm64,x86,x86_64) — ~4× build time, blows the 30-min CI job. build.sh restricts it to the ONE ABI the SUPERAPP_VARIANT ships by overriding firestack's Makefile ANDROID23 var with a single -target. These flags MIRROR firestack Makefile's ANDROID23 (`-androidapi 23 -target=android -tags='android' -work`) minus the ABI; keep in sync on firestack bumps.",
-        "android_api": "23",
-        "gomobile_tags": "android",
-        "gomobile_targets": {
-          "": "android/arm64",
-          "arm64": "android/arm64",
-          "x86_64": "android/amd64"
-        }
-      },
-      "_doc_phase": "Phase 2 (build wiring). firestack is celzero/firestack (MPL-2.0, Go) — the gVisor-netstack + WireGuard-proxy engine behind RethinkDNS. We VENDOR + build it hermetically (user decision, matches the libs:net/libwg-go doctrine) rather than pulling the jitpack `com.github.celzero:firestack` Maven artifact. In Phase 3 the single firestack VpnService replaces BOTH FirewallVpnService (drain-engine) and GoBackend$VpnService (WireGuard); a per-connection `Bridge.Flow()` calls FirewallDecider direction-aware, and allowed flows route via the WG proxy — resolving the single-VPN-slot limit + enabling IN/OUT + the 'only under cloud VPN' condition. Nothing consumes the firestack aar yet (no consumer until Phase 3), so a plain `build.sh build`/`test` does NOT trigger the Go/gomobile build.",
-      "_doc_vendored": "VENDORED IN-REPO 2026-08-30 in ONE folder beside the module that consumes it: libs/firewall/firestack holds the Go source (224 files, 2.4 MB - only what upstream tracks; upstream's bin/ is 24 MB of build output and is not tracked there either) AND receives the built firestack.aar, which is what lib-apks/settings.gradle's flatDir already points at. There is no .git inside, so the clone path is skipped - presence of go.mod marks the tree usable. To move to a newer upstream, bump ref, delete this tree and run `build.sh sync-firestack`."
-    },
     "ops": {
       "tracker": null,
       "repo": null,
@@ -164,7 +137,8 @@
       "license": null,
       "feeds_into": "libs:core",
       "_doc_no_upstream": "core is shared infra (DB, theming, prefs, the updater) — original code."
-    }
+    },
+    "_doc_firestack_moved": "firestack config now lives in ab_cloud-libs-shared/build.json::firestack, beside the module that consumes it. Built by ab_cloud-libs-shared/libs/firewall/build-firestack.sh, which both this repo's build.sh and lib-apks/build.sh invoke."
   },
   "modules": {
     "_doc": "Single source of truth for the Gradle module graph. settings.gradle iterates this list. Adding a new feature module = one entry here + mkdir + minimal build.gradle.",

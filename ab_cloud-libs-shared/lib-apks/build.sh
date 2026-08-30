@@ -89,7 +89,16 @@ in_nix() {
   fi
 }
 
-_gradle() { in_nix gradle --no-daemon -p "$SCRIPT_DIR" "$@"; }
+# libs:firewall compiles the firestack netstack aar. This repo ships it as
+# Cloud-Lib-Firewall.apk, so it needs the aar just as much as the superapp does
+# — and until now had no way to produce one, which is why
+# libs/firewall/build.gradle could not declare the dependency without breaking
+# this build. Same engine the superapp calls; idempotent, so it is a no-op once
+# the aar exists. Wrapped in OUR in_nix because CI runs this repo with
+# BYPASS_NIX=1 and the SDK/NDK from setup-android.
+_ensure_firestack() { in_nix bash "$SCRIPT_DIR/../libs/firewall/build-firestack.sh"; }
+
+_gradle() { _ensure_firestack; in_nix gradle --no-daemon -p "$SCRIPT_DIR" "$@"; }
 
 _bj() { python3 -c "import json,sys;print(json.load(open('$SCRIPT_DIR/build.json'))$1)" 2>/dev/null; }
 

@@ -247,21 +247,16 @@ _resolve_media_keys() {
 # any gradle configure/compile. Built once on demand (idempotent — skips when
 # present). Data-driven from build.json::upstreams.firestack.
 _ensure_firestack() {
-  local aarout outdir tracker
-  aarout="$(_release_var '.upstreams.firestack.build.aar_out')"
-  outdir="$LIBS_DIR/firewall/firestack"
-  [ -f "$outdir/$aarout" ] && return 0
-  log "firestack: aar missing → building once (libs:firewall depends on it)"
-  tracker="${ANDROID_REPO:-$HOME/git/cloud-u-android}/$(_release_var '.upstreams.firestack.tracker')"
-  # Vendored in-repo: no .git, so presence of the SOURCE is the test. The
-  # old `-d $tracker/.git` check would have been false forever after the
-  # move and re-cloned upstream over the committed tree on every build.
-  [ -f "$tracker/go.mod" ] || step_sync_firestack
-  step_firestack
+  # Delegates to the module's own engine, which BOTH consumers call
+  # (see ab_cloud-libs-shared/libs/firewall/build-firestack.sh). It is
+  # idempotent - returns immediately when the aar is already there - and
+  # env-agnostic, so it is wrapped in this repo's devShell here and in
+  # lib-apks' own wrapper there.
+  in_nix bash "$LIBS_DIR/firewall/build-firestack.sh"
 }
 
-# Every gradle invocation that compiles the app goes through here so the aar is
-# guaranteed present. `clean` deliberately does NOT (no netstack to delete dirs).
+step_firestack() { in_nix bash "$LIBS_DIR/firewall/build-firestack.sh" --force; }
+
 run_gradle() { _ensure_firestack; in_nix gradle "$@"; }
 
 step_build() {
@@ -746,9 +741,12 @@ step_sync_firewall() {
 #   firestack      : self-download pinned Go → firestack's own `make` → aar
 step_sync_firestack() {
   local repo branch ref
-  repo="$(_release_var '.upstreams.firestack.repo')"
-  branch="$(_release_var '.upstreams.firestack.ref')"
-  ref="${ANDROID_REPO:-$HOME/git/cloud-u-android}/$(_release_var '.upstreams.firestack.tracker')"
+  # Config moved to ab_cloud-libs-shared/build.json::firestack (the module
+  # owns its engine's config; see the _doc_moved note there).
+  local sharedbj="$LIBS_DIR/../build.json"
+  repo="$(prefer_host jq -r '.firestack.repo // empty' "$sharedbj")"
+  branch="$(prefer_host jq -r '.firestack.ref // empty' "$sharedbj")"
+  ref="$LIBS_DIR/firewall/firestack"
   command -v git >/dev/null 2>&1 || { errlog "sync-firestack: git is required"; exit 1; }
   if [ -d "$ref/.git" ]; then
     log "sync-firestack: updating firestack clone ($branch): $ref"
@@ -760,78 +758,7 @@ step_sync_firestack() {
   log "sync-firestack: firestack source at $ref"
 }
 
-step_firestack() {
-  local tracker gover gosha target aarbuilt aarout outdir cache api tags gt variant
-  tracker="${ANDROID_REPO:-$HOME/git/cloud-u-android}/$(_release_var '.upstreams.firestack.tracker')"
-  gover="$(_release_var '.upstreams.firestack.build.go_version')"
-  gosha="$(_release_var '.upstreams.firestack.build.go_sha256_linux_amd64')"
-  target="$(_release_var '.upstreams.firestack.build.make_target')"
-  aarbuilt="$(_release_var '.upstreams.firestack.build.aar_built')"
-  aarout="$(_release_var '.upstreams.firestack.build.aar_out')"
-  outdir="$LIBS_DIR/firewall/firestack"
-  cache="$SCRIPT_DIR/.cache"
-  # Single-ABI gomobile target for the current SUPERAPP_VARIANT (data-driven) —
-  # avoids gomobile's all-ABI default (~4× time → CI timeout).
-  variant="${SUPERAPP_VARIANT:-}"
-  api="$(_release_var '.upstreams.firestack.build.android_api')"
-  tags="$(_release_var '.upstreams.firestack.build.gomobile_tags')"
-  gt="$(prefer_host jq -r --arg v "$variant" '.upstreams.firestack.build.gomobile_targets[$v] // .upstreams.firestack.build.gomobile_targets[""]' "$SCRIPT_DIR/build.json")"
 
-  [ -f "$tracker/go.mod" ] || { errlog "firestack: vendored source missing at $tracker (expected go.mod) — run: ./build.sh sync-firestack"; exit 1; }
-  # The pinned Go tarball + sha in build.json are linux/amd64 (the x86 GHA
-  # runner). ARM runners would need their own tarball+sha added there.
-  case "$(uname -s)-$(uname -m)" in
-    Linux-x86_64) : ;;
-    *) errlog "firestack: pinned Go is linux-amd64 only (host: $(uname -s)-$(uname -m)). Build on the x86 runner, or add this arch's tarball+sha to build.json::upstreams.firestack.build."; exit 1 ;;
-  esac
-  mkdir -p "$outdir"
-
-  log "firestack: building netstack aar (Go $gover, make $target) — this is slow"
-  # One devShell invocation (for ANDROID_HOME + NDK): download+verify Go
-  # (cached), aim gomobile at the newest NDK, run firestack's own make, emit aar.
-  in_nix bash -euc '
-    GOVER="'"$gover"'"; GOSHA="'"$gosha"'"; TARGET="'"$target"'"
-    TRACKER="'"$tracker"'"; CACHE="'"$cache"'"
-    AARBUILT="'"$aarbuilt"'"; OUTDIR="'"$outdir"'"; AAROUT="'"$aarout"'"
-    API="'"$api"'"; TAGS="'"$tags"'"; GT="'"$gt"'"
-    GODIR="$CACHE/golang"; export GOPATH="$CACHE/gopath"; export GOBIN="$GOPATH/bin"
-    export GOTOOLCHAIN=local
-    mkdir -p "$GODIR" "$GOPATH"
-    TARBALL="go${GOVER}.linux-amd64.tar.gz"
-    if [ ! -x "$GODIR/go/bin/go" ]; then
-      echo "firestack: downloading Go $GOVER"
-      curl -fLso "$GODIR/$TARBALL" "https://go.dev/dl/$TARBALL"
-      echo "$GOSHA  $GODIR/$TARBALL" | sha256sum -c -
-      rm -rf "$GODIR/go"; tar -C "$GODIR" -xzf "$GODIR/$TARBALL"
-    fi
-    export PATH="$GODIR/go/bin:$GOBIN:$PATH"
-    # gomobile finds the NDK via ANDROID_NDK_HOME; pick the newest the devShell
-    # ships (flake ndkVersions) — never hardcode a version.
-    NDK="$(ls -d "$ANDROID_HOME"/ndk/* 2>/dev/null | sort -V | tail -1)"
-    [ -n "$NDK" ] || { echo "firestack: no NDK under $ANDROID_HOME/ndk" >&2; exit 1; }
-    export ANDROID_NDK_HOME="$NDK" ANDROID_NDK_ROOT="$NDK"
-    echo "firestack: $(go version); ndk=$NDK; abi-target=$GT"
-    make -C "$TRACKER" clean || true
-    # Override firestack Makefile ANDROID23 to build ONLY the shipped ABI.
-    make -C "$TRACKER" "$TARGET" ANDROID23="-androidapi $API -target=$GT -tags=$TAGS -work"
-    cp "$TRACKER/$AARBUILT" "$OUTDIR/$AAROUT"
-  '
-  _verify_firestack_aar "$outdir/$aarout"
-  log "firestack: → libs/firewall/firestack/$aarout ($(du -h "$outdir/$aarout" 2>/dev/null | cut -f1))"
-}
-
-# Tester (FIRE RULE #5): a valid gomobile aar is a zip carrying classes.jar +
-# AndroidManifest.xml. Fail loud otherwise.
-_verify_firestack_aar() {
-  local aar="$1"
-  [ -f "$aar" ] || { errlog "firestack: aar not produced: $aar"; exit 1; }
-  if command -v unzip >/dev/null 2>&1; then
-    unzip -l "$aar" | grep -q "classes.jar"       || { errlog "firestack: aar has no classes.jar"; exit 1; }
-    unzip -l "$aar" | grep -q "AndroidManifest.xml" || { errlog "firestack: aar has no AndroidManifest.xml"; exit 1; }
-  else
-    log "firestack: unzip absent — skipping aar smoke-test (verify on runner)"
-  fi
-}
 
 # Cherry-picks HeliBoard's app/src/main (github.com/Helium314/HeliBoard,
 # GPL-3.0 — the whole APK is already GPL-3.0) into libs/keyboard/ as the
