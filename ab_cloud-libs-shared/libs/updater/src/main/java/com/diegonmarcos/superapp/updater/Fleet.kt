@@ -113,6 +113,17 @@ object Fleet {
     fun status(ctx: Context, app: App): State {
         if (app.blocked) return State.Blocked()
         val installed = installedInfo(ctx, app)
+        // THE RELEASE ASSET DECIDES, WHEN THERE IS ONE.
+        //
+        // GHCR answers 401/403 for a package that is private OR absent, and an
+        // app that ships only on its GH Release now has no package at all — so
+        // probing GHCR reports 403 for something that is downloadable right
+        // now. That is the failure this branch exists to end, and the comment
+        // below already recorded it happening to cloud-watchdog.
+        //
+        // The release asset has no visibility of its own: it IS the repo. If
+        // it answers, it is the truth about whether this app can be installed.
+        releaseStatus(app, installed)?.let { return it }
         return try {
             val client = GhcrClient(app.registry, app.namespace, app.image)
             val layer = remoteLayer(app, client, client.token())
@@ -151,6 +162,43 @@ object Fleet {
         } catch (t: Throwable) {
             installed?.let { State.Installed(it.versionName, it.versionCode, it.sha.take(12), it.bytes) }
                 ?: State.Missing()
+        }
+    }
+
+    /**
+     * State from the release asset, or null when this app declares none or the
+     * probe fails — in which case the caller falls through to GHCR.
+     *
+     * SIZE, NOT A DIGEST, AND THAT IS A REAL LIMITATION. A release asset
+     * carries no content digest over a HEAD, so "is an update waiting" is
+     * answered by comparing bytes. Two builds of the same commit differ in
+     * size rarely but can; two different commits with identical size are
+     * possible and would read as up to date. GHCR's digest is strictly better
+     * at THAT question — and strictly worse at the question underneath it,
+     * which is whether the app can be reached at all. An app the store cannot
+     * see is not made safer by the precision with which it could have compared
+     * it, so access wins and the weaker signal is stated rather than hidden.
+     */
+    private fun releaseStatus(app: App, installed: Installed?): State? {
+        if (app.releaseUrl.isBlank()) return null
+        val size = runCatching {
+            val c = (java.net.URL(app.releaseUrl).openConnection() as java.net.HttpURLConnection)
+            c.requestMethod = "HEAD"
+            c.instanceFollowRedirects = true
+            c.connectTimeout = 10_000
+            c.readTimeout = 10_000
+            val code = c.responseCode
+            val len = c.contentLengthLong
+            c.disconnect()
+            if (code !in 200..299) return@runCatching -1L
+            len
+        }.getOrDefault(-1L)
+        if (size < 0) return null
+        val i = installed ?: return State.Missing(size)
+        return if (i.bytes == size) {
+            State.Installed(i.versionName, i.versionCode, i.sha.take(12), size)
+        } else {
+            State.UpdateAvailable(i.versionName, "release", size)
         }
     }
 
