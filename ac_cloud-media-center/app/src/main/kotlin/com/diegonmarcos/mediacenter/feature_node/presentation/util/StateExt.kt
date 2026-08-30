@@ -20,6 +20,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.diegonmarcos.mediacenter.core.Constants
 import com.diegonmarcos.mediacenter.core.Resource
+import com.diegonmarcos.mediacenter.core.util.DateExt
 import com.diegonmarcos.mediacenter.core.util.DateGrouper
 import com.diegonmarcos.mediacenter.core.util.getDateExt
 import com.diegonmarcos.mediacenter.core.util.getDateHeader

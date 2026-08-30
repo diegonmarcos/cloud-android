@@ -70,6 +70,7 @@ import com.diegonmarcos.mediacenter.feature_node.domain.model.MediaMetadataState
 import com.diegonmarcos.mediacenter.feature_node.domain.model.Vault
 import com.diegonmarcos.mediacenter.feature_node.domain.model.VaultState
 import com.diegonmarcos.mediacenter.feature_node.domain.model.rememberLocationData
+import com.diegonmarcos.mediacenter.feature_node.presentation.util.rememberLocationData
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.rememberMediaDateCaption
 import com.diegonmarcos.mediacenter.feature_node.domain.util.canMakeActions
 import com.diegonmarcos.mediacenter.feature_node.domain.util.fileExtension

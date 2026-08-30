@@ -31,6 +31,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 
 import com.diegonmarcos.mediacenter.feature_node.domain.model.editor.VariableFilterTypes
+import com.diegonmarcos.mediacenter.feature_node.domain.model.editor.VariableFilterTypes.*
 
 /** Builds the concrete filter for an adjustment. Extension, not a member:
  *  the enum is domain and must not name presentation types. */
@@ -60,54 +61,57 @@ fun VariableFilterTypes.createFilter(value: Float): VariableFilter =
             Denoise -> com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.Denoise(value)
         }
 
-    fun createDefaultFilter(): VariableFilter =
-        when (this) {
-            Brightness -> Brightness()
-            Contrast -> Contrast()
-            Saturation -> Saturation()
-            Rotate -> Rotate()
-            Tone -> com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.Tone()
-            BlackPoint -> com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.BlackPoint()
-            WhitePoint -> com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.WhitePoint()
-            Highlights -> com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.Highlights()
-            Shadows -> com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.Shadows()
-            Vignette -> com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.Vignette()
-            Warmth -> com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.Warmth()
-            Tint -> com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.Tint()
-            SkinTone -> com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.SkinTone()
-            BlueTone -> com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.BlueTone()
-            Hue -> com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.Hue()
-            BlackWhite -> com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.BlackWhite()
-            Posterize -> com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.Posterize()
-            Edges -> com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.Edges()
-            Borders -> com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.Borders()
-            Pop -> com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.Pop()
-            Sharpen -> Sharpness()
-            Denoise -> com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.Denoise()
-        }
+/** Default-valued filter for an adjustment. Extension for the same reason as
+ *  createFilter: the enum is domain and must not name presentation types. */
+fun VariableFilterTypes.createDefaultFilter(): VariableFilter =
+    when (this) {
+        Brightness -> Brightness()
+        Contrast -> Contrast()
+        Saturation -> Saturation()
+        Rotate -> Rotate()
+        Tone -> com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.Tone()
+        BlackPoint -> com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.BlackPoint()
+        WhitePoint -> com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.WhitePoint()
+        Highlights -> com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.Highlights()
+        Shadows -> com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.Shadows()
+        Vignette -> com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.Vignette()
+        Warmth -> com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.Warmth()
+        Tint -> com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.Tint()
+        SkinTone -> com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.SkinTone()
+        BlueTone -> com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.BlueTone()
+        Hue -> com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.Hue()
+        BlackWhite -> com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.BlackWhite()
+        Posterize -> com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.Posterize()
+        Edges -> com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.Edges()
+        Borders -> com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.Borders()
+        Pop -> com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.Pop()
+        Sharpen -> Sharpness()
+        Denoise -> com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.varfilter.Denoise()
+    }
 
-    val icon: ImageVector get() =
-        when (this) {
-            Brightness -> Icons.Outlined.Brightness5
-            Contrast -> Icons.Outlined.Contrast
-            Saturation -> Icons.Outlined.WaterDrop
-            Rotate -> Icons.Outlined.Rotate90DegreesCcw
-            Tone -> Icons.Outlined.Tonality
-            BlackPoint -> Icons.Outlined.RadioButtonUnchecked
-            WhitePoint -> Icons.Outlined.Circle
-            Highlights -> Icons.Outlined.Layers
-            Shadows -> Icons.Outlined.FilterDrama
-            Vignette -> Icons.Outlined.Vignette
-            Warmth -> Icons.Outlined.Thermostat
-            Tint -> Icons.Outlined.Palette
-            SkinTone -> Icons.Outlined.InvertColors
-            BlueTone -> Icons.Outlined.Waves
-            Hue -> Icons.Outlined.Gradient
-            BlackWhite -> Icons.Outlined.FilterBAndW
-            Posterize -> Icons.Outlined.Texture
-            Edges -> Icons.Outlined.GridOn
-            Borders -> Icons.Outlined.CropDin
-            Pop -> Icons.Outlined.Contrast
-            Sharpen -> Icons.Outlined.Details
-            Denoise -> Icons.Outlined.Brightness4
-        }
+/** Toolbar icon for an adjustment — presentation, so an extension here. */
+val VariableFilterTypes.icon: ImageVector get() =
+    when (this) {
+        Brightness -> Icons.Outlined.Brightness5
+        Contrast -> Icons.Outlined.Contrast
+        Saturation -> Icons.Outlined.WaterDrop
+        Rotate -> Icons.Outlined.Rotate90DegreesCcw
+        Tone -> Icons.Outlined.Tonality
+        BlackPoint -> Icons.Outlined.RadioButtonUnchecked
+        WhitePoint -> Icons.Outlined.Circle
+        Highlights -> Icons.Outlined.Layers
+        Shadows -> Icons.Outlined.FilterDrama
+        Vignette -> Icons.Outlined.Vignette
+        Warmth -> Icons.Outlined.Thermostat
+        Tint -> Icons.Outlined.Palette
+        SkinTone -> Icons.Outlined.InvertColors
+        BlueTone -> Icons.Outlined.Waves
+        Hue -> Icons.Outlined.Gradient
+        BlackWhite -> Icons.Outlined.FilterBAndW
+        Posterize -> Icons.Outlined.Texture
+        Edges -> Icons.Outlined.GridOn
+        Borders -> Icons.Outlined.CropDin
+        Pop -> Icons.Outlined.Contrast
+        Sharpen -> Icons.Outlined.Details
+        Denoise -> Icons.Outlined.Brightness4
+    }
