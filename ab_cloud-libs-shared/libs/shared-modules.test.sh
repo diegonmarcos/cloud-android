@@ -479,7 +479,11 @@ while read -r UI_KT; do
     command grep -q 'InstallGate.serialised' "$UI_KT" \
         && note ok "every install is serialised at UpdateInstaller.install" \
         || note FAIL "$UI_KT does not go through InstallGate.serialised — concurrent callers will race and can exhaust install sessions"
-done < <(command find . -path "*/com/diegonmarcos/superapp/updater/UpdateInstaller.kt" -not -path "*/build/*" -not -path "./z_archive/*" 2>/dev/null)
+# The updater's internals are grouped into apk/ source/ install/ subpackages,
+# so UpdateInstaller.kt sits at .../updater/install/. Match on the package
+# ROOT rather than the exact directory: pinning the full path is what turns
+# a file move into a silently disarmed test (0 assertions, still green).
+done < <(command find . -path "*/com/diegonmarcos/superapp/updater/*UpdateInstaller.kt" -not -path "*/build/*" -not -path "./z_archive/*" 2>/dev/null)
 [ "$ui_n" -gt 0 ] || note FAIL "no constellation UpdateInstaller.kt found — cannot verify installs are serialised"
 
 # 17. A buildConfigField that interpolates ${x} needs a `def x` in the same

@@ -1,5 +1,10 @@
-package com.diegonmarcos.superapp.updater
+package com.diegonmarcos.superapp.updater.source
 
+import com.diegonmarcos.superapp.updater.AbiUpdateTag
+import com.diegonmarcos.superapp.updater.UpdateProgress
+import com.diegonmarcos.superapp.updater.Updater
+import com.diegonmarcos.superapp.updater.apk.ApkIntegrity
+import com.diegonmarcos.superapp.updater.apk.VerifiedApk
 import android.content.Context
 import android.content.pm.PackageManager
 import android.util.Log

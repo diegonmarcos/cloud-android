@@ -1,5 +1,6 @@
-package com.diegonmarcos.superapp.updater
+package com.diegonmarcos.superapp.updater.apk
 
+import com.diegonmarcos.superapp.updater.Updater
 import android.util.Log
 import java.io.File
 
