@@ -1,0 +1,18 @@
+{
+  "name": "sqlcipher-wrapper",
+  "description": "Drop-in SQLCipher replacement for android.database.sqlite.SQLiteOpenHelper. Transparently re-encrypts guest-app databases with a workspace-held key so the data is yours even if the guest is uninstalled.",
+  "category": "sec",
+  "type": "library",
+  "tech": {
+    "language": "kotlin",
+    "crypto": "SQLCipher 4.x",
+    "key_storage": "Android Keystore (hardware-backed when available)",
+    "min_sdk": 26
+  },
+  "depends_on": ["hooking-core"],
+  "build": {
+    "gradle_task": ":library:assembleRelease",
+    "output": "build/outputs/aar/sqlcipher-wrapper-release.aar"
+  },
+  "deploy": { "device": null, "method": "artifact" }
+}

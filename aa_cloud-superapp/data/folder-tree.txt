@@ -1,0 +1,99 @@
+android/
+├── ac_______________________________/
+├── ac_cal-davx5/
+│   ├── app-ose/
+│   │   └── src/
+│   ├── core/
+│   │   ├── schemas/
+│   │   └── src/
+│   ├── doc/
+│   ├── fastlane/
+│   │   └── metadata/
+│   ├── gradle/
+│   │   └── wrapper/
+│   ├── scripts/
+│   └── synctools/
+│       ├── opentasks-contract/
+│       └── src/
+├── aa_cloud-superapp/
+│   ├── app/
+│   │   ├── keystores/
+│   │   └── src/
+│   ├── data/
+│   └── libs/
+│       ├── cal/
+│       ├── chat/
+│       ├── core/
+│       ├── feed/
+│       ├── mail/
+│       ├── net/
+│       ├── ops/
+│       ├── updater/
+│       └── vault/
+├── ac_feed-feeder/
+│   ├── app/
+│   │   ├── libs/
+│   │   ├── schemas/
+│   │   └── src/
+│   ├── ci/
+│   ├── fastlane/
+│   │   └── metadata/
+│   ├── gradle/
+│   │   └── wrapper/
+│   ├── graphics/
+│   └── scripts/
+├── ac_mail-fairmail/
+│   ├── app/
+│   │   ├── lib/
+│   │   ├── schemas/
+│   │   └── src/
+│   ├── colorpicker/
+│   │   └── src/
+│   ├── decrypt/
+│   ├── eml/
+│   ├── gradle/
+│   │   └── wrapper/
+│   ├── images/
+│   ├── metadata/
+│   │   ├── de-DE/
+│   │   ├── en-US/
+│   │   └── ru/
+│   ├── oauth/
+│   ├── openpgp-api/
+│   │   └── src/
+│   ├── patches/
+│   ├── privacy/
+│   ├── screenshots/
+│   │   └── amazon/
+│   ├── tools/
+│   └── tutorials/
+│       └── images/
+├── ac_net-wireguard/
+│   ├── gradle/
+│   │   └── wrapper/
+│   ├── tunnel/
+│   │   ├── src/
+│   │   └── tools/
+│   └── ui/
+│       ├── sampledata/
+│       └── src/
+└── ac_vault-keepassdx/
+    ├── app/
+    │   ├── schemas/
+    │   └── src/
+    ├── art/
+    ├── crypto/
+    │   └── src/
+    ├── database/
+    │   └── src/
+    ├── fastlane/
+    │   └── metadata/
+    ├── gradle/
+    │   └── wrapper/
+    ├── icon-pack/
+    │   ├── classic/
+    │   ├── material/
+    │   └── src/
+    ├── LICENSES/
+    └── src/
+        └── libre/

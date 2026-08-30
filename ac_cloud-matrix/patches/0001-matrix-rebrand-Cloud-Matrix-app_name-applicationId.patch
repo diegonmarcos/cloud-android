@@ -1,0 +1,38 @@
+From: cloud-comms-engine <engine@diegonmarcos.com>
+Subject: [PATCH 1/1] rebrand: Cloud Matrix app name + applicationId, add NOTICE
+
+Element X declares both its identity strings in one place, so the rebrand is
+two constants rather than a sweep:
+
+  APPLICATION_ID   io.element.android.x -> com.diegonmarcos.comms.matrix
+  APPLICATION_NAME "Element X"          -> "Cloud Matrix"
+
+applicationId matters beyond naming: forks.matrix.app_id already says
+com.diegonmarcos.comms.matrix, and until this change a from-source build
+produced upstream's id instead - so the APK could not take over from the
+resigned stock build, and signature-level constellation IPC keyed on our id
+would not have matched it.
+
+NOTICE.md elects AGPL-3.0-only (upstream is dual-licensed AGPL-3.0-only OR
+LicenseRef-Element-Commercial), disclaims the Element trademarks, and records
+that the launcher artwork in appicon/element/ has NOT yet been replaced.
+
+NOTE: this tree is VENDORED (materialize-fork's no-.git path), so this file is
+a historical record - the change is already applied in the committed source.
+It is kept so the delta from upstream v26.06.2 stays readable.
+---
+ plugins/src/main/kotlin/config/BuildTimeConfig.kt | 4 ++--
+ NOTICE.md                                         | new
+ 2 files changed
+
+diff --git a/plugins/src/main/kotlin/config/BuildTimeConfig.kt b/plugins/src/main/kotlin/config/BuildTimeConfig.kt
+--- a/plugins/src/main/kotlin/config/BuildTimeConfig.kt
++++ b/plugins/src/main/kotlin/config/BuildTimeConfig.kt
+@@ -10,8 +10,8 @@ package config
+
+ object BuildTimeConfig {
+-    const val APPLICATION_ID = "io.element.android.x"
+-    const val APPLICATION_NAME = "Element X"
++    const val APPLICATION_ID = "com.diegonmarcos.comms.matrix"
++    const val APPLICATION_NAME = "Cloud Matrix"
+     const val GOOGLE_APP_ID_RELEASE = "1:912726360885:android:d097de99a4c23d2700427c"

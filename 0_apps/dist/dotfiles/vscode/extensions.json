@@ -1,0 +1,12 @@
+{
+  "// doc": "Recommendations only — VS Code prompts, never installs silently. Chosen to match what this repo actually contains: Nix flakes, POSIX shell engines, docker-compose, TypeScript config generators.",
+  "recommendations": [
+    "jnoortheen.nix-ide",
+    "timonwong.shellcheck",
+    "foxundermoon.shell-format",
+    "ms-azuretools.vscode-docker",
+    "redhat.vscode-yaml",
+    "tamasfe.even-better-toml"
+  ],
+  "unwantedRecommendations": []
+}

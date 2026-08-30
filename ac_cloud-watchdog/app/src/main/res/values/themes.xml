@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The panel's own background, so the window behind the WebView matches
+         the transcript and there is no white flash before the page paints. -->
+    <style name="Theme.Watchdog" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowBackground">#0b0e14</item>
+        <item name="android:statusBarColor">#101520</item>
+        <item name="android:navigationBarColor">#0b0e14</item>
+    </style>
+</resources>

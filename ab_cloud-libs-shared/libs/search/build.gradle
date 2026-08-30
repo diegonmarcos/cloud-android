@@ -1,0 +1,34 @@
+apply plugin: 'com.android.library'
+apply plugin: 'org.jetbrains.kotlin.android'
+
+// Scope taxonomy from the CONSUMING app's build.json::ui.search_scopes, baked
+// to base64 the same way the app used to bake it. Reading it here rather than
+// in the app is the point of the move: an app adds `ui.search_scopes` and gets
+// chips, with no Kotlin of its own. An app that declares none gets a single
+// unscoped list, which is the sane default for a small app.
+def buildJson = new groovy.json.JsonSlurper().parse(file("${rootDir}/build.json"))
+def scopes = buildJson?.ui?.search_scopes ?: []
+def scopesB64 = groovy.json.JsonOutput.toJson(scopes).bytes.encodeBase64().toString()
+
+android {
+    namespace 'com.diegonmarcos.superapp.search'
+    compileSdk 36
+
+    defaultConfig {
+        minSdk 26
+        buildConfigField "String", "UI_SEARCH_SCOPES_B64", "\"${scopesB64}\""
+    }
+
+    buildFeatures { buildConfig true }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = '17' }
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.fragment:fragment-ktx:1.8.5'
+}

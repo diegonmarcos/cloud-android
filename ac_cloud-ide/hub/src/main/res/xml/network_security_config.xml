@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Scoped cleartext exception for the my-konsole engine WebSocket
+  (ws://127.0.0.1:7333 — transport.js default). targetSdk 34 blocks
+  cleartext traffic by default; this allows it ONLY to localhost, not
+  globally, so the WebView can still reach https:// elsewhere as normal.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+</network-security-config>

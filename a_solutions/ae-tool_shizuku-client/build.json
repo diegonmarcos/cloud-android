@@ -1,0 +1,28 @@
+{
+  "name": "shizuku-client",
+  "description": "No-root fallback path. Uses Shizuku (ADB-granted system privileges) to access /data/data/<pkg>/ on devices where the virtual-engine approach is overkill or blocked.",
+  "category": "tool",
+  "type": "apk",
+  "tech": {
+    "language": "kotlin",
+    "ui": "Jetpack Compose",
+    "shizuku_api": "13.1.5",
+    "min_sdk": 26,
+    "target_sdk": 35,
+    "application_id": "com.diegonmarcos.shizuku_export"
+  },
+  "depends_on": [],
+  "build": {
+    "gradle_task": ":app:assembleRelease",
+    "output": "build/outputs/apk/release/shizuku-client-release.apk"
+  },
+  "sign": { "keystore": "src/shizuku.keystore.enc" },
+  "deploy": {
+    "device": "pixel-7a",
+    "method": "adb-install"
+  },
+  "references": [
+    "https://shizuku.rikka.app/",
+    "https://github.com/RikkaApps/Shizuku-API"
+  ]
+}

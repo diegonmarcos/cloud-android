@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- libs:translate-mlkit — ML Kit engine implementation. Superapp and
+     cloud-keyboard-libs include this; cloud-keyboard does NOT (it binds
+     the AIDL service instead). -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" />

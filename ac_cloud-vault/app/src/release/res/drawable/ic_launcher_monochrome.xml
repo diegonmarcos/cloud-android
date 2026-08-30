@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Cloud Vault mark (monochrome/themed-icon variant): same padlock silhouette. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group>
+        <clip-path
+            android:pathData="M0,0h108v108h-108z"/>
+        <path
+            android:pathData="M37,52 V42 A17,17 0 0 1 71,42 V52"
+            android:strokeColor="#FF000000"
+            android:strokeWidth="9"
+            android:strokeLineCap="round"
+            android:fillColor="#00000000"/>
+        <path
+            android:pathData="M32,50 H76 A8,8 0 0 1 84,58 V82 A8,8 0 0 1 76,90 H32 A8,8 0 0 1 24,82 V58 A8,8 0 0 1 32,50 Z"
+            android:fillColor="#FF000000"/>
+        <path
+            android:pathData="M54,61 C57.87,61 61,64.13 61,68 C61,70.71 59.43,73.06 57.15,74.24 L60,84 H48 L50.85,74.24 C48.57,73.06 47,70.71 47,68 C47,64.13 50.13,61 54,61 Z"
+            android:fillColor="#00000000"/>
+    </group>
+</vector>

@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_launcher_name">Cloud Dialer</string>
+    <string name="call_via_cellular">Cellular call</string>
+    <string name="call_with">Call with %s</string>
+    <string name="open_in">Open in %s</string>
+    <string name="call_provider_unavailable">%s isn\'t available</string>
+    <string name="call_using">Call using</string>
+    <string name="calling">Calling</string>
+    <string name="default_call_provider">Default call provider</string>
+    <string name="always_ask">Always ask</string>
+    <string name="default_phone_app_prompt">Please make this app the default Phone app</string>
+    <string name="allow_displaying_over_other_apps">Please allow displaying over other apps for reliable behaviour</string>
+
+    <!-- Contacts -->
+    <string name="could_not_access_contacts">Could not access your contacts</string>
+
+    <!-- Recents -->
+    <string name="no_previous_calls">No previous calls have been found</string>
+    <string name="could_not_access_the_call_history">Could not access the call history</string>
+    <string name="request_access">Request access</string>
+    <string name="remove_confirmation">Are you sure you want to remove the selected items from the Call History?</string>
+    <string name="clear_history_confirmation">Are you sure you want to remove everything from the Call History?</string>
+    <string name="show_grouped_calls">Show grouped calls</string>
+    <string name="clear_call_history">Clear call history</string>
+    <string name="show_call_details">Show call details</string>
+
+    <!-- Dialpad -->
+    <string name="dialpad">Dialpad</string>
+    <string name="asterisk">Asterisk</string>
+    <string name="hashtag">Hashtag</string>
+    <string name="call_number">Call number</string>
+    <string name="dialpad_beeps">Enable beeps on dialpad button clicks</string>
+    <string name="dialpad_vibrations">Enable vibrations on dialpad button clicks</string>
+
+    <!-- Dialer -->
+    <string name="dialer">Dialer</string>
+    <string name="accept">Accept</string>
+    <string name="accept_call">Accept call</string>
+    <string name="decline">Decline</string>
+    <string name="decline_call">Decline call</string>
+    <string name="unknown_caller">Unknown Caller</string>
+    <string name="is_calling">Is Calling…</string>
+    <string name="dialing">Dialing…</string>
+    <string name="call_ended">Call Ended</string>
+    <string name="call_ending">Call Ending</string>
+    <string name="ongoing_call">Ongoing Call</string>
+    <string name="select_sim">Select a SIM for this call</string>
+    <string name="always_use_this_sim">Always use this SIM for this number</string>
+    <string name="unset_default_sim">Unset default SIM</string>
+    <string name="calls">Calls</string>
+    <string name="turn_microphone_on">Turn microphone on</string>
+    <string name="turn_microphone_off">Turn microphone off</string>
+    <string name="turn_speaker_on">Turn speaker on</string>
+    <string name="turn_speaker_off">Turn speaker off</string>
+    <string name="show_dialpad">Show dialpad</string>
+    <string name="hide_dialpad">Hide dialpad</string>
+    <string name="end_call">End call</string>
+    <string name="hold_call">Hold call</string>
+    <string name="resume_call">Resume call</string>
+    <string name="call_on_hold">On Hold</string>
+    <string name="call_swap">Swap calls</string>
+    <string name="call_merge">Merge calls</string>
+    <string name="call_split">Split call</string>
+    <string name="call_add">Add call</string>
+    <string name="conference_manage">Manage conference call</string>
+    <string name="conference">Conference</string>
+    <string name="audio_route_speaker">Speaker</string>
+    <string name="audio_route_earpiece">Earpiece</string>
+    <string name="audio_route_bluetooth">Bluetooth</string>
+    <string name="audio_route_wired_headset">Wired Headset</string>
+    <string name="audio_route_wired_or_earpiece">Wired or Earpiece</string>
+    <string name="choose_audio_route">Choose audio route</string>
+    <string name="calling_blocked_number">The number you are calling is blocked</string>
+    <string name="call_is_being_connected">Your call is being connected…</string>
+    <string name="call_notification_channel">Call status</string>
+    <string name="call_notification_channel_high_priority">Call status (high priority)</string>
+
+    <!-- Speed dial -->
+    <string name="speed_dial">Speed dial</string>
+    <string name="manage_speed_dial">Manage speed dial</string>
+    <string name="speed_dial_label">Click on a number to assign a contact to it. You can then quickly call the given contact by long pressing the given number at the dialer.</string>
+
+    <!-- Settings -->
+    <string name="group_subsequent_calls">Group subsequent calls with the same number at the call log</string>
+    <string name="open_dialpad_by_default">Open the dialpad by default when the app opens</string>
+    <string name="disable_proximity_sensor">Disable proximity sensor during calls</string>
+    <string name="disable_swipe_to_answer">Replace swiping at responding to incoming calls with clicking</string>
+    <string name="show_incoming_calls_full_screen">Always display incoming calls on full screen</string>
+    <string name="hide_dialpad_numbers">Hide dialpad numbers</string>
+    <string name="export_call_history">Export call history</string>
+    <string name="import_call_history">Import call history</string>
+    <string name="updates">Updates</string>
+    <string name="check_for_updates">Check for updates</string>
+    <string name="checking_for_updates">Checking for updates…</string>
+    <string name="call_screening">Call screening</string>
+    <string name="screening_mode">Screening mode</string>
+    <string name="screening_contacts_only">Contacts only — silently reject unknown numbers</string>
+    <string name="screening_block_known_spam">Block known spam numbers only</string>
+    <string name="screening_allow_all">Allow all calls</string>
+    <string name="screened_calls">Screened calls</string>
+    <string name="screened_call_history">Screened call history</string>
+    <string name="no_screened_calls">No screened calls</string>
+    <string name="clear_screening_log">Clear history</string>
+    <string name="allowed_numbers">Allowed numbers</string>
+    <string name="allowed_numbers_summary">Always ring, bypassing screening</string>
+    <string name="no_allowed_numbers">No allowed numbers</string>
+    <string name="allow_number">Always allow this number</string>
+    <string name="disallow_number">Remove from allowed numbers</string>
+    <string name="number_allowed">Number will always ring</string>
+    <string name="number_disallowed">Number removed from allowed list</string>
+    <string name="call_back_number">Call back</string>
+    <string name="reason_blocked_number">Blocked number</string>
+    <string name="reason_known_spam">Known spam</string>
+    <string name="reason_not_in_contacts">Not in contacts</string>
+    <string name="reason_hidden_number">Hidden number</string>
+    <string name="suspected_spam">Suspected spam</string>
+    <string name="calling_accounts">Calling accounts</string>
+
+    <!-- FAQ -->
+    <string name="faq_1_title">I hear incoming calls, but the screen doesn\'t turn on. What can I do?</string>
+    <string name="faq_1_text">Such issues can have many device and system specific reasons, hard to say in general. You should look around in your device settings and make sure that the app is allowed to pop up when in background and allow displaying over other apps.</string>
+    <string name="faq_2_title">Why emergency calls don\'t work properly?</string>
+    <string name="faq_2_text">Due to system restrictions, emergency calls can only be made through your system\'s default dialer or phone app. To ensure emergency calls work properly, you need to keep the system app installed and enabled.</string>
+    <string name="faq_3_title">Why are some of my contacts missing from the app?</string>
+    <string name="faq_3_text">Fossify Phone only displays contacts that have a phone number associated with them. Contacts without a phone number are not shown in the app.</string>
+    <!--
+        Haven't found some strings? There's more at
+        https://github.com/FossifyOrg/Commons/tree/master/commons/src/main/res
+    -->
+</resources>

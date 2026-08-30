@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Shown by Android on the app's permission screen for the constellation
+     permission declared in this module's AndroidManifest.xml. -->
+<resources>
+    <string name="perm_constellation_data">Read and write data belonging to other Cloud constellation apps. Granted automatically to apps signed with the Cloud signing key.</string>
+</resources>

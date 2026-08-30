@@ -1,0 +1,66 @@
+{
+  "forks": {
+    "chat": {
+      "app_id": "com.diegonmarcos.comms.chat",
+      "label": "Cloud Chat (Mattermost)",
+      "image": "cloud-comms-chat",
+      "upstream_repo": "https://github.com/mattermost/mattermost-mobile.git",
+      "tracker_dir": "ac_cloud-chat",
+      "tracker_dir_note": "flattened 2026-08-29 — the vendored source now sits at the app root, matching every other app in this repo instead of hiding under upstream/. upstream_repo/pinned_tag stay provenance only; bump pinned_tag + re-run materialize-fork to re-vendor a newer tag. Note: the fork's provenance patches moved to fork-patches/, because patches/ at the RN project root belongs to patch-package, which postinstall runs.",
+      "pinned_tag": "v2.40.0",
+      "license": "Apache-2.0",
+      "primary_lang": "TypeScript (React Native)",
+      "runtime": "native",
+      "priority": 3,
+      "blocked_on": null,
+      "build": {
+        "_doc": "Mattermost Mobile (React Native). 'command' is a shell snippet run from the fork root; build-fork runs it via the nix devShell for correct node/ruby/cocoapods. apk_glob captures the output. resign_unsigned=true means build-fork runs apksigner after aligning (RN builds can't embed constellation keystore easily). 'sync-on-open — prevents 20+ react-native arm64+x86_64.'",
+        "prepare": [
+          "[ -f android/app/debug.keystore ] || keytool -genkeypair -v -keystore android/app/debug.keystore -storepass android -keypass android -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=Android Debug,O=Android,C=US'",
+          "npm ci --ignore-scripts",
+          "node_modules/.bin/patch-package",
+          "bash scripts/postinstall.sh"
+        ],
+        "command": "node node_modules/.bin/react-native build-android --mode=release --tasks assembleRelease 2>&1",
+        "apk_glob": "android/app/build/outputs/apk/release/*.apk",
+        "resign_unsigned": true,
+        "signing": "resign_post_build",
+        "_doc_debug_keystore": "The React Native template's android/app/debug.keystore is matched by the repo-wide '*.keystore' ignore, so it exists on a developer disk and has never been in the repo. CI then died at ':app:validateSigningRelease' - \"Keystore file .../debug.keystore not found for signing config 'debug'\" - because Mattermost's release buildType falls back to the debug config. Generated here rather than vendored, which is what the gitignore's own note says keystores must be. It is the standard, public AOSP debug identity and it never reaches the shipped artifact: signing=resign_post_build + resign_unsigned means build-fork apksigner-resigns the APK with the ONE shared constellation key afterwards, so this throwaway key only exists to satisfy gradle's validation."
+      },
+      "comment": "Mattermost Mobile. RN build; harder than mail — needs node 20 + ruby for Podfile lock."
+    }
+  },
+  "signing": {
+    "vault_keystore": "A0_keys/providers/android/release.jks",
+    "vault_secrets": "A0_keys/providers/android/signing.secrets.yaml"
+  },
+  "release": {
+    "ghcr": {
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "media_type": "application/vnd.android.package-archive"
+    },
+    "gh_release": {
+      "_doc": "Rolling GH release 'latest' (shared across the ea_cloud-* apps; each contributes a distinctly-named APK asset), overwritten every main push so https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/cloud-comms-chat.apk stays stable. Published by `build.sh gh-release-fork chat` (ship-cloud-chat.yml), which uploads dist/cloud-comms-chat.apk with --clobber. Consumed by aa_cloud-superapp ui.external_apps[cloud-chat].install_apk_url. The immutable timestamped per-build release (RSS notification) is separate and stays --latest=false.",
+      "enabled": true,
+      "rolling_tag": "latest",
+      "asset_name": "cloud-comms-chat.apk",
+      "draft": false,
+      "prerelease": false,
+      "generate_release_notes": false
+    }
+  },
+  "analytics": {
+    "_doc": "Consumed by :libs:analytics, which reads THIS file at build time and bakes the values into BuildConfig. NOTE: this is a React Native app — its gradle rootDir is android/, so the module resolves this file via ../build.json (see android/settings.gradle).",
+    "enabled": true,
+    "app": "ac_cloud-chat",
+    "umami": {
+      "endpoint": "https://analytics.diegonmarcos.com/umami",
+      "site_id": "937cbde7-5ec2-450c-9d6a-8117423ac12f"
+    },
+    "matomo": {
+      "endpoint": "https://analytics.diegonmarcos.com/matomo",
+      "site_id": "1"
+    }
+  }
+}

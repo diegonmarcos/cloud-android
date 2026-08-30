@@ -1,0 +1,14 @@
+What's new in 5.0.2:
+
+This is a polish release focused on the media viewer, photo editor, and cloud backup.
+
+Bug fixes:
+• Editor — markup text now stays within the canvas, and the crop box resizes from its handles without auto-zooming
+• Editor — the adjustment scrubber keeps the value you set instead of reverting to default when switching tools
+• Viewer — swipe-to-dismiss now triggers at a natural threshold instead of needing a full drag
+• Viewer — a second swipe-down no longer closes the app past the gallery
+• Viewer — the rotate button works correctly after multiple rotations
+• Viewer — the top bar back/info buttons and quick actions respond correctly while the info sheet is open
+• Viewer — fixed grouped video overlapping the controls and stretching when switching members
+• Cloud — Start backup and Upload now work even when Auto-sync is turned off
+• Fixed View all metadata for photos opened from other apps

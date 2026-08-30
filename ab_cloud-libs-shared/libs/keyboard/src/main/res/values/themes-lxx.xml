@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright (C) 2014 The Android Open Source Project
+    modified
+    SPDX-License-Identifier: Apache-2.0 AND GPL-3.0-only
+-->
+<resources>
+    <style
+        name="InputView.LXX"
+        parent="InputView"
+    >
+        <item name="android:elevation">8dp</item>
+    </style>
+    <!-- LXX KeyboardView theme -->
+    <style
+        name="KeyboardView.LXX"
+        parent="KeyboardView"
+    >
+        <item name="keyTypeface">normal</item>
+        <item name="keyLetterSize">@fraction/config_key_letter_ratio_lxx</item>
+        <item name="keyLabelSize">@fraction/config_key_label_ratio_lxx</item>
+        <item name="keyHintLetterRatio">@fraction/config_key_hint_letter_ratio_lxx</item>
+        <item name="keyShiftedLetterHintRatio">@fraction/config_key_shifted_letter_hint_ratio_lxx</item>
+        <item name="keyLargeLetterRatio">@fraction/config_key_large_letter_ratio_lxx</item>
+        <item name="keyLabelOffCenterRatio">-80%</item>
+        <item name="keyHintLabelRatio">@fraction/config_key_hint_label_ratio_lxx</item>
+        <item name="keyHintLabelOffCenterRatio">300%</item>
+        <item name="keyLabelFlags">alignHintLabelToBottom</item>
+        <item name="spacebarIconWidthRatio">0.9</item>
+        <!-- U+2026: "…" HORIZONTAL ELLIPSIS -->
+        <item name="keyPopupHintLetter">&#x2026;</item>
+    </style>
+</resources>

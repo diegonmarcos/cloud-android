@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The panel's own shape, not a generic gauge: a meter bar over a sparkline,
+     drawn in the accent this dashboard uses everywhere (Rgb 120,200,255). A
+     vector rather than a PNG set so there is one file instead of five sizes,
+     and so it stays sharp on every density without shipping bitmaps. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- the filled part of a meter -->
+    <path
+        android:fillColor="#78C8FF"
+        android:pathData="M30,44h26v9h-26z" />
+    <!-- the empty part, at the graph floor colour -->
+    <path
+        android:fillColor="#404040"
+        android:pathData="M58,44h20v9h-20z" />
+    <!-- a sparkline underneath, the braille graph in miniature -->
+    <path
+        android:fillColor="#40DC78"
+        android:pathData="M30,68h5v-6h-5z M37,68h5v-11h-5z M44,68h5v-4h-5z M51,68h5v-14h-5z M58,68h5v-8h-5z M65,68h5v-17h-5z M72,68h6v-6h-6z" />
+</vector>

@@ -1,0 +1,304 @@
+// Copyright (c) 2022 RethinkDNS and its authors.
+//
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// This file incorporates work covered by the following copyright and
+// permission notice:
+//
+//    MIT License
+//
+//    Copyright (c) 2018 eycorsican
+//
+//    Permission is hereby granted, free of charge, to any person obtaining a copy
+//    of this software and associated documentation files (the "Software"), to deal
+//    in the Software without restriction, including without limitation the rights
+//    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+//    copies of the Software, and to permit persons to whom the Software is
+//    furnished to do so, subject to the following conditions:
+//
+//    The above copyright notice and this permission notice shall be included in all
+//    copies or substantial portions of the Software.
+//
+//    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+//    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+//    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+//    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+//    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+//    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+//    SOFTWARE.
+
+package log
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"runtime"
+)
+
+// based on: github.com/eycorsican/go-tun2socks/blob/301549c43/common/log/log.go#L5
+var Glogger Logger = defaultLogger()
+
+// caller -> intra/log.go*2 (this file) -> intra/logger.go -> golang/log.go
+const (
+	nextframe = 1
+	// see: pkg.go.dev/log#Output
+	callerat = 2
+)
+
+type Logmsg = string
+
+// Console is an external logger.
+type Console interface {
+	// Log logs a multi-line msg.
+	Log(level LogLevel, msg Logmsg)
+}
+
+// MemReader is the consumer side of a Memconsole double-buffer.
+type MemReader interface {
+	Drain(fd, start, end int) int
+	OnClose() bool
+}
+
+type FilebasedConsole interface {
+	Console
+	io.Closer
+	File() *os.File
+}
+
+type conMsg struct {
+	m  []Logmsg  // one or more formatted log lines
+	ml []*[]byte // pooled slabs backing m; recycled after dispatch
+	t  LogLevel
+}
+
+type LogFn func(string, ...any)
+type LogFn2 func(int, string, ...any)
+
+func init() {
+	Glogger.SetLevel(INFO)
+	Glogger.SetConsoleLevel(STACKTRACE)
+	Glogger.SetCallerDepth(maxCallerDepth)
+}
+
+func SetLevel(level LogLevel) {
+	Glogger.SetLevel(level)
+}
+
+func SetConsoleLevel(level LogLevel) {
+	Glogger.SetConsoleLevel(level)
+}
+
+func SetCallerDepth(d uint8) {
+	Glogger.SetCallerDepth(d)
+}
+
+func ConsoleReady(ctx context.Context) {
+	Glogger.ConsoleReady(ctx)
+}
+
+// SetConsole sets external console to redirect log output to.
+func SetConsole(consoleCtx context.Context, c Console) {
+	Glogger.SetConsole(c)
+
+	context.AfterFunc(consoleCtx, func() {
+		Glogger.SetConsole(nil)
+	})
+}
+
+// NewFilebased sets a pipe-backed console and returns reader and writer.
+// Caller is expected to hand off the read fd and read until EOF.
+// Caller owns the reader and write and must close both.
+func NewFilebased() (reader *os.File, writer FilebasedConsole, err error) {
+	var r, w *os.File
+	r, w, err = os.Pipe() // r is owned by us
+	if err != nil {
+		return
+	}
+	if err = setNonblock(w); err != nil {
+		_ = r.Close()
+		_ = w.Close()
+		return
+	}
+
+	p := newfconsole(w) // p takes ownership of w
+	return r, p, nil    // caller must dup r
+}
+
+func Of(tag string, l LogFn2) LogFn {
+	if l != nil {
+		return func(msg string, args ...any) {
+			// caller -> LogFn (parent fn) -> intra/log.go*2(this file) -> intra/logger.go -> golang/log.go
+			l(callerat, tag+" "+msg, args...)
+		}
+	}
+	return N
+}
+
+// N is a no-op logger.
+func N(string, ...any) {}
+
+// N2 is a no-op logger.
+func N2(int, string, ...any) {}
+
+// V logs a verbose message.
+func V(msg string, args ...any) {
+	V2(callerat, msg, args...)
+}
+
+// VV logs a very verbose message.
+func VV(msg string, args ...any) {
+	VV2(callerat, msg, args...)
+}
+
+// D logs a debug message.
+func D(msg string, args ...any) {
+	D2(callerat, msg, args...)
+}
+
+// I logs an info message.
+func I(msg string, args ...any) {
+	I2(callerat, msg, args...)
+}
+
+// W logs a warning message.
+func W(msg string, args ...any) {
+	W2(callerat, msg, args...)
+}
+
+func WE(msg string, args ...any) (err error) {
+	if len(args) > 0 {
+		msg = fmt.Sprintf(msg, args...)
+	}
+	W2(callerat, msg)
+	return errors.New(msg)
+}
+
+// E logs an error message.
+func E(msg string, args ...any) {
+	E2(callerat, msg, args...)
+}
+
+func EE(msg string, args ...any) (err error) {
+	if len(args) > 0 {
+		msg = fmt.Sprintf(msg, args...)
+	}
+	E2(callerat, msg)
+	return errors.New(msg)
+}
+
+// P logs a private message.
+func P(msg string, args ...any) {
+	Glogger.Piif(callerat, msg, args...)
+}
+
+// Wtf logs a fatal message.
+func Wtf(msg string, args ...any) {
+	Glogger.Fatalf(callerat, msg, args...)
+}
+
+func S(alleast64k []byte) []byte {
+	n := runtime.Stack(alleast64k, true)
+	return alleast64k[:n]
+}
+
+// C logs the stack trace of the current goroutine to Console.
+func C(msg string, scratch []byte) {
+	E2(callerat, "----START----")
+	Glogger.Stack( /*console-only*/ 0, msg, scratch)
+	E2(callerat, "----STOPP----")
+}
+
+// R logs msg to as error to log if c is false, or to console otherwise.
+func R(c bool, msg string, args ...any) {
+	if len(args) > 0 {
+		msg = fmt.Sprintf(msg, args...)
+	}
+	Glogger.Trace(c, msg)
+}
+
+// U logs a user message (notifies the user).
+func U(msg string) {
+	Glogger.Usr(msg)
+}
+
+// T logs the stack trace of the current goroutine.
+func T(msg string, args ...any) {
+	if len(args) > 0 {
+		msg = fmt.Sprintf(msg, args...)
+	}
+	E2(callerat, "----START----")
+	Glogger.Stack(callerat, msg, make([]byte, 4096))
+	E2(callerat, "----STOPP----")
+}
+
+// TALL logs the stack trace of all active goroutines.
+func TALL(msg string, atleast64k []byte) {
+	E2(callerat, "----START----")
+	Glogger.Stack(callerat, msg, atleast64k /*may be nil*/)
+	E2(callerat, "----STOPP----")
+}
+
+func VV2(at int, msg string, args ...any) {
+	Glogger.VeryVerbosef(at+nextframe, msg, args...)
+}
+
+func V2(at int, msg string, args ...any) {
+	Glogger.Verbosef(at+nextframe, msg, args...)
+}
+
+func D2(at int, msg string, args ...any) {
+	Glogger.Debugf(at+nextframe, msg, args...)
+}
+
+func I2(at int, msg string, args ...any) {
+	Glogger.Infof(at+nextframe, msg, args...)
+}
+
+func W2(at int, msg string, args ...any) {
+	Glogger.Warnf(at+nextframe, msg, args...)
+}
+
+func E2(at int, msg string, args ...any) {
+	Glogger.Errorf(at+nextframe, msg, args...)
+}
+
+func Metrics() string {
+	if m := Glogger.Metrics(); m != nil {
+		return m.String()
+	}
+	return "<no logmet>"
+}
+
+// Hist writes the recents to w, one line per entry.
+func Hist(w io.Writer) int {
+	return Glogger.Hist(w)
+}
+
+func LevelOf(level int32) LogLevel {
+	dlvl := NONE
+	switch l := LogLevel(level); l {
+	case VVERBOSE:
+		dlvl = VVERBOSE
+	case VERBOSE:
+		dlvl = VERBOSE
+	case DEBUG:
+		dlvl = DEBUG
+	case INFO:
+		dlvl = INFO
+	case WARN:
+		dlvl = WARN
+	case ERROR:
+		dlvl = ERROR
+	case STACKTRACE:
+		dlvl = STACKTRACE
+	case NONE:
+		dlvl = NONE
+	default:
+	}
+	return dlvl
+}

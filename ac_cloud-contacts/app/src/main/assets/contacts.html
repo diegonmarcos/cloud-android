@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="color-scheme" content="dark">
+    <title>Contacts</title>
+    <script src="vendor/tailwind.js"></script>
+    <style>
+        /* =================================================================
+           Cloud Contacts is deliberately a ONE-THEME app (dark, matching
+           MainActivity's WebView background #0B0F14) — no light/system
+           toggle, unlike the news/calendar siblings. The whole visual
+           identity here is "monochrome list, channel-colored dots" and a
+           light variant would dilute that on day one; token indirection is
+           still used throughout so a theme could be added later without a
+           rewrite.
+           ================================================================= */
+        :root {
+            --sat: env(safe-area-inset-top, 0px);
+            --sab: env(safe-area-inset-bottom, 0px);
+            --sal: env(safe-area-inset-left, 0px);
+            --sar: env(safe-area-inset-right, 0px);
+
+            --bg: #0B0F14;
+            --surface: #10151C;
+            --surface-2: #171E28;
+            --border: #1C2430;
+            --border-soft: #161C26;
+            --text: #F2F4F7;
+            --text-dim: #9AA5B3;
+            --text-faint: #5B6473;
+            --fill: #F2F4F7;
+            --fill-text: #0B0F14;
+            --nav-bg: rgba(11, 15, 20, 0.92);
+            --danger: #FF7A6B;
+            --success: #4ADE80;
+            --shadow: 0 8px 24px rgba(0,0,0,.45);
+        }
+
+        html, body { margin: 0; padding: 0; background: var(--bg); height: 100%; }
+        body {
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            color: var(--text);
+            background: var(--bg);
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: none;
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .app-container {
+            width: 100%; min-height: 100vh; min-height: 100dvh; background: var(--bg);
+            position: relative; display: flex; flex-direction: column;
+            padding-left: var(--sal); padding-right: var(--sar);
+        }
+        .app-main { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; position: relative; }
+        .tab-panel.hidden { display: none; }
+
+        .panel-header {
+            position: sticky; top: 0; z-index: 20; background: var(--bg);
+            padding-top: calc(var(--sat) + 18px); padding-bottom: 10px;
+            padding-left: 20px; padding-right: 20px;
+        }
+        .panel-scroll-pad { padding-bottom: calc(100px + var(--sab)); }
+
+        /* ---- bottom nav ---- */
+        .bottom-nav {
+            position: fixed; left: var(--sal); right: var(--sar); bottom: 0;
+            display: flex; justify-content: space-around; align-items: stretch;
+            background: var(--nav-bg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border-top: 1px solid var(--border); padding-top: 8px; padding-bottom: calc(var(--sab) + 8px);
+            z-index: 40;
+        }
+        .nav-item {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 3px; color: var(--text-faint); background: none; border: none; font-size: 10.5px;
+            font-weight: 600; padding: 6px 6px; flex: 1; font-family: inherit; min-height: 44px;
+        }
+        .nav-item svg { width: 22px; height: 22px; }
+        .nav-item.active { color: var(--text); }
+
+        /* ---- search + chips ---- */
+        .search-wrap { position: relative; margin-top: 4px; }
+        .search-input {
+            width: 100%; box-sizing: border-box; border: 1px solid var(--border); border-radius: 14px;
+            padding: 11px 14px 11px 38px; font-size: 14.5px; font-family: inherit; background: var(--surface);
+            color: var(--text); min-height: 44px;
+        }
+        .search-input::placeholder { color: var(--text-faint); }
+        .search-input:focus { outline: none; border-color: var(--text-faint); }
+        .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--text-faint); pointer-events: none; }
+
+        .chip-scroll { display: flex; overflow-x: auto; gap: 8px; margin-top: 12px; }
+        .chip {
+            display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 999px;
+            border: 1px solid var(--border); font-size: 13px; font-weight: 600; color: var(--text-dim);
+            white-space: nowrap; background: var(--surface); font-family: inherit; min-height: 36px;
+        }
+        .chip.active { background: var(--fill); color: var(--fill-text); border-color: var(--fill); }
+        .chip .count { opacity: .65; font-weight: 500; }
+        .chip.active .count { opacity: .55; }
+
+        /* ---- people list ---- */
+        .person-row {
+            display: flex; align-items: center; gap: 12px; padding: 12px 4px; border-bottom: 1px solid var(--border-soft);
+            width: 100%; text-align: left; background: none; border-left: none; border-right: none; border-top: none;
+            font-family: inherit; min-height: 44px;
+        }
+        .avatar-disc {
+            width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center;
+            justify-content: center; font-size: 15px; font-weight: 700; color: #fff;
+        }
+        .avatar-disc.lg { width: 84px; height: 84px; font-size: 28px; }
+        .person-row-main { flex: 1; min-width: 0; }
+        .person-row-name { font-size: 15px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .person-row-sub { font-size: 12.5px; color: var(--text-faint); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .channel-dots { display: flex; align-items: center; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
+        .channel-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .channel-dot-more { font-size: 10px; font-weight: 700; color: var(--text-faint); }
+        .row-chevron { width: 16px; height: 16px; color: var(--text-faint); flex-shrink: 0; }
+
+        .empty-state { text-align: center; color: var(--text-faint); font-size: 13.5px; padding: 60px 24px; line-height: 1.5; }
+        .empty-state strong { display: block; color: var(--text-dim); font-size: 15px; font-weight: 700; margin-bottom: 8px; }
+
+        /* ---- toast ---- */
+        .toast {
+            position: fixed; left: 50%; bottom: calc(90px + var(--sab)); transform: translateX(-50%) translateY(8px);
+            background: var(--fill); color: var(--fill-text); font-size: 13px; font-weight: 600; padding: 10px 18px;
+            border-radius: 999px; box-shadow: var(--shadow); z-index: 90; opacity: 0; pointer-events: none;
+            transition: opacity .18s, transform .18s; white-space: nowrap; max-width: calc(100vw - 40px); overflow: hidden; text-overflow: ellipsis;
+        }
+        .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+        /* ---- switchboard overlay ---- */
+        .switchboard-overlay {
+            position: fixed; inset: 0; background: var(--bg); z-index: 60; display: flex; flex-direction: column;
+            transform: translateY(100%); transition: transform .22s ease;
+        }
+        .switchboard-overlay.open { transform: translateY(0); }
+        .switchboard-header {
+            position: sticky; top: 0; z-index: 5; background: var(--bg); padding-top: calc(var(--sat) + 12px);
+            padding: calc(var(--sat) + 12px) 16px 8px;
+            display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--border-soft);
+        }
+        .icon-btn {
+            width: 36px; height: 36px; border-radius: 50%; border: none; background: var(--surface-2); color: var(--text);
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-family: inherit;
+        }
+        .icon-btn svg { width: 18px; height: 18px; }
+        .switchboard-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 8px 20px calc(40px + var(--sab)); }
+
+        .sb-hero { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 18px 0 8px; }
+        .sb-hero-name { font-size: 21px; font-weight: 700; margin-top: 14px; }
+        .sb-hero-sub { font-size: 13.5px; color: var(--text-faint); margin-top: 4px; }
+        .provenance-row { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; justify-content: center; }
+        .provenance-chip {
+            font-size: 11px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; color: var(--text-dim);
+            background: var(--surface-2); border: 1px solid var(--border); padding: 4px 10px; border-radius: 999px;
+        }
+
+        .sb-section-heading {
+            font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--text-faint);
+            margin: 24px 0 10px;
+        }
+
+        .channel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .channel-tile {
+            background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 12px;
+            display: flex; flex-direction: column; gap: 8px; min-height: 100px;
+        }
+        .channel-tile.dim { opacity: .55; }
+        .channel-glyph {
+            width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center;
+            font-size: 12px; font-weight: 800; color: #fff; flex-shrink: 0;
+        }
+        .channel-tile-label { font-size: 13px; font-weight: 700; color: var(--text); margin-top: 2px; }
+        .channel-tile-value { font-size: 12px; color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .channel-tile-missing { font-size: 10.5px; color: var(--text-faint); font-style: italic; }
+        .channel-tile-actions { display: flex; gap: 6px; margin-top: auto; flex-wrap: wrap; }
+        .channel-action-btn {
+            border: none; border-radius: 10px; padding: 7px 10px; font-size: 12px; font-weight: 700; font-family: inherit;
+            color: #fff; min-height: 32px; flex: 1;
+        }
+
+        .raw-list { }
+        .raw-row {
+            display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 11px 2px;
+            border-bottom: 1px solid var(--border-soft); min-height: 44px; cursor: pointer; background: none; border-left: none; border-right: none; border-top: none;
+            width: 100%; text-align: left; font-family: inherit;
+        }
+        .raw-row-label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-faint); flex-shrink: 0; width: 46px; }
+        .raw-row-value { flex: 1; min-width: 0; font-size: 13.5px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .raw-row-copy { width: 16px; height: 16px; color: var(--text-faint); flex-shrink: 0; }
+
+        /* ---- import view ---- */
+        .import-card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 18px; margin-bottom: 14px; }
+        .import-card-head { display: flex; align-items: center; gap: 10px; }
+        .import-card-glyph { width: 38px; height: 38px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; color: #fff; flex-shrink: 0; }
+        .import-card-title { font-size: 15.5px; font-weight: 700; }
+        .import-card-steps { margin: 12px 0 0; padding-left: 18px; font-size: 12.5px; color: var(--text-dim); line-height: 1.7; }
+        .import-card-btn {
+            width: 100%; margin-top: 14px; border: none; border-radius: 12px; padding: 12px; font-size: 14px; font-weight: 700;
+            font-family: inherit; background: var(--fill); color: var(--fill-text); min-height: 44px;
+        }
+        .permission-card { background: var(--surface-2); border: 1px dashed var(--border); border-radius: 18px; padding: 18px; margin-bottom: 18px; }
+        .permission-card p { font-size: 12.5px; color: var(--text-dim); line-height: 1.5; margin: 4px 0 12px; }
+        .permission-btn { border: none; border-radius: 12px; padding: 11px 18px; font-size: 13.5px; font-weight: 700; font-family: inherit; background: var(--fill); color: var(--fill-text); min-height: 44px; }
+
+        .source-row {
+            display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 13px 2px;
+            border-bottom: 1px solid var(--border-soft); min-height: 44px;
+        }
+        .source-row-label { font-size: 14px; font-weight: 600; }
+        .source-row-meta { font-size: 12px; color: var(--text-faint); margin-top: 2px; }
+        .remove-btn {
+            border: none; background: var(--surface-2); color: var(--danger); font-size: 12px; font-weight: 700;
+            border-radius: 999px; padding: 7px 13px; font-family: inherit; min-height: 32px;
+        }
+
+        /* ---- about view ---- */
+        .about-hero { text-align: center; padding: 28px 0 8px; }
+        .about-hero .app-glyph {
+            width: 56px; height: 56px; border-radius: 16px; margin: 0 auto 14px; display: flex; align-items: center;
+            justify-content: center; background: var(--surface-2); border: 1px solid var(--border); font-size: 22px; font-weight: 800;
+        }
+        .about-hero-name { font-size: 18px; font-weight: 700; }
+        .about-hero-meta { font-size: 12.5px; color: var(--text-faint); margin-top: 4px; }
+        .legend-row { display: flex; align-items: center; gap: 10px; padding: 10px 2px; border-bottom: 1px solid var(--border-soft); min-height: 44px; }
+        .legend-glyph { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 10.5px; font-weight: 800; color: #fff; flex-shrink: 0; }
+        .legend-label { font-size: 13.5px; font-weight: 600; flex: 1; }
+        .legend-kind { font-size: 11px; color: var(--text-faint); }
+        .stack-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 2px; border-bottom: 1px solid var(--border-soft); font-size: 12.5px; }
+        .stack-row-label { color: var(--text-dim); }
+        .stack-row-value { color: var(--text-faint); font-variant-numeric: tabular-nums; }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="app-container">
+        <main id="app-main" class="app-main hide-scrollbar">
+
+            <!-- ============ PEOPLE TAB ============ -->
+            <section id="tab-people" class="tab-panel">
+                <header class="panel-header">
+                    <div class="flex items-center justify-between">
+                        <h1 class="text-xl font-bold">Cloud Contacts</h1>
+                        <span class="text-[12.5px] font-semibold" style="color:var(--text-faint);" id="people-count"></span>
+                    </div>
+                    <div class="search-wrap">
+                        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+                        <input type="text" id="search-input" class="search-input" placeholder="Search name, org, email, phone…">
+                    </div>
+                    <div class="chip-scroll hide-scrollbar" id="filter-chips"></div>
+                </header>
+                <div class="px-5 panel-scroll-pad" id="people-list"></div>
+            </section>
+
+            <!-- ============ IMPORT TAB ============ -->
+            <section id="tab-import" class="tab-panel hidden">
+                <header class="panel-header">
+                    <h1 class="text-xl font-bold">Import</h1>
+                    <p class="text-[12.5px] mt-1" style="color:var(--text-faint);">Bring in device contacts and export files from LinkedIn and Instagram. Everything merges into one people list — nothing is ever uploaded anywhere.</p>
+                </header>
+                <div class="px-5 panel-scroll-pad" id="import-content"></div>
+            </section>
+
+            <!-- ============ ABOUT TAB ============ -->
+            <section id="tab-about" class="tab-panel hidden">
+                <header class="panel-header">
+                    <h1 class="text-xl font-bold">About</h1>
+                </header>
+                <div class="px-5 panel-scroll-pad" id="about-content"></div>
+            </section>
+
+        </main>
+
+        <nav class="bottom-nav" id="bottom-nav">
+            <button class="nav-item active" data-tab="people">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-4 3-6.5 6.5-6.5s6.5 2.5 6.5 6.5"/><circle cx="17.5" cy="9" r="2.8"/><path d="M15.7 13.2c2.6.3 4.8 2.4 4.8 6.3"/></svg>
+                <span>People</span>
+            </button>
+            <button class="nav-item" data-tab="import">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5v11M12 14.5l-4-4M12 14.5l4-4"/><path d="M4.5 16.5v3a1.5 1.5 0 001.5 1.5h12a1.5 1.5 0 001.5-1.5v-3"/></svg>
+                <span>Import</span>
+            </button>
+            <button class="nav-item" data-tab="about">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg>
+                <span>About</span>
+            </button>
+        </nav>
+
+        <!-- ============ SWITCHBOARD OVERLAY ============ -->
+        <div id="switchboard-overlay" class="switchboard-overlay">
+            <div class="switchboard-header">
+                <button type="button" class="icon-btn" id="switchboard-close-btn" aria-label="Close">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+                </button>
+                <span class="text-[13.5px] font-semibold" style="color:var(--text-dim);">Switchboard</span>
+            </div>
+            <div class="switchboard-body hide-scrollbar" id="switchboard-body"></div>
+        </div>
+
+        <div class="toast" id="toast"></div>
+    </div>
+
+<script>
+'use strict';
+
+/* =====================================================================
+   Utilities
+   ===================================================================== */
+function esc(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function hashStr(s) {
+    var h = 0, str = s || '';
+    for (var i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+    return h;
+}
+
+/* Deterministic avatar colour+initials — same name always gets the same
+   hue, offline, no network. This IS the "gray list lit up by dots" design:
+   the avatar disc is the one splash of colour per row besides the channel
+   dots themselves. */
+function avatarStyle(name) {
+    var hue = hashStr(name) % 360;
+    return 'background: hsl(' + hue + ', 46%, 42%);';
+}
+
+function toastEl() { return document.getElementById('toast'); }
+var toastTimer = null;
+function toast(msg) {
+    var el = toastEl();
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.classList.remove('show'); }, 2200);
+}
+
+/* Clipboard with a document.execCommand fallback — navigator.clipboard
+   requires a secure context, which file:// WebViews don't reliably count
+   as, so this always has a working path either way. */
+function copyToClipboard(text) {
+    var done = function (ok) { toast(ok ? 'Copied' : 'Could not copy'); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () { done(true); }, function () { fallbackCopy(text, done); });
+    } else {
+        fallbackCopy(text, done);
+    }
+}
+function fallbackCopy(text, done) {
+    try {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus(); ta.select();
+        var ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        done(ok);
+    } catch (e) { done(false); }
+}
+
+/* =====================================================================
+   Bridge — window.Native (see MainActivity: addJavascriptInterface(bridge,
+   "Native")). Every real method returns a JSON STRING; this wrapper parses
+   it and falls back to MOCK whenever window.Native is absent, so the file
+   opens and looks right in a plain desktop browser too.
+   ===================================================================== */
+function hasBridge() { return typeof window.Native !== 'undefined'; }
+
+function callBridge(method, args) {
+    if (!hasBridge() || typeof window.Native[method] !== 'function') return null;
+    try {
+        var raw = window.Native[method].apply(window.Native, args || []);
+        if (typeof raw === 'string') return JSON.parse(raw);
+        return raw; // open() returns a boolean, not a JSON string
+    } catch (err) {
+        console.error('[Native.' + method + ']', err);
+        return null;
+    }
+}
+
+var Api = {
+    getState: function () { return callBridge('getState') || MOCK.getState(); },
+    getPeople: function () { return callBridge('getPeople') || MOCK.getPeople(); },
+    getPerson: function (id) { return callBridge('getPerson', [id]) || MOCK.getPerson(id); },
+    requestContacts: function () { if (hasBridge()) window.Native.requestContacts(); else MOCK.requestContacts(); },
+    pickImport: function () { if (hasBridge()) window.Native.pickImport(); else MOCK.pickImport(); },
+    removeSource: function (source) { return callBridge('removeSource', [source]) || MOCK.removeSource(source); },
+    open: function (uri, pkg) { return hasBridge() ? window.Native.open(uri, pkg || '') : MOCK.open(uri, pkg); },
+    getAbout: function () { return callBridge('getAbout') || MOCK.getAbout(); }
+};
+
+/* =====================================================================
+   MOCK — only ever consulted when window.Native is undefined (desktop
+   preview). Three fake people spanning every channel kind so the
+   switchboard's grid, dimmed/missing-app tiles, and provenance chips all
+   have something to show. Mirrors the real build.json channel registry
+   exactly (ids/colors/glyphs), since that file is public app metadata,
+   not a secret.
+   ===================================================================== */
+var MOCK_CHANNELS = [
+    { id: 'whatsapp',   label: 'WhatsApp',     color: '#25D366', glyph: 'WA',  order: 10, pkg: '',                                  installed: true },
+    { id: 'telegram',   label: 'Telegram',     color: '#229ED9', glyph: 'TG',  order: 20, pkg: '',                                  installed: false },
+    { id: 'matrix',     label: 'Matrix',       color: '#0DBD8B', glyph: '[m]', order: 30, pkg: 'com.diegonmarcos.comms.matrix',     installed: false },
+    { id: 'mattermost', label: 'Cloud Chat',   color: '#1E6FEB', glyph: 'MM',  order: 40, pkg: 'com.diegonmarcos.comms.chat',       installed: true },
+    { id: 'email',      label: 'Cloud Mail',   color: '#60A5FA', glyph: '@',   order: 50, pkg: 'com.diegonmarcos.comms.mail',       installed: true },
+    { id: 'sms',        label: 'SMS',          color: '#A3E635', glyph: 'SMS', order: 60, pkg: '',                                  installed: true },
+    { id: 'phone',      label: 'Cloud Dialer', color: '#4ADE80', glyph: 'TEL', order: 70, pkg: 'com.diegonmarcos.comms.dialer',     installed: true },
+    { id: 'linkedin',   label: 'LinkedIn',     color: '#0A66C2', glyph: 'in',  order: 80, pkg: '',                                  installed: false },
+    { id: 'instagram',  label: 'Instagram',    color: '#E4405F', glyph: 'IG',  order: 90, pkg: '',                                  installed: false }
+];
+var MOCK_PEOPLE = [
+    {
+        id: 'p1', name: 'Ana Ferreira', org: 'Nimbus Labs', title: 'Product Designer',
+        sources: ['local', 'gmail:ana@example.com'], phones: ['+1 555 0101'], emails: ['ana@example.com', 'ana@nimbuslabs.io'],
+        urls: ['https://linkedin.com/in/anaferreira'], handles: { matrix: '@ana:matrix.org' },
+        badges: ['whatsapp', 'email', 'sms', 'phone', 'linkedin', 'matrix']
+    },
+    {
+        id: 'p2', name: 'Marcus Chen', org: 'Kepler Systems', title: 'Staff Engineer',
+        sources: ['linkedin'], phones: [], emails: [], urls: ['https://linkedin.com/in/marcuschen'],
+        handles: {}, badges: ['linkedin']
+    },
+    {
+        id: 'p3', name: 'Priya Natarajan', org: '', title: '',
+        sources: ['instagram', 'local'], phones: ['+1 555 0199'], emails: [], urls: ['https://instagram.com/priyan'],
+        handles: { telegram: 'priyan' }, badges: ['whatsapp', 'sms', 'phone', 'telegram', 'instagram']
+    }
+];
+var MOCK = (function () {
+    var sourcesState = 'off'; // 'off' | 'on' — permission toggled by requestContacts() in mock
+    var socialSources = { linkedin: 1, instagram: 1 };
+    function state() {
+        var sources = {};
+        if (sourcesState === 'on') sources['local'] = 2;
+        Object.keys(socialSources).forEach(function (k) { sources[k] = socialSources[k]; });
+        return {
+            permission: sourcesState === 'on' ? 'granted' : 'denied',
+            sources: sources,
+            channels: MOCK_CHANNELS.map(function (c) { return { id: c.id, label: c.label, color: c.color, glyph: c.glyph, order: c.order, installed: c.installed }; }),
+            version: '0.1.0-dev (mock)', sha: 'mock000', buildTime: '—', peopleCount: MOCK_PEOPLE.length
+        };
+    }
+    function initials(name) {
+        var parts = (name || '').trim().split(/\s+/).filter(Boolean);
+        return parts.slice(0, 2).map(function (w) { return w[0].toUpperCase(); }).join('');
+    }
+    return {
+        getState: state,
+        getPeople: function () {
+            return MOCK_PEOPLE.map(function (p) {
+                return { id: p.id, name: p.name, initials: initials(p.name), org: p.org, title: p.title, sources: p.sources, badges: p.badges };
+            });
+        },
+        getPerson: function (id) {
+            var p = MOCK_PEOPLE.filter(function (x) { return x.id === id; })[0];
+            if (!p) return { error: 'not_found' };
+            var channels = p.badges.map(function (bid) {
+                var c = MOCK_CHANNELS.filter(function (x) { return x.id === bid; })[0];
+                var value = c.id === 'email' ? (p.emails[0] || '') :
+                            (c.id === 'linkedin' || c.id === 'instagram') ? (p.urls[0] || '') :
+                            (p.handles[c.id]) ? p.handles[c.id] : (p.phones[0] || '');
+                return {
+                    id: c.id, label: c.label, color: c.color, glyph: c.glyph, value: value, pkg: c.pkg, installed: c.installed,
+                    actions: [{ id: 'primary', label: c.id === 'email' ? 'Write' : (c.id === 'phone' ? 'Call' : (c.id === 'sms' ? 'Text' : 'Open')), uri: '#' + c.id }]
+                };
+            });
+            return {
+                id: p.id, name: p.name, initials: initials(p.name), org: p.org, title: p.title, sources: p.sources,
+                phones: p.phones, emails: p.emails, urls: p.urls, handles: p.handles, channels: channels
+            };
+        },
+        requestContacts: function () {
+            sourcesState = 'on';
+            window.setTimeout(function () { window.onNative && window.onNative('permission', { granted: true }); }, 250);
+        },
+        pickImport: function () {
+            window.setTimeout(function () { window.onNative && window.onNative('import', { source: 'linkedin', count: 12 }); }, 250);
+        },
+        removeSource: function (source) { delete socialSources[source]; return state(); },
+        open: function (uri, pkg) { toast('(mock) open ' + uri); return true; },
+        getAbout: function () {
+            return {
+                version: '0.1.0-dev (mock)', sha: 'mock000', buildTime: '—', logSinkStream: 'cloud-contacts',
+                stackLanguages: btoa(JSON.stringify({ Kotlin: { files: 6, loc: 480 }, XML: { files: 8, loc: 120 } })),
+                stackFrameworks: btoa(JSON.stringify(['androidx.core:core-ktx:1.13.1'])),
+                stackFolderTree: btoa('—'), buildAvgSecs: -1, buildLastSecs: -1, buildSample: 0
+            };
+        }
+    };
+})();
+
+/* =====================================================================
+   State
+   ===================================================================== */
+var State = {
+    tab: 'people',
+    bridgeState: null,     // getState() result
+    people: [],            // getPeople() result
+    query: '',
+    filterGroup: 'all',
+    openPersonId: null
+};
+
+/* Groups raw source keys (e.g. "local", "gmail:me@x", "linkedin",
+   "instagram") into the People-view filter chips ("Phone", "Gmail",
+   "LinkedIn", "Instagram", ...). A device-synced account other than Gmail
+   (e.g. a work Exchange account) still gets its own readable chip rather
+   than being silently dropped. */
+function classifySource(key) {
+    if (key === 'local') return 'Phone';
+    if (/^gmail/i.test(key) || /google/i.test(key)) return 'Gmail';
+    if (key === 'linkedin') return 'LinkedIn';
+    if (key === 'instagram') return 'Instagram';
+    return key.charAt(0).toUpperCase() + key.slice(1);
+}
+
+function sourceGroups() {
+    var sources = (State.bridgeState && State.bridgeState.sources) || {};
+    var groups = {}; // label -> { keys: [], count: 0 }
+    Object.keys(sources).forEach(function (key) {
+        var label = classifySource(key);
+        var g = groups[label] || { keys: [], count: 0 };
+        g.keys.push(key); g.count += sources[key];
+        groups[label] = g;
+    });
+    return groups;
+}
+
+function channelById(id) {
+    var list = (State.bridgeState && State.bridgeState.channels) || [];
+    for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+    return null;
+}
+
+/* =====================================================================
+   Tabs
+   ===================================================================== */
+function switchTab(tab) {
+    State.tab = tab;
+    document.querySelectorAll('.tab-panel').forEach(function (el) { el.classList.add('hidden'); });
+    document.getElementById('tab-' + tab).classList.remove('hidden');
+    document.querySelectorAll('.nav-item').forEach(function (b) { b.classList.toggle('active', b.dataset.tab === tab); });
+    if (tab === 'import') renderImport();
+    if (tab === 'about') renderAbout();
+}
+
+function initNav() {
+    document.getElementById('bottom-nav').addEventListener('click', function (ev) {
+        var btn = ev.target.closest('.nav-item');
+        if (btn) switchTab(btn.dataset.tab);
+    });
+}
+
+/* =====================================================================
+   People view
+   ===================================================================== */
+function refreshState() {
+    State.bridgeState = Api.getState();
+    renderFilterChips();
+    renderPeopleCount();
+}
+
+function refreshPeople() {
+    State.people = Api.getPeople();
+    renderPeopleList();
+}
+
+function renderPeopleCount() {
+    var n = (State.bridgeState && State.bridgeState.peopleCount) || State.people.length;
+    document.getElementById('people-count').textContent = n + (n === 1 ? ' person' : ' people');
+}
+
+function renderFilterChips() {
+    var mount = document.getElementById('filter-chips');
+    var groups = sourceGroups();
+    var total = 0;
+    Object.keys(groups).forEach(function (k) { total += groups[k].count; });
+    var html = '<button type="button" class="chip' + (State.filterGroup === 'all' ? ' active' : '') + '" data-group="all">All <span class="count">' + total + '</span></button>';
+    Object.keys(groups).sort().forEach(function (label) {
+        var active = State.filterGroup === label;
+        html += '<button type="button" class="chip' + (active ? ' active' : '') + '" data-group="' + esc(label) + '">' + esc(label) + ' <span class="count">' + groups[label].count + '</span></button>';
+    });
+    mount.innerHTML = html;
+}
+
+function personMatchesGroup(person) {
+    if (State.filterGroup === 'all') return true;
+    var groups = sourceGroups();
+    var g = groups[State.filterGroup];
+    if (!g) return false;
+    return (person.sources || []).some(function (s) { return g.keys.indexOf(s) !== -1; });
+}
+
+function personMatchesQuery(person) {
+    var q = State.query.trim().toLowerCase();
+    if (!q) return true;
+    var hay = [person.name, person.org, person.title].concat(person.sources || []).join(' ').toLowerCase();
+    return hay.indexOf(q) !== -1;
+}
+
+function channelDotsHtml(badges) {
+    var ordered = badges.slice().sort(function (a, b) {
+        var ca = channelById(a), cb = channelById(b);
+        return ((ca && ca.order) || 0) - ((cb && cb.order) || 0);
+    });
+    var shown = ordered.slice(0, 6);
+    var html = shown.map(function (id) {
+        var c = channelById(id);
+        var color = c ? c.color : '#666';
+        var label = c ? c.label : id;
+        return '<span class="channel-dot" style="background:' + color + ';" title="' + esc(label) + '"></span>';
+    }).join('');
+    if (ordered.length > shown.length) html += '<span class="channel-dot-more">+' + (ordered.length - shown.length) + '</span>';
+    return html;
+}
+
+function renderPeopleList() {
+    var mount = document.getElementById('people-list');
+    var filtered = State.people.filter(function (p) { return personMatchesGroup(p) && personMatchesQuery(p); });
+    if (filtered.length === 0) {
+        var noneAtAll = State.people.length === 0;
+        mount.innerHTML = '<div class="empty-state"><strong>' + (noneAtAll ? 'No contacts yet' : 'No matches') + '</strong>' +
+            (noneAtAll ? 'Grant device contacts or import LinkedIn/Instagram from the Import tab.' : 'Try a different search or filter.') + '</div>';
+        return;
+    }
+    mount.innerHTML = filtered.map(function (p) {
+        var sub = [p.org, p.title].filter(Boolean).join(' · ');
+        return '<button type="button" class="person-row" data-person-id="' + esc(p.id) + '">' +
+            '<span class="avatar-disc" style="' + avatarStyle(p.name) + '">' + esc(p.initials) + '</span>' +
+            '<span class="person-row-main">' +
+                '<span class="person-row-name">' + esc(p.name) + '</span>' +
+                (sub ? '<span class="person-row-sub">' + esc(sub) + '</span>' : '') +
+                '<span class="channel-dots">' + channelDotsHtml(p.badges || []) + '</span>' +
+            '</span>' +
+            '<svg class="row-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>' +
+        '</button>';
+    }).join('');
+}
+
+function initPeopleView() {
+    document.getElementById('search-input').addEventListener('input', function (ev) {
+        State.query = ev.target.value;
+        renderPeopleList();
+    });
+    document.getElementById('filter-chips').addEventListener('click', function (ev) {
+        var btn = ev.target.closest('.chip');
+        if (!btn) return;
+        State.filterGroup = btn.dataset.group;
+        renderFilterChips();
+        renderPeopleList();
+    });
+    document.getElementById('people-list').addEventListener('click', function (ev) {
+        var row = ev.target.closest('.person-row');
+        if (row) openSwitchboard(row.dataset.personId);
+    });
+}
+
+/* =====================================================================
+   Person switchboard
+   ===================================================================== */
+function openSwitchboard(id) {
+    var person = Api.getPerson(id);
+    if (!person || person.error) { toast('Contact not found'); return; }
+    State.openPersonId = id;
+    renderSwitchboard(person);
+    document.getElementById('switchboard-overlay').classList.add('open');
+}
+
+function closeSwitchboard() {
+    document.getElementById('switchboard-overlay').classList.remove('open');
+    State.openPersonId = null;
+}
+
+function provenanceChipsHtml(sources) {
+    var seen = {}; var labels = [];
+    (sources || []).forEach(function (s) {
+        var label = classifySource(s);
+        if (!seen[label]) { seen[label] = true; labels.push(label); }
+    });
+    return labels.map(function (l) { return '<span class="provenance-chip">' + esc(l) + '</span>'; }).join('');
+}
+
+function channelTileHtml(ch) {
+    var dim = !ch.installed;
+    var actionsHtml = (ch.actions || []).map(function (a) {
+        return '<button type="button" class="channel-action-btn" style="background:' + ch.color + ';" ' +
+            'data-uri="' + esc(a.uri) + '" data-pkg="' + esc(ch.pkg || '') + '">' + esc(a.label) + '</button>';
+    }).join('');
+    return '<div class="channel-tile' + (dim ? ' dim' : '') + '">' +
+        '<span class="channel-glyph" style="background:' + ch.color + ';">' + esc(ch.glyph) + '</span>' +
+        '<div><div class="channel-tile-label">' + esc(ch.label) + '</div>' +
+        '<div class="channel-tile-value">' + esc(ch.value || '—') + '</div>' +
+        (dim ? '<div class="channel-tile-missing">app not installed — opens in browser</div>' : '') + '</div>' +
+        '<div class="channel-tile-actions">' + actionsHtml + '</div>' +
+    '</div>';
+}
+
+function rawRowsHtml(label, values) {
+    if (!values || values.length === 0) return '';
+    return values.map(function (v) {
+        return '<button type="button" class="raw-row" data-copy="' + esc(v) + '">' +
+            '<span class="raw-row-label">' + esc(label) + '</span>' +
+            '<span class="raw-row-value">' + esc(v) + '</span>' +
+            '<svg class="raw-row-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2"/></svg>' +
+        '</button>';
+    }).join('');
+}
+
+function renderSwitchboard(p) {
+    var sub = [p.org, p.title].filter(Boolean).join(' · ');
+    var channelsHtml = (p.channels || []).length
+        ? '<div class="channel-grid">' + p.channels.map(channelTileHtml).join('') + '</div>'
+        : '<div class="empty-state">No reachable channels for this contact yet.</div>';
+
+    var handleRows = Object.keys(p.handles || {}).map(function (k) { return p.handles[k]; });
+    var rawHtml = rawRowsHtml('Phone', p.phones) + rawRowsHtml('Email', p.emails) + rawRowsHtml('URL', p.urls) +
+        (handleRows.length ? rawRowsHtml('Handle', handleRows) : '');
+
+    document.getElementById('switchboard-body').innerHTML =
+        '<div class="sb-hero">' +
+            '<span class="avatar-disc lg" style="' + avatarStyle(p.name) + '">' + esc(p.initials) + '</span>' +
+            '<div class="sb-hero-name">' + esc(p.name) + '</div>' +
+            (sub ? '<div class="sb-hero-sub">' + esc(sub) + '</div>' : '') +
+            '<div class="provenance-row">' + provenanceChipsHtml(p.sources) + '</div>' +
+        '</div>' +
+        '<div class="sb-section-heading">Switchboard</div>' +
+        channelsHtml +
+        (rawHtml ? '<div class="sb-section-heading">Raw data</div><div class="raw-list">' + rawHtml + '</div>' : '');
+}
+
+function initSwitchboard() {
+    document.getElementById('switchboard-close-btn').addEventListener('click', closeSwitchboard);
+    document.getElementById('switchboard-body').addEventListener('click', function (ev) {
+        var actionBtn = ev.target.closest('.channel-action-btn');
+        if (actionBtn) { Api.open(actionBtn.dataset.uri, actionBtn.dataset.pkg); return; }
+        var rawRow = ev.target.closest('.raw-row');
+        if (rawRow) { copyToClipboard(rawRow.dataset.copy); return; }
+    });
+}
+
+/* =====================================================================
+   Import view
+   ===================================================================== */
+function renderImport() {
+    var mount = document.getElementById('import-content');
+    var s = State.bridgeState || Api.getState();
+    var granted = s.permission === 'granted';
+    var groups = sourceGroups();
+
+    var permissionHtml = granted ? '' :
+        '<div class="permission-card">' +
+            '<div class="text-[14.5px] font-bold">Merge device contacts</div>' +
+            '<p>Reads phone contacts and any synced accounts (e.g. Gmail) already on this device — nothing leaves the phone.</p>' +
+            '<button type="button" class="permission-btn" id="grant-contacts-btn">Grant access</button>' +
+        '</div>';
+
+    var linkedinCount = groups['LinkedIn'] ? groups['LinkedIn'].count : 0;
+    var instagramCount = groups['Instagram'] ? groups['Instagram'].count : 0;
+
+    var linkedinCard =
+        '<div class="import-card">' +
+            '<div class="import-card-head"><span class="import-card-glyph" style="background:#0A66C2;">in</span><span class="import-card-title">LinkedIn</span></div>' +
+            '<ol class="import-card-steps"><li>Settings → Data privacy</li><li>Get a copy of your data → Connections</li><li>Download the emailed Connections.csv</li></ol>' +
+            '<button type="button" class="import-card-btn" data-import="linkedin">Import Connections.csv</button>' +
+        '</div>';
+
+    var instagramCard =
+        '<div class="import-card">' +
+            '<div class="import-card-head"><span class="import-card-glyph" style="background:#E4405F;">IG</span><span class="import-card-title">Instagram</span></div>' +
+            '<ol class="import-card-steps"><li>Accounts Center → Your information and permissions</li><li>Download your information</li><li>Select followers/following as JSON</li></ol>' +
+            '<button type="button" class="import-card-btn" data-import="instagram">Import followers/following JSON</button>' +
+        '</div>';
+
+    var sourceRows = Object.keys(s.sources || {}).filter(function (k) { return k !== 'local' && !/^gmail/i.test(k) && !/google/i.test(k); }).map(function (k) {
+        return '<div class="source-row"><div><div class="source-row-label">' + esc(classifySource(k)) + '</div>' +
+            '<div class="source-row-meta">' + s.sources[k] + ' contacts</div></div>' +
+            '<button type="button" class="remove-btn" data-remove-source="' + esc(k) + '">Remove</button></div>';
+    }).join('');
+
+    mount.innerHTML = permissionHtml + linkedinCard + instagramCard +
+        (sourceRows ? '<div class="sb-section-heading">Imported sources</div><div>' + sourceRows + '</div>' : '') +
+        '<p class="text-[11.5px] mt-4" style="color:var(--text-faint);">LinkedIn: ' + linkedinCount + ' connections imported · Instagram: ' + instagramCount + ' contacts imported.</p>';
+
+    mount.querySelector('#grant-contacts-btn') && mount.querySelector('#grant-contacts-btn').addEventListener('click', function () { Api.requestContacts(); });
+    mount.querySelectorAll('[data-import]').forEach(function (btn) { btn.addEventListener('click', function () { Api.pickImport(); }); });
+    mount.querySelectorAll('[data-remove-source]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var source = btn.dataset.removeSource;
+            State.bridgeState = Api.removeSource(source);
+            refreshPeople();
+            renderPeopleCount();
+            renderFilterChips();
+            renderImport();
+            toast('Removed ' + classifySource(source));
+        });
+    });
+}
+
+/* =====================================================================
+   About view
+   ===================================================================== */
+function decodeB64Json(b64) {
+    try { return JSON.parse(decodeURIComponent(escape(atob(b64)))); } catch (e) { return null; }
+}
+
+function renderAbout() {
+    var about = Api.getAbout();
+    var channels = (State.bridgeState && State.bridgeState.channels) || [];
+    var mount = document.getElementById('about-content');
+
+    var legendHtml = channels.slice().sort(function (a, b) { return a.order - b.order; }).map(function (c) {
+        return '<div class="legend-row">' +
+            '<span class="legend-glyph" style="background:' + c.color + ';">' + esc(c.glyph) + '</span>' +
+            '<span class="legend-label">' + esc(c.label) + '</span>' +
+            '<span class="legend-kind">' + (c.installed ? 'installed' : 'not installed') + '</span>' +
+        '</div>';
+    }).join('');
+
+    var languages = decodeB64Json(about.stackLanguages) || {};
+    var stackRows = Object.keys(languages).sort().map(function (lang) {
+        var d = languages[lang];
+        return '<div class="stack-row"><span class="stack-row-label">' + esc(lang) + '</span><span class="stack-row-value">' + d.files + ' files · ' + d.loc + ' loc</span></div>';
+    }).join('');
+
+    mount.innerHTML =
+        '<div class="about-hero">' +
+            '<div class="app-glyph">CC</div>' +
+            '<div class="about-hero-name">Cloud Contacts</div>' +
+            '<div class="about-hero-meta">v' + esc(about.version) + ' · ' + esc(about.sha) + '</div>' +
+            '<div class="about-hero-meta">' + esc(about.buildTime) + '</div>' +
+        '</div>' +
+        '<div class="sb-section-heading">Channel registry</div>' +
+        '<div>' + legendHtml + '</div>' +
+        (stackRows ? '<div class="sb-section-heading">Stack</div><div>' + stackRows + '</div>' : '');
+}
+
+/* =====================================================================
+   window.onNative — events posted FROM the bridge (permission grant/deny,
+   import result). Kept to exactly the two documented types.
+   ===================================================================== */
+window.onNative = function (type, payload) {
+    if (type === 'permission') {
+        refreshState();
+        refreshPeople();
+        if (State.tab === 'import') renderImport();
+        toast(payload && payload.granted ? 'Device contacts merged' : 'Permission denied');
+        return;
+    }
+    if (type === 'import') {
+        refreshState();
+        refreshPeople();
+        if (State.tab === 'import') renderImport();
+        if (payload && payload.cancelled) return;
+        if (payload && payload.error) { toast('Could not read that file'); return; }
+        if (payload) toast('Imported ' + payload.count + ' from ' + classifySource(payload.source));
+    }
+};
+
+/* =====================================================================
+   Boot
+   ===================================================================== */
+document.addEventListener('DOMContentLoaded', function () {
+    initNav();
+    initPeopleView();
+    initSwitchboard();
+    refreshState();
+    refreshPeople();
+});
+</script>
+</body>
+</html>

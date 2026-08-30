@@ -1,0 +1,173 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`components/channel_list/header Channel List Header Component should match snapshot 1`] = `
+<View
+  style={
+    [
+      {
+        "marginLeft": 0,
+      },
+      {
+        "paddingLeft": 18,
+        "paddingRight": 20,
+      },
+    ]
+  }
+>
+  <View
+    style={
+      {
+        "flexDirection": "row",
+        "justifyContent": "space-between",
+      }
+    }
+  >
+    <View
+      style={
+        {
+          "width": "85%",
+        }
+      }
+    >
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "justifyContent": "space-between",
+          }
+        }
+      >
+        <View
+          accessibilityState={
+            {
+              "busy": undefined,
+              "checked": undefined,
+              "disabled": undefined,
+              "expanded": undefined,
+              "selected": undefined,
+            }
+          }
+          accessible={true}
+          focusable={false}
+          onClick={[Function]}
+          onResponderGrant={[Function]}
+          onResponderMove={[Function]}
+          onResponderRelease={[Function]}
+          onResponderTerminate={[Function]}
+          onResponderTerminationRequest={[Function]}
+          onStartShouldSetResponder={[Function]}
+          style={
+            {
+              "alignItems": "center",
+              "flexDirection": "row",
+              "justifyContent": "space-between",
+            }
+          }
+        >
+          <Text
+            ellipsizeMode="tail"
+            numberOfLines={2}
+            style={
+              {
+                "color": "#ffffff",
+                "fontFamily": "Metropolis-SemiBold",
+                "fontSize": 28,
+                "fontWeight": "600",
+                "lineHeight": 36,
+              }
+            }
+            testID="channel_list_header.team_display_name"
+          >
+            Test!
+          </Text>
+        </View>
+      </View>
+      <View
+        style={
+          {
+            "alignItems": "center",
+            "flexDirection": "row",
+            "paddingRight": 60,
+          }
+        }
+      >
+        <Text
+          ellipsizeMode="tail"
+          numberOfLines={1}
+          style={
+            {
+              "color": "rgba(255,255,255,0.64)",
+              "fontFamily": "OpenSans-SemiBold",
+              "fontSize": 11,
+              "fontWeight": "600",
+              "lineHeight": 16,
+            }
+          }
+          testID="channel_list_header.server_display_name"
+        />
+      </View>
+    </View>
+    <View
+      accessibilityState={
+        {
+          "busy": undefined,
+          "checked": undefined,
+          "disabled": undefined,
+          "expanded": undefined,
+          "selected": undefined,
+        }
+      }
+      accessibilityValue={
+        {
+          "max": undefined,
+          "min": undefined,
+          "now": undefined,
+          "text": undefined,
+        }
+      }
+      accessible={true}
+      collapsable={false}
+      focusable={true}
+      hitSlop={
+        {
+          "bottom": 30,
+          "left": 20,
+          "right": 20,
+          "top": 10,
+        }
+      }
+      onClick={[Function]}
+      onResponderGrant={[Function]}
+      onResponderMove={[Function]}
+      onResponderRelease={[Function]}
+      onResponderTerminate={[Function]}
+      onResponderTerminationRequest={[Function]}
+      onStartShouldSetResponder={[Function]}
+      style={
+        {
+          "alignItems": "center",
+          "backgroundColor": "rgba(255,255,255,0.08)",
+          "borderRadius": 14,
+          "height": 28,
+          "justifyContent": "center",
+          "marginTop": 7,
+          "opacity": 1,
+          "width": 28,
+        }
+      }
+      testID="channel_list_header.plus.button"
+    >
+      <Icon
+        name="plus"
+        style={
+          {
+            "color": "rgba(255,255,255,0.8)",
+            "fontSize": 18,
+          }
+        }
+      />
+    </View>
+  </View>
+</View>
+`;

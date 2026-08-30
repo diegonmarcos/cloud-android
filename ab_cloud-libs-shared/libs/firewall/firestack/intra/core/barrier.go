@@ -1,0 +1,349 @@
+// Copyright (c) 2020 RethinkDNS and its authors.
+//
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// This file incorporates work covered by the following copyright and
+// permission notice:
+//
+//     Copyright 2013 The Go Authors.  All rights reserved.
+//     Use of this source code is governed by a BSD-style
+//     license that can be found in the LICENSE file.
+
+package core
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"runtime"
+	"sync"
+	"sync/atomic"
+	"time"
+	"weak"
+)
+
+type DidDo int
+
+const (
+	// Anew is the value returned by Barrier.Do when the function was
+	// executed and its results are stored in the Barrier.
+	Anew DidDo = iota
+	// Shared is the value returned by Barrier.Do when the function's
+	// results are already stored in the Barrier.
+	Shared
+)
+
+var (
+	errTimeout         = errors.New("core: timeout")
+	ErrNoFruitOfLabour = errors.New("core: Work did not yield results")
+)
+
+// Work is the type of the function to memoize.
+type Work[T any] func() (T, error)
+type Work1[T any] func(T) (T, error)
+type WorkCtx[T any] func(context.Context) (T, error)
+
+// V is an in-flight or completed Barrier.Do V
+type V[T any, K comparable] struct {
+	wg  sync.WaitGroup
+	dob time.Time
+	Val T
+	Err error
+	N   atomic.Uint32
+}
+
+func (v *V[t, k]) String() string {
+	if v == nil {
+		return "core.V: <nil>"
+	}
+	return fmt.Sprintf("v: %v // n: %d; exp: %s // err: %v", v.Val, v.N.Load(), v.dob, v.Err)
+}
+
+func (v *V[t, k]) E() string {
+	if v == nil {
+		return "core.V: <nil>"
+	} else if ve := v.Err; ve == nil {
+		return "core.V: no error"
+	} else {
+		return ve.Error()
+	}
+}
+
+func (v *V[t, k]) id() string {
+	return LocStr(v)
+}
+
+// Barrier represents a class of work and forms a namespace in
+// which units of work can be executed with duplicate suppression.
+type Barrier[T any, K comparable] struct {
+	id string         // identifier; used in metrics
+	mu sync.Mutex     // protects m
+	m  map[K]*V[T, K] // caches in-flight and completed Vs
+
+	ttl time.Duration // time-to-live for completed Vs in m
+	neg time.Duration // time-to-live for errored Vs in m
+	to  time.Duration // timeout for Do(), Do1(), Go()
+
+	lastscrub time.Time // last scrub time
+
+	typ     string        // type tag; used in metrics
+	nanew   atomic.Uint64 // calls that owned the request (ran once())
+	nshared atomic.Uint64 // calls that coalesced with an in-flight request
+	ndels   atomic.Uint64 // count of Vs removed by scrubbing
+	nerrs   atomic.Uint64 // count of Vs that resulted in errors
+	nto     atomic.Uint64 // count of Vs that timed out
+	closed  atomic.Bool   // true after ctx is done; disables deduplication
+}
+
+func NewKeyedBarrier[T any, K comparable](ctx context.Context, id string, ttl time.Duration) *Barrier[T, K] {
+	ba := NewBarrier2[T, K](ctx, id, ttl, ttl/5)
+	ba.typ = "keyedbar"
+	return ba
+}
+
+// NewBarrier returns a new Barrier with the given time-to-live for
+// completed Vs.
+func NewBarrier[T any](ctx context.Context, id string, ttl time.Duration) *Barrier[T, string] {
+	ba := NewBarrier2[T, string](ctx, id, ttl, ttl/5)
+	ba.typ = "bar"
+	return ba
+}
+
+// NewBarrier2 returns a new Barrier with the time-to-lives for
+// completed Vs (ttl) and errored Vs (neg).
+func NewBarrier2[T any, K comparable](ctx context.Context, id string, ttl, neg time.Duration) *Barrier[T, K] {
+	ba := &Barrier[T, K]{
+		typ:       "bar2",
+		id:        id,
+		m:         make(map[K]*V[T, K]),
+		ttl:       ttl,
+		neg:       max(1*time.Second /*min neg*/, neg),
+		to:        ttl,
+		lastscrub: time.Now(),
+	}
+	ba.id = ba.id + "." + LocStr(ba)
+	id = ba.id
+	wba := weak.Make(ba)
+	deregister := trackbar(ba.id, func() BarrierState {
+		if p := wba.Value(); p != nil {
+			return p.Stat()
+		}
+		return BarrierState{Typ: "barrier", ID: "gc." + id}
+	})
+	runtime.AddCleanup(ba, func(f func()) { f() }, deregister)
+	context.AfterFunc(ctx, func() {
+		ba.closed.Store(true)
+		ba.mu.Lock()
+		ba.ndels.Add(uint64(len(ba.m)))
+		clear(ba.m)
+		ba.mu.Unlock()
+	})
+	return ba
+}
+
+// Stat returns a snapshot of the barrier's current state.
+func (ba *Barrier[T, K]) Stat() BarrierState {
+	ba.mu.Lock()
+	l := len(ba.m)
+	ba.mu.Unlock()
+	return BarrierState{
+		Typ:      ba.typ,
+		ID:       ba.id,
+		Len:      l,
+		Anew:     ba.nanew.Load(),
+		Shared:   ba.nshared.Load(),
+		Dels:     ba.ndels.Load(),
+		Errs:     ba.nerrs.Load(),
+		Timeouts: ba.nto.Load(),
+	}
+}
+
+func (ba *Barrier[T, K]) maybeScrubLocked() {
+	now := time.Now()
+	if now.Sub(ba.lastscrub) < reapthreshold {
+		return
+	}
+	ba.lastscrub = now
+
+	Go("ba.scrub."+ba.id, func() {
+		ba.mu.Lock()
+		defer ba.mu.Unlock()
+
+		i := 0
+		for k, v := range ba.m {
+			if i > maxreapiter {
+				break
+			}
+			ttl := ba.ttl
+			if v.Err != nil {
+				ttl = ba.neg
+			}
+			if time.Since(v.dob.Add(ttl)) > 0 {
+				delete(ba.m, k)
+				ba.ndels.Add(1)
+			}
+			i++
+		}
+	})
+}
+
+func (ba *Barrier[T, K]) getLocked(k K) (v *V[T, K], ok bool) {
+	if ba.closed.Load() {
+		return nil, false
+	}
+	defer ba.maybeScrubLocked()
+
+	v, ok = ba.m[k]
+	if v != nil {
+		ttl := ba.ttl
+		if v.Err != nil {
+			ttl = ba.neg
+		}
+		if time.Since(v.dob.Add(ttl)) > 0 {
+			delete(ba.m, k)
+			ba.ndels.Add(1)
+			return nil, false
+		}
+	}
+	return v, ok
+}
+
+func (ba *Barrier[T, K]) addLocked(k K) *V[T, K] {
+	v := new(V[T, K])
+	v.wg.Add(1)
+	v.dob = time.Now()
+	if !ba.closed.Load() {
+		ba.m[k] = v
+	}
+	return v
+}
+
+// DoIt is like Do but return type is same as func once.
+func (ba *Barrier[T, K]) DoIt(k K, once Work[T]) (zz T, err error) {
+	v, _ := ba.Do(k, once)
+	if v == nil { // unlikely
+		return zz, ErrNoFruitOfLabour
+	}
+	return v.Val, v.Err
+}
+
+// Do executes and returns the results of the given function, making
+// sure that only one execution is in-flight for a given key at a
+// time. If a duplicate comes in, the duplicate caller waits for the
+// original to complete and receives the same results.
+func (ba *Barrier[T, K]) Do(k K, once Work[T]) (*V[T, K], DidDo) {
+	ba.mu.Lock()
+	c, _ := ba.getLocked(k)
+	if c != nil {
+		ba.mu.Unlock()
+
+		c.N.Add(1)  // register presence
+		c.wg.Wait() // wait for the in-flight req to complete
+		ba.nshared.Add(1)
+		return c, Shared
+	}
+	c = ba.addLocked(k)
+	ba.mu.Unlock()
+
+	type res struct {
+		val T
+		err error
+	}
+	rch := make(chan *res, 1)
+	Go("ba.do."+ba.id+">"+c.id(), func() {
+		v, e := once()
+		rch <- &res{v, e}
+	})
+
+	select {
+	case r := <-rch:
+		c.Val, c.Err = r.val, r.err
+		if c.Err != nil {
+			ba.nerrs.Add(1)
+		}
+	case <-time.After(ba.to):
+		c.Err = errTimeout
+		ba.nto.Add(1)
+	}
+
+	c.wg.Done() // unblock all waiters
+	ba.nanew.Add(1)
+	return c, Anew
+}
+
+// Do1 is like Do but for Work1 with one arg.
+func (ba *Barrier[T, K]) Do1(k K, once Work1[T], arg T) (*V[T, K], DidDo) {
+	ba.mu.Lock()
+	c, _ := ba.getLocked(k)
+	if c != nil {
+		ba.mu.Unlock()
+
+		c.N.Add(1)  // register presence
+		c.wg.Wait() // wait for the in-flight req to complete
+		ba.nshared.Add(1)
+		return c, Shared
+	}
+	c = ba.addLocked(k)
+	ba.mu.Unlock()
+
+	type res struct {
+		val T
+		err error
+	}
+	rch := make(chan res, 1)
+	Go("ba.do1."+ba.id+">"+c.id(), func() {
+		v, e := once(arg)
+		rch <- res{v, e}
+	})
+
+	select {
+	case r := <-rch:
+		c.Val, c.Err = r.val, r.err
+		if c.Err != nil {
+			ba.nerrs.Add(1)
+		}
+	case <-time.After(ba.to):
+		c.Err = errTimeout
+		ba.nto.Add(1)
+	}
+
+	c.wg.Done() // unblock all waiters
+	ba.nanew.Add(1)
+	return c, Anew
+}
+
+// untested
+func (ba *Barrier[T, K]) Go(k K, once Work[T]) <-chan *V[T, K] {
+	ch := make(chan *V[T, K], 1) // buffered: prevents goroutine leak if caller drops the channel
+
+	Go("ba.go."+ba.id, func() {
+		defer close(ch)
+
+		ba.mu.Lock()
+		c, _ := ba.getLocked(k)
+		if c != nil {
+			ba.mu.Unlock()
+
+			c.N.Add(1)  // register presence
+			c.wg.Wait() // wait for the in-flight req to complete
+			ba.nshared.Add(1)
+			ch <- c
+			return
+		}
+		c = ba.addLocked(k)
+		ba.mu.Unlock()
+
+		c.Val, c.Err = once()
+		if c.Err != nil {
+			ba.nerrs.Add(1)
+		}
+
+		c.wg.Done() // unblock all waiters
+		ba.nanew.Add(1)
+		ch <- c
+	})
+
+	return ch
+}

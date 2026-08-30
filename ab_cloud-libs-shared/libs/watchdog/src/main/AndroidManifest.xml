@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Loopback only. The terminal is another app on THIS device, reached
+         over 127.0.0.1, so this needs the internet permission the way any
+         socket does — and nothing else: no host is contacted off-device. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+</manifest>

@@ -1,0 +1,79 @@
+name: Build native codecs
+description: >
+  Cross-compiles the app's prebuilt static native codecs for the given ABI(s):
+    - libde265 + libheif (decode-only)      -> app/src/main/cpp/heif/<abi>/     (tiled HEIC decode)
+    - zlib + libpng + libjpeg-turbo          -> app/src/main/cpp/imgcodec/<abi>/ (streaming JPEG/PNG encode)
+    - x265 + aom + libheif (with encoders)   -> app/src/main/cpp/heifenc/<abi>/  (tiled HEIC/AVIF encode)
+    - LibRaw + libtiff + libjpeg + zlib      -> app/src/main/cpp/rawcodec/<abi>/ (native RAW decode + TIFF export)
+  so the app's externalNativeBuild can link them. Each stack is cached independently keyed on its
+  build script. Missing prebuilt libs degrade to stubs (Kotlin falls back), so a build failure here
+  never blocks the app build.
+
+inputs:
+  arch:
+    description: ABI or CI flavor name (e.g. Arm64-v8a, Armeabi-v7a, X86_64, X86, Universal, all).
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Install NDK & CMake for native codecs
+      shell: bash
+      run: |
+        SDKMGR="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+        # `yes` receives SIGPIPE once sdkmanager stops reading stdin and exits
+        # non-zero ("Broken pipe"); with pipefail that aborts the step. Disable
+        # pipefail for just this pipe so only sdkmanager's exit code matters.
+        set +o pipefail
+        yes | "$SDKMGR" "ndk;29.0.14033849" "cmake;3.31.6"
+        status=$?
+        set -o pipefail
+        exit $status
+
+    - name: Cache prebuilt libheif (decode)
+      id: heif-cache
+      uses: actions/cache@v4
+      with:
+        path: app/src/main/cpp/heif
+        key: heif-${{ runner.os }}-${{ inputs.arch }}-${{ hashFiles('scripts/native/build-heif.sh') }}
+
+    - name: Build native libheif decoder (${{ inputs.arch }})
+      if: steps.heif-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: bash scripts/native/build-heif.sh "${{ inputs.arch }}"
+
+    - name: Cache prebuilt imgcodec (JPEG/PNG encode)
+      id: imgcodec-cache
+      uses: actions/cache@v4
+      with:
+        path: app/src/main/cpp/imgcodec
+        key: imgcodec-${{ runner.os }}-${{ inputs.arch }}-${{ hashFiles('scripts/native/build-imgcodec.sh') }}
+
+    - name: Build native imgcodec encoders (${{ inputs.arch }})
+      if: steps.imgcodec-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: bash scripts/native/build-imgcodec.sh "${{ inputs.arch }}"
+
+    - name: Cache prebuilt heifenc (HEIC/AVIF encode)
+      id: heifenc-cache
+      uses: actions/cache@v4
+      with:
+        path: app/src/main/cpp/heifenc
+        key: heifenc-${{ runner.os }}-${{ inputs.arch }}-${{ hashFiles('scripts/native/build-heif-encode.sh') }}
+
+    - name: Build native HEIC/AVIF encoders (${{ inputs.arch }})
+      if: steps.heifenc-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: bash scripts/native/build-heif-encode.sh "${{ inputs.arch }}"
+
+    - name: Cache prebuilt rawcodec (RAW decode + TIFF export)
+      id: rawcodec-cache
+      uses: actions/cache@v4
+      with:
+        path: app/src/main/cpp/rawcodec
+        key: rawcodec-${{ runner.os }}-${{ inputs.arch }}-${{ hashFiles('scripts/native/build-libraw.sh') }}
+
+    - name: Build native LibRaw + libtiff (${{ inputs.arch }})
+      if: steps.rawcodec-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: bash scripts/native/build-libraw.sh "${{ inputs.arch }}"

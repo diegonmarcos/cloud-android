@@ -1,0 +1,90 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`AttachmentFooter it matches snapshot when both footer and footer_icon are provided 1`] = `
+<View
+  style={
+    {
+      "flex": 1,
+      "flexDirection": "row",
+      "marginTop": 5,
+    }
+  }
+>
+  <ViewManagerAdapter_ExpoImage
+    containerViewRef={"[React.ref]"}
+    contentFit="cover"
+    contentPosition={
+      {
+        "left": "50%",
+        "top": "50%",
+      }
+    }
+    height={12}
+    marginRight={5}
+    marginTop={1}
+    nativeViewRef={"[React.ref]"}
+    onError={[Function]}
+    onLoad={[Function]}
+    onLoadStart={[Function]}
+    onProgress={[Function]}
+    placeholder={[]}
+    source={
+      [
+        {
+          "cacheKey": "attachment-footer-icon-aHR0cHM6Ly9pbWFnZXMuY29tL2ltYWdlLnBuZw==",
+          "cachePath": "",
+          "headers": undefined,
+          "uri": "https://images.com/image.png",
+        },
+      ]
+    }
+    style={
+      {
+        "height": 12,
+        "marginRight": 5,
+        "marginTop": 1,
+        "width": 12,
+      }
+    }
+    transition={null}
+    width={12}
+  />
+  <Text
+    ellipsizeMode="tail"
+    numberOfLines={1}
+    style={
+      {
+        "color": "rgba(63,67,80,0.5)",
+        "fontSize": 11,
+      }
+    }
+  >
+    This is the footer!
+  </Text>
+</View>
+`;
+
+exports[`AttachmentFooter it matches snapshot when footer text is provided 1`] = `
+<View
+  style={
+    {
+      "flex": 1,
+      "flexDirection": "row",
+      "marginTop": 5,
+    }
+  }
+>
+  <Text
+    ellipsizeMode="tail"
+    numberOfLines={1}
+    style={
+      {
+        "color": "rgba(63,67,80,0.5)",
+        "fontSize": 11,
+      }
+    }
+  >
+    This is the footer!
+  </Text>
+</View>
+`;

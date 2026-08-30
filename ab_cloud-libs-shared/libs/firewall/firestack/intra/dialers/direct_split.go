@@ -1,0 +1,169 @@
+// Copyright (c) 2024 RethinkDNS and its authors.
+//
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// This file incorporates work covered by the following copyright and
+// permission notice:
+//
+//     Copyright 2019 The Outline Authors
+//
+//     Licensed under the Apache License, Version 2.0 (the "License");
+//     you may not use this file except in compliance with the License.
+//     You may obtain a copy of the License at
+//
+//          http://www.apache.org/licenses/LICENSE-2.0
+//
+//     Unless required by applicable law or agreed to in writing, software
+//     distributed under the License is distributed on an "AS IS" BASIS,
+//     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//     See the License for the specific language governing permissions and
+//     limitations under the License.
+
+package dialers
+
+import (
+	"io"
+	"net"
+	"syscall"
+	"time"
+
+	"github.com/celzero/firestack/intra/core"
+	"github.com/celzero/firestack/intra/log"
+	"github.com/celzero/firestack/intra/settings"
+)
+
+type splitter struct {
+	conn  *net.TCPConn
+	strat int32 // settings.Split* constant
+
+	used *core.SigCond // Signalled after the first write.
+}
+
+var _ core.DuplexConn = (*splitter)(nil)
+var _ core.RetrierConn = (*splitter)(nil)
+
+// Write implements core.DuplexConn.
+func (s *splitter) Write(b []byte) (n int, err error) {
+	if s.used.Cond() {
+		// after the first write, there is no special write behavior.
+		return s.conn.Write(b)
+	}
+	if s.used.Signal() { // first writer splits
+		n, err = s.writeSplit(b)
+		return n, err
+	}
+	// if `used` is already swapped or set, then the split has already been done.
+	return s.conn.Write(b)
+}
+
+func (s *splitter) writeSplit(b []byte) (n int, err error) {
+	w := s.conn
+	switch s.strat {
+	case settings.SplitTCP:
+		n, err = writeTCPSplit(w, b)
+	case settings.SplitTCPOrTLS:
+		n, err = writeTCPOrTLSSplit(w, b)
+	default:
+		log.W("split: unknown dial strategy: %d", s.strat)
+		n, err = w.Write(b)
+	}
+	return
+}
+
+// ReadFrom reads from reader and writes to s.
+// Usually, ReadFrom is executing the "upload" phase of egressing conn (r).
+func (s *splitter) ReadFrom(reader io.Reader) (bytes int64, err error) {
+	start := time.Now()
+	if !s.used.Cond() {
+		// This is the first write on this socket.
+		// Use copyOnce(), which calls Write(), to get Write's splitting behavior for
+		// the first segment.
+		if bytes, err = copyOnce(s, reader); err != nil {
+			return
+		}
+	}
+	// wait for first write (split) to complete if concurrent
+	s.used.Wait()
+	elapsed := time.Since(start)
+
+	var b int64
+	b, err = s.conn.ReadFrom(reader)
+	bytes += b
+
+	logeif(err)("split: readfrom: done %s<=%s; sz: %d; dur: %s, wait: %s; err: %v",
+		laddr(s.conn), raddr(s.conn), bytes, core.FmtTimeAsPeriod(start), core.FmtPeriod(elapsed), err)
+	return
+}
+
+// WriteTo reads from s and writes to w.
+// Usually, WriteTo is executing the "download" phase of egressing conn (w).
+func (s *splitter) WriteTo(w io.Writer) (bytes int64, err error) {
+	start := time.Now()
+	waited := s.used.TryWait(uploadTimeoutForDownload)
+	elapsed := time.Since(start)
+
+	bytes, err = s.conn.WriteTo(w)
+
+	logeif(err)("split: writeto: done %s=>%s; sz: %d; dur: %s, wait: %s (%t); err: %v",
+		laddr(s.conn), raddr(s.conn), bytes, core.FmtTimeAsPeriod(start), core.FmtPeriod(elapsed), waited, err)
+	return
+}
+
+// Read implements core.DuplexConn.
+func (s *splitter) Read(b []byte) (int, error) { return s.conn.Read(b) }
+
+// LocalAddr implements core.DuplexConn.
+func (s *splitter) LocalAddr() net.Addr { return laddr(s.conn) }
+
+// RemoteAddr implements core.DuplexConn.
+func (s *splitter) RemoteAddr() net.Addr { return raddr(s.conn) }
+
+func (s *splitter) SetDeadline(t time.Time) error {
+	if c := s.conn; c != nil {
+		return c.SetDeadline(t)
+	}
+	return nil // no-op
+}
+
+// SetReadDeadline implements core.DuplexConn.
+func (s *splitter) SetReadDeadline(t time.Time) error {
+	if c := s.conn; c != nil {
+		return c.SetReadDeadline(t)
+	}
+	return nil // no-op
+}
+
+// SetWriteDeadline implements core.DuplexConn.
+func (s *splitter) SetWriteDeadline(t time.Time) error {
+	if c := s.conn; c != nil {
+		return c.SetWriteDeadline(t)
+	}
+	return nil // no-op
+}
+
+// Close implements core.DuplexConn.
+func (s *splitter) Close() error { core.CloseTCP(s.conn); return nil }
+
+// CloseRead implements core.DuplexConn.
+func (s *splitter) CloseRead() error { core.CloseTCPRead(s.conn); return nil }
+
+// CloseWrite implements core.DuplexConn.
+func (s *splitter) CloseWrite() error { core.CloseTCPWrite(s.conn); return nil }
+
+// SyscallConn implements core.DuplexConn.
+func (s *splitter) SyscallConn() (syscall.RawConn, error) {
+	if c := s.conn; c != nil {
+		return c.SyscallConn()
+	}
+	return nil, syscall.EINVAL
+}
+
+// SetKeepAlive implements core.DuplexConn.
+func (s *splitter) SetKeepAlive(y bool) error {
+	if c := s.conn; c != nil {
+		return c.SetKeepAlive(y)
+	}
+	return nil // no-op
+}

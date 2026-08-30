@@ -1,0 +1,278 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+// Capture wall-clock start so we can emit gradle's config-phase elapsed time
+// as a data point in the About page (Stack section), same as Cloud SuperApp.
+def gradleScriptStartMs = System.currentTimeMillis()
+
+// Data-driven version code + name. Base from build.json; CI bumps via
+// GITHUB_RUN_NUMBER so every push monotonically increases the version code.
+def buildJson  = new groovy.json.JsonSlurper().parse(file('../build.json'))
+def runNumber  = (System.getenv('GITHUB_RUN_NUMBER') ?: '0').toInteger()
+def codeBase   = (buildJson.android.version_code as Number).intValue()
+def codeFinal  = codeBase + runNumber
+def shortSha = (System.getenv('GITHUB_SHA')
+                ?: providers.exec {
+                       commandLine 'git', 'rev-parse', '--short=8', 'HEAD'
+                       ignoreExitValue = true
+                   }.standardOutput.asText.get().trim())
+                .take(8)
+def buildTimestamp = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss 'UTC'").with {
+    setTimeZone(java.util.TimeZone.getTimeZone('UTC'))
+    format(new java.util.Date())
+}
+// Diagnostics cloud sink — DevControlServer/DiagnosticsPush POSTs the log
+// bundle here (our OpenObserve / Loki-equivalent, via the public collector).
+
+// ── Shell config (data-driven) — baked as base64 JSON so Kotlin reads a
+//    single source of truth at runtime (FIRE RULE #6). ────────────────
+def b64 = { obj -> groovy.json.JsonOutput.toJson(obj).bytes.encodeBase64().toString() }
+def uiNavTabsB64        = b64(buildJson.ui.nav_tabs ?: [])
+def uiSearchIslandsB64  = b64(buildJson.ui.search_islands ?: [])
+def uiPlacesCatsB64     = b64(buildJson.ui.places_categories ?: [])
+def uiPoiDetailFieldsB64 = b64(buildJson.ui.poi_detail_fields ?: [])
+def uiSearchScopesB64   = b64(buildJson.ui.search_scopes ?: [])
+def defaultSearchScope  = (buildJson.ui.default_search_scope ?: 'city').toString()
+def defaultTab          = (buildJson.ui.default_tab ?: 'routes').toString()
+def uiCockpitModesB64   = b64(buildJson.ui.cockpit_modes ?: [])
+def defaultCockpitMode  = (buildJson.ui.default_cockpit_mode ?: 'car').toString()
+
+// ── About page config (data-driven) ─────────────────────────────────
+def uiPermissionsRuntimeB64 = b64(buildJson.ui.permissions?.runtime ?: [])
+def uiPermissionsRolesB64   = b64(buildJson.ui.permissions?.roles ?: [])
+def profileDefault   = buildJson.ui.profile_default ?: [:]
+def profileName      = (profileDefault.name     ?: '').toString()
+def profileEmail     = (profileDefault.email    ?: '').toString()
+def profileInitials  = (profileDefault.initials ?: '').toString()
+def profileCompany   = (profileDefault.company  ?: '').toString()
+def profileLocation  = (profileDefault.location ?: '').toString()
+def profileWebsite   = (profileDefault.website  ?: '').toString()
+def profileTitles    = (profileDefault.titles   ?: '').toString()
+def profileReposB64  = b64(profileDefault.repos ?: [])
+def consolidatedCfg  = (profileDefault.consolidated_config ?: '').toString()
+
+// ── Stack scan ───────────────────────────────────────────────────────
+// Data-driven snapshot of "what's inside this APK" for Configs → About →
+// Stack. Computed from the actual repository contents at config time.
+def repoRoot = rootDir   // ac_cloud-nav/
+def stackExtMap = [
+    "kt"     : "Kotlin",
+    "java"   : "Java",
+    "xml"    : "XML (resources/manifest)",
+    "json"   : "JSON (config)",
+    "gradle" : "Gradle (Groovy)",
+    "kts"    : "Gradle (Kotlin DSL)",
+    "sh"     : "Shell",
+    "md"     : "Markdown",
+    "nix"    : "Nix",
+    "pro"    : "ProGuard",
+]
+def stackRoots = [
+    new File(repoRoot, "app/src/main"),
+    new File(repoRoot, "libs"),
+    new File(repoRoot, "build.json"),
+    new File(repoRoot, "build.sh"),
+    new File(repoRoot, "flake.nix"),
+    rootDir,
+]
+def stackSkipDirs = [ "build", ".gradle", ".idea", "dist", ".result" ]
+def stackStats = [:]
+stackRoots.each { root ->
+    if (!root.exists()) return
+    if (root.isFile()) {
+        def ext = root.name.tokenize(".").last().toLowerCase()
+        def label = stackExtMap[ext]
+        if (label != null) {
+            def loc = 0; try { loc = root.readLines("UTF-8").size() } catch (Throwable t) {}
+            def bucket = stackStats[label] ?: [files: 0, loc: 0]
+            bucket.files += 1; bucket.loc += loc; stackStats[label] = bucket
+        }
+        return
+    }
+    root.eachFileRecurse { f ->
+        if (!f.isFile()) return
+        def rel = f.absolutePath.replace(rootDir.absolutePath + "/", "")
+        if (stackSkipDirs.any { rel.startsWith(it) || rel.contains("/${it}/") }) return
+        def ext = f.name.tokenize(".").last().toLowerCase()
+        def label = stackExtMap[ext]
+        if (label == null) return
+        def loc = 0
+        try { loc = f.readLines("UTF-8").size() } catch (Throwable t) { return }
+        def bucket = stackStats[label] ?: [files: 0, loc: 0]
+        bucket.files += 1
+        bucket.loc   += loc
+        stackStats[label] = bucket
+    }
+}
+def stackLanguagesB64 = b64(stackStats)
+
+def stackDeps = new TreeSet()
+def depPattern = ~/\b(implementation|api|compileOnly|runtimeOnly|annotationProcessor|kapt)\s*[\(\s]\s*['"]([^'":]+:[^'":]+:[^'"]+)['"]/
+[rootDir, new File(repoRoot, "libs")].findAll { it.exists() }.each { root ->
+    root.eachFileRecurse { f ->
+        if (!f.isFile()) return
+        if (!(f.name.endsWith(".gradle") || f.name.endsWith(".gradle.kts"))) return
+        def text = ""
+        try { text = f.text } catch (Throwable t) { return }
+        depPattern.matcher(text).each { m -> stackDeps.add(m[2]) }
+    }
+}
+def stackFrameworksB64 = b64(stackDeps.toList())
+def stackTreeB64 = "—".bytes.encodeBase64().toString()
+
+// Build-duration history (gh CLI) — degrades to -1 if gh missing / offline.
+def buildHistorySecs = []
+try {
+    def ghOut = providers.exec {
+        commandLine 'gh', 'run', 'list',
+            '--workflow=ship-cloud-nav.yml',
+            '--limit', '10', '--status', 'success',
+            '--json', 'startedAt,updatedAt'
+        ignoreExitValue = true
+    }.standardOutput.asText.get().trim()
+    if (ghOut.startsWith('[')) {
+        new groovy.json.JsonSlurper().parseText(ghOut).each { r ->
+            try {
+                def s = java.time.Instant.parse(r.startedAt).epochSecond
+                def e = java.time.Instant.parse(r.updatedAt).epochSecond
+                if (e > s) buildHistorySecs << (e - s)
+            } catch (Throwable t) {}
+        }
+    }
+} catch (Throwable t) {}
+def buildAvgSecs    = buildHistorySecs.isEmpty() ? -1L : (buildHistorySecs.sum() / buildHistorySecs.size()).longValue()
+def buildLastSecs   = buildHistorySecs.isEmpty() ? -1L : (buildHistorySecs[0] as long)
+def buildSampleSize = buildHistorySecs.size()
+
+android {
+    namespace 'com.diegonmarcos.cloudnav'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.diegonmarcos.cloudnav'
+        minSdk 26
+        targetSdk 34
+        versionCode codeFinal
+        versionName "${buildJson.android.version_name} (sha-${shortSha})"
+        ndk {
+            def abiOverride = System.getenv('CLOUDNAV_ABIS')
+            def abis = (abiOverride?.trim()) \
+                ? abiOverride.split(',').collect { it.trim() }.findAll { it } \
+                : (buildJson.android.abi_filters ?: ['arm64-v8a'])
+            abiFilters.addAll(abis as List)
+        }
+        buildConfigField "String", "GIT_SHORT_SHA",   "\"${shortSha}\""
+        buildConfigField "String", "BUILD_TIMESTAMP", "\"${buildTimestamp}\""
+        // Shell config
+        buildConfigField "String", "UI_NAV_TABS_B64",       "\"${uiNavTabsB64}\""
+        buildConfigField "String", "UI_SEARCH_ISLANDS_B64",  "\"${uiSearchIslandsB64}\""
+        buildConfigField "String", "UI_PLACES_CATEGORIES_B64","\"${uiPlacesCatsB64}\""
+        buildConfigField "String", "UI_POI_DETAIL_FIELDS_B64","\"${uiPoiDetailFieldsB64}\""
+        buildConfigField "String", "UI_SEARCH_SCOPES_B64",    "\"${uiSearchScopesB64}\""
+        buildConfigField "String", "UI_DEFAULT_SEARCH_SCOPE", "\"${defaultSearchScope}\""
+        buildConfigField "String", "UI_DEFAULT_TAB",         "\"${defaultTab}\""
+        buildConfigField "String", "UI_COCKPIT_MODES_B64",   "\"${uiCockpitModesB64}\""
+        buildConfigField "String", "UI_DEFAULT_COCKPIT_MODE","\"${defaultCockpitMode}\""
+        // About page config
+        buildConfigField "String", "UI_PERMISSIONS_RUNTIME_B64", "\"${uiPermissionsRuntimeB64}\""
+        buildConfigField "String", "UI_PERMISSIONS_ROLES_B64",   "\"${uiPermissionsRolesB64}\""
+        buildConfigField "String", "UI_PROFILE_NAME",     "\"${profileName}\""
+        buildConfigField "String", "UI_PROFILE_EMAIL",    "\"${profileEmail}\""
+        buildConfigField "String", "UI_PROFILE_INITIALS", "\"${profileInitials}\""
+        buildConfigField "String", "UI_PROFILE_COMPANY",  "\"${profileCompany}\""
+        buildConfigField "String", "UI_PROFILE_LOCATION", "\"${profileLocation}\""
+        buildConfigField "String", "UI_PROFILE_WEBSITE",  "\"${profileWebsite}\""
+        buildConfigField "String", "UI_PROFILE_TITLES",   "\"${profileTitles}\""
+        buildConfigField "String", "UI_PROFILE_REPOS_B64", "\"${profileReposB64}\""
+        buildConfigField "String", "UI_CONSOLIDATED_CONFIG", "\"${consolidatedCfg}\""
+        // Stack scan
+        buildConfigField "String", "UI_STACK_LANGUAGES_JSON_B64",  "\"${stackLanguagesB64}\""
+        buildConfigField "String", "UI_STACK_FRAMEWORKS_JSON_B64", "\"${stackFrameworksB64}\""
+        buildConfigField "String", "UI_STACK_FOLDER_TREE_B64",     "\"${stackTreeB64}\""
+        buildConfigField "long",   "STACK_GRADLE_CONFIG_MS",  "${System.currentTimeMillis() - gradleScriptStartMs}L"
+        buildConfigField "long",   "STACK_BUILD_AVG_SECS",    "${buildAvgSecs}L"
+        buildConfigField "long",   "STACK_BUILD_LAST_SECS",   "${buildLastSecs}L"
+        buildConfigField "int",    "STACK_BUILD_SAMPLE",      "${buildSampleSize}"
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+    }
+
+    buildFeatures {
+        buildConfig = true
+    }
+
+    // ONE shared Cloud-constellation key: build.sh::_resolve_signing resolves
+    // release.jks + sops passwords from vault and exports ANDROID_KEYSTORE_*
+    // (CI does the same via a vault checkout + SOPS_AGE_KEY). The SAME key signs
+    // SuperApp/Cloud-Nav/Cloud-Comms/Cloud-IDE so cross-app signature-IPC + the
+    // in-app updater never hit a signature mismatch. THERE IS NO FALLBACK — no
+    // legacy/debug keystore, no keytool -genkeypair. If ANDROID_KEYSTORE_FILE is
+    // unset the build FAILS LOUD; always invoke via build.sh.
+    signingConfigs {
+        debug {
+            def envStore = System.getenv("ANDROID_KEYSTORE_FILE")
+            if (envStore == null || envStore.isEmpty() || !file(envStore).exists()) {
+                throw new GradleException("ONE shared constellation key required; run via build.sh / set ANDROID_KEYSTORE_FILE; no fallback")
+            }
+            storeFile     file(envStore)
+            storePassword System.getenv("ANDROID_KEYSTORE_PASSWORD")
+            keyAlias      System.getenv("ANDROID_KEY_ALIAS")
+            keyPassword   System.getenv("ANDROID_KEY_PASSWORD")
+        }
+    }
+
+    buildTypes {
+        debug {
+            debuggable true
+            signingConfig signingConfigs.debug
+        }
+        release {
+            debuggable true
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = '17' }
+}
+
+dependencies {
+    implementation project(':libs:analytics')
+    implementation project(':libs:core')
+    implementation project(':libs:maps')
+    implementation project(':libs:updater')
+    implementation project(':libs:devtools')
+
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'com.google.android.material:material:1.12.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'androidx.coordinatorlayout:coordinatorlayout:1.2.0'
+    implementation 'androidx.fragment:fragment-ktx:1.8.5'
+    implementation 'androidx.activity:activity-ktx:1.9.3'
+    // WebViewAssetLoader -- serves local assets over a real https:// origin
+    // instead of file://, because Chromium's fetch() blocks file:// requests
+    // by CORS policy (the real cause of a black screen on this activity,
+    // now SpaceViewActivity: its page's fetch() calls for star data were
+    // silently failing).
+    // Pinned to 1.12.1, NOT latest (1.16.0) -- 1.16.0's bundled Kotlin
+    // metadata (2.1.0) is newer than this project's pinned Kotlin 1.9.0
+    // compiler can read ("Class 'kotlin.Unit' was compiled with an
+    // incompatible version of Kotlin"), which broke CI on the first push
+    // (same failure class as the MapLibre 13.4.1 revert earlier in this
+    // project's history). WebViewAssetLoader itself has been stable API
+    // since 1.0.0, so nothing functional is lost by not using latest.
+    implementation 'androidx.webkit:webkit:1.12.1'
+
+    androidTestImplementation 'androidx.test:runner:1.6.1'
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    // ExploredRenderTest: ActivityScenario (core) + view-driving (espresso).
+    androidTestImplementation 'androidx.test:core:1.6.1'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.6.1'
+}

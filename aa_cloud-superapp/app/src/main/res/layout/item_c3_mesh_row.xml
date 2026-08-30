@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Single mesh peer row. Status dot · name+region · WG-IP+VM ·
+     endpoint+role. Tap-ready for future drill-down (e.g. "ping me"). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingHorizontal="12dp"
+    android:paddingVertical="10dp"
+    android:background="?attr/selectableItemBackground"
+    android:clickable="true"
+    android:focusable="true">
+
+    <View
+        android:id="@+id/m_status_dot"
+        android:layout_width="10dp"
+        android:layout_height="10dp" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="3"
+        android:layout_marginStart="10dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/m_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:singleLine="true"
+            android:ellipsize="end"
+            android:textColor="?attr/colorOnSurface"
+            android:textAppearance="?attr/textAppearanceTitleSmall" />
+
+        <TextView
+            android:id="@+id/m_region"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:singleLine="true"
+            android:alpha="0.6"
+            android:textAppearance="?attr/textAppearanceLabelSmall" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/m_wg_ip"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="2"
+        android:singleLine="true"
+        android:ellipsize="end"
+        android:fontFamily="monospace"
+        android:textAppearance="?attr/textAppearanceLabelMedium" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="3"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/m_endpoint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:singleLine="true"
+            android:ellipsize="end"
+            android:fontFamily="monospace"
+            android:textAppearance="?attr/textAppearanceLabelSmall" />
+
+        <TextView
+            android:id="@+id/m_role"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:singleLine="true"
+            android:alpha="0.7"
+            android:textAppearance="?attr/textAppearanceLabelSmall" />
+    </LinearLayout>
+</LinearLayout>

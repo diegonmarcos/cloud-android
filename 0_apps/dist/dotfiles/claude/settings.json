@@ -1,0 +1,22 @@
+{
+  "_doc": "PROJECT-scoped Claude Code settings, committed into every repo under cloud. Mirrors the machine-independent half of unix/da_my-ai/src/data/claude/settings.base.json + settings.desktop.json, which is the source of truth for ~/.claude/settings.json — edit there, then re-copy here.",
+
+  "_why_committed": "~/.claude/settings.json only exists where unix's home-manager has run. A fresh clone — CI, a container, Claude Code on the web, a second machine, someone else's checkout — has no user config, so without this the repo gets Claude's stock defaults: no thinking, no tool search, no agents. Project settings merge OVER user settings, so on a home-manager machine these keys are already what ~/.claude sets and the merge is a no-op.",
+
+  "_deliberately_absent": "Everything from settings.base.json that carries a @HOME@ path: statusLine.command, and env GIT_BASE / NODE_PATH / AUTHELIA_OIDC_CREDENTIALS_DIR / AUTHELIA_OIDC_TOKENS_DIR. unix substitutes @HOME@ with config.home.homeDirectory at nix eval time, per machine. A committed file has no such step, so those paths would harden to one person's home directory and be wrong in every clone — the same failure .mcp.json had as a symlink to /home/diego/.mcp.json. They stay in ~/.claude, where the substitution happens.",
+
+  "_also_absent": "enabledPlugins. Those name @cloud-marketplace and @claude-plugins-official entries that are installed per-machine; enabling a plugin that is not installed is noise in every clone that lacks it. Plugin choice stays user-level.",
+
+  "alwaysThinkingEnabled": true,
+
+  "env": {
+    "_doc": "Only machine-independent values — no paths.",
+    "ENABLE_TOOL_SEARCH": "true"
+  },
+
+  "permissions": {
+    "_doc": "Left empty on purpose. Pre-approving commands is a per-person trust decision, not a repo-wide one — the /fewer-permission-prompts skill generates an allowlist from your own transcripts. defaultMode is user-level too: settings.base.json sets \"auto\", and forcing it from a committed file would override that choice for anyone who clones this repo.",
+    "allow": [],
+    "deny": []
+  }
+}

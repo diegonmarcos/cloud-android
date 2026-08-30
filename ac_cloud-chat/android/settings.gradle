@@ -1,0 +1,26 @@
+pluginManagement { includeBuild("../node_modules/@react-native/gradle-plugin") }
+plugins { id("com.facebook.react.settings") }
+extensions.configure(com.facebook.react.ReactSettingsExtension){ ex -> ex.autolinkLibrariesFromCommand() }
+
+rootProject.name = 'Mattermost'
+include ':app'
+include ':reactnativenotifications'
+project(':reactnativenotifications').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-notifications/lib/android/app')
+include ':watermelondb-jsi'
+project(':watermelondb-jsi').projectDir = new File(rootProject.projectDir, '../node_modules/@nozbe/watermelondb/native/android-jsi')
+includeBuild('../node_modules/@react-native/gradle-plugin')
+apply from: new File(["node", "--print", "require.resolve('expo/package.json')"].execute(null, rootDir).text.trim(), "../scripts/autolinking.gradle")
+useExpoModules()
+
+// Shared BY REFERENCE from ab_cloud-libs-shared/ — one copy, no per-app drift.
+// This is a React Native app, so rootDir here is <app>/android/; the module
+// walks up from rootDir to find the app's build.json at <app>/build.json.
+// ':libs:analytics' implicitly declares an intermediate ':libs' project, whose
+// default projectDir is <root>/libs. This app has no local libs/, and Gradle 9
+// fails the build outright on a project directory that does not exist. Map
+// ':libs' onto the shared libs root so the container resolves to a real
+// directory. Apps that DO have their own libs/ (nav, media-center) must not do
+// this — it would repoint their local modules.
+include ':libs:analytics'
+project(':libs').projectDir = new File(rootDir, '../../ab_cloud-libs-shared/libs')
+project(':libs:analytics').projectDir = new File(rootDir, '../../ab_cloud-libs-shared/libs/analytics')

@@ -1,0 +1,143 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`AttachmentAuthor it matches snapshot when both name and icon are provided 1`] = `
+<View
+  style={
+    {
+      "flex": 1,
+      "flexDirection": "row",
+    }
+  }
+>
+  <ViewManagerAdapter_ExpoImage
+    containerViewRef={"[React.ref]"}
+    contentFit="cover"
+    contentPosition={
+      {
+        "left": "50%",
+        "top": "50%",
+      }
+    }
+    height={12}
+    marginRight={3}
+    nativeViewRef={"[React.ref]"}
+    onError={[Function]}
+    onLoad={[Function]}
+    onLoadStart={[Function]}
+    onProgress={[Function]}
+    placeholder={[]}
+    source={
+      [
+        {
+          "cacheKey": "attachment-author-icon-aHR0cHM6Ly9pbWFnZXMuY29tL2ltYWdlLnBuZw==",
+          "cachePath": "",
+          "headers": undefined,
+          "uri": "https://images.com/image.png",
+        },
+      ]
+    }
+    style={
+      {
+        "height": 12,
+        "marginRight": 3,
+        "width": 12,
+      }
+    }
+    transition={null}
+    width={12}
+  />
+  <Text
+    onPress={[Function]}
+    style={
+      [
+        {
+          "color": "rgba(63,67,80,0.5)",
+          "fontSize": 11,
+        },
+        {
+          "color": "rgba(56,111,229,0.5)",
+        },
+      ]
+    }
+  >
+    jhondoe
+  </Text>
+</View>
+`;
+
+exports[`AttachmentAuthor it matches snapshot when only icon is provided 1`] = `
+<View
+  style={
+    {
+      "flex": 1,
+      "flexDirection": "row",
+    }
+  }
+>
+  <ViewManagerAdapter_ExpoImage
+    containerViewRef={"[React.ref]"}
+    contentFit="cover"
+    contentPosition={
+      {
+        "left": "50%",
+        "top": "50%",
+      }
+    }
+    height={12}
+    marginRight={3}
+    nativeViewRef={"[React.ref]"}
+    onError={[Function]}
+    onLoad={[Function]}
+    onLoadStart={[Function]}
+    onProgress={[Function]}
+    placeholder={[]}
+    source={
+      [
+        {
+          "cacheKey": "attachment-author-icon-aHR0cHM6Ly9pbWFnZXMuY29tL2ltYWdlLnBuZw==",
+          "cachePath": "",
+          "headers": undefined,
+          "uri": "https://images.com/image.png",
+        },
+      ]
+    }
+    style={
+      {
+        "height": 12,
+        "marginRight": 3,
+        "width": 12,
+      }
+    }
+    transition={null}
+    width={12}
+  />
+</View>
+`;
+
+exports[`AttachmentAuthor it matches snapshot when only name is provided 1`] = `
+<View
+  style={
+    {
+      "flex": 1,
+      "flexDirection": "row",
+    }
+  }
+>
+  <Text
+    onPress={[Function]}
+    style={
+      [
+        {
+          "color": "rgba(63,67,80,0.5)",
+          "fontSize": 11,
+        },
+        {
+          "color": "rgba(56,111,229,0.5)",
+        },
+      ]
+    }
+  >
+    jhondoe
+  </Text>
+</View>
+`;

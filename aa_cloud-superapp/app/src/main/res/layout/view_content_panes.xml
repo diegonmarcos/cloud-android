@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Phone content host (default qualifier): a single full-bleed content
+     pane. Section grids AND opened pages both render here, with opened
+     pages pushed onto the back stack (single-pane push navigation).
+
+     The tablet override (layout-sw600dp/view_content_panes.xml) replaces
+     this with a master+detail split. Both variants expose the SAME
+     @id/fragment_container as the master/primary host, so all existing
+     MainActivity navigation keeps working unchanged; only the optional
+     @id/detail_container (tablet-only) routes opened pages side-by-side.
+
+     Paddings carve out room for the top + bottom islands so content
+     stays clear of them — identical to the inline container this
+     <include> replaced. -->
+<androidx.fragment.app.FragmentContainerView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/fragment_container"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingTop="84dp"
+    android:paddingBottom="92dp"
+    android:clipToPadding="false" />

@@ -1,0 +1,51 @@
+apply plugin: 'com.android.library'
+apply plugin: 'org.jetbrains.kotlin.android'
+
+// rootDir, NOT '../../': this module is shared by reference (projectDir) into
+// every constellation app, so it must read the CONSUMING app's build.json.
+// A module-relative path would resolve to superapp's build.json and every app
+// would ship superapp's log stream — cloud-nav's diagnostics would land in the
+// cloud-superapp stream and be indistinguishable from superapp's own.
+def buildJson = new groovy.json.JsonSlurper().parse(file("${rootDir}/build.json"))
+
+// Data-driven from build.json::diagnostics; empty url = cloud push disabled.
+// These used to be baked by each app's app/build.gradle, which is why every
+// app also needed its own copy of DiagnosticsPush. The BuildConfig moves here
+// with the code that reads it, so an app gets both or neither.
+def logSinkUrl    = (buildJson.diagnostics?.log_sink_url    ?: '')
+def logSinkStream = (buildJson.diagnostics?.log_sink_stream ?: 'cloud-app')
+// Where the install-failure diagnose screen POSTs. {app} is substituted at
+// send time with the fleet app id. Empty = the Send button is hidden and the
+// report can still be copied or saved, which is the right degradation for a
+// phone with no network rather than a dead button.
+def diagReportUrl = (buildJson.diagnostics?.report_url ?: '')
+// The full destination list (id/label/url) the Diagnose screen offers, one
+// button each. base64 like every other blob so it survives buildConfigField
+// quoting. An app that declares none gets [] and no Send buttons — Copy and
+// Save still work, which is the right degradation for a phone with no network.
+def diagTargetsB64 = groovy.json.JsonOutput.toJson(buildJson.diagnostics?.report_targets ?: [])
+        .bytes.encodeBase64().toString()
+
+android {
+    namespace 'com.diegonmarcos.superapp.devtools'
+    compileSdk 36
+
+    defaultConfig {
+        minSdk 26
+        buildConfigField "String", "LOG_SINK_URL",    "\"${logSinkUrl}\""
+        buildConfigField "String", "LOG_SINK_STREAM", "\"${logSinkStream}\""
+        buildConfigField "String", "DIAG_REPORT_URL", "\"${diagReportUrl}\""
+        buildConfigField "String", "DIAG_TARGETS_B64", "\"${diagTargetsB64}\""
+    }
+
+    buildFeatures { buildConfig = true }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = '17' }
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.13.1'
+}

@@ -1,0 +1,101 @@
+plugins {
+    id 'com.android.library'
+    // `apply false`: resolve the plugin onto the classpath WITHOUT applying it.
+    // Application is conditional below, and a bare `apply plugin:` cannot resolve
+    // on its own — it looks at the root buildscript classpath rather than
+    // settings pluginManagement, which is how ac_cloud-ide lost the ability to
+    // resolve kotlin-gradle-plugin entirely when this was tried without it.
+    id 'org.jetbrains.kotlin.android' apply false
+}
+
+// AGP 9 has built-in Kotlin support and registers the 'kotlin' extension itself.
+// Applying the Kotlin plugin on top of it is a hard error:
+//   "The 'org.jetbrains.kotlin.android' plugin is no longer required for Kotlin
+//    support since AGP 9.0" / "Cannot add extension with name 'kotlin'"
+// while AGP 8 consumers still require the explicit apply. This repo has both
+// (mail and media-center are AGP 9; the other twelve are AGP 8), so the apply
+// has to be conditional — and the extension is what actually collides, so it is
+// what gets tested. A plugin-id check is NOT equivalent: Kotlin applied under
+// the legacy 'kotlin-android' id leaves hasPlugin() false while the extension
+// is already there.
+if (project.extensions.findByName('kotlin') == null) {
+    apply plugin: 'org.jetbrains.kotlin.android'
+}
+
+
+// Inject build.json::analytics into BuildConfig. rootDir, NOT '../../': this
+// module is shared by reference (projectDir) into every constellation app, so
+// it must read the CONSUMING app's build.json — a module-relative path would
+// hand every app superapp's site ids and every event would be misattributed.
+// Same reasoning as :libs:updater; see the long note in its build.gradle.
+// Walk UP from rootDir to find it. Most apps keep build.json beside
+// settings.gradle so rootDir hits on the first try, but a React Native app's
+// gradle root is android/ while its build.json stays at the app root one level
+// up. Hardcoding "${rootDir}/build.json" silently excluded every such app.
+def buildJsonFile = { ->
+    def d = rootDir
+    for (int i = 0; i < 4 && d != null; i++) {
+        def f = new File(d, "build.json")
+        if (f.exists()) return f
+        d = d.parentFile
+    }
+    throw new GradleException("libs:analytics: no build.json found at or above ${rootDir}")
+}()
+def buildJson = new groovy.json.JsonSlurper().parse(buildJsonFile)
+def an = buildJson.analytics ?: [:]
+def umami  = an.umami  ?: [:]
+def matomo = an.matomo ?: [:]
+
+android {
+    namespace 'com.diegonmarcos.superapp.analytics'
+    compileSdk 36
+
+    defaultConfig {
+        // 21, not 26: a library's minSdk is a FLOOR on every consumer, and the
+        // manifest merger fails the whole app build when the app's minSdk is
+        // lower ("uses-sdk:minSdkVersion 24 cannot be smaller than version 26
+        // declared in library [:libs:analytics]"). chat is minSdk 24. Nothing
+        // here needs 26 — the module only touches ContentProvider,
+        // SharedPreferences, HttpURLConnection and java.util, all API <= 9.
+        // Keep this at or below the lowest consumer minSdk in the repo.
+        minSdk 21
+        consumerProguardFiles 'consumer-rules.pro'
+
+        // The app id is what makes events attributable. Umami and Matomo are
+        // both single-site today, so every app reports into the same site and
+        // is told apart by this name (it becomes the URL path and hostname).
+        buildConfigField "String",  "AN_APP",           "\"${an.app ?: buildJson.project?.name ?: 'unknown'}\""
+        buildConfigField "boolean", "AN_ENABLED",       "${an.enabled ?: false}"
+        buildConfigField "String",  "AN_UMAMI_URL",     "\"${umami.endpoint ?: ''}\""
+        buildConfigField "String",  "AN_UMAMI_SITE",    "\"${umami.site_id ?: ''}\""
+        buildConfigField "String",  "AN_MATOMO_URL",    "\"${matomo.endpoint ?: ''}\""
+        buildConfigField "String",  "AN_MATOMO_SITE",   "\"${matomo.site_id ?: ''}\""
+    }
+
+    buildFeatures { buildConfig = true }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    // Deliberately NO :libs:core. This module is plain HttpURLConnection +
+    // org.json, so keeping it dependency-free lets ANY app consume it —
+    // including the upstream forks (mail, dialer, chat, matrix, media-center)
+    // that have no shared-module graph at all.
+}
+
+// jvmTarget must match the Java 17 compileOptions above, or the Kotlin and Java
+// halves of this module compile to different bytecode levels.
+//
+// Set via the top-level `kotlin` extension, NOT android.kotlinOptions: AGP 9
+// removed kotlinOptions from the android extension ("Could not find method
+// kotlinOptions()"), and this module is consumed by both AGP 8 and AGP 9 apps.
+// The `kotlin` extension exists in both — added by the Kotlin plugin applied
+// above on AGP 8, and by AGP itself on AGP 9 — so one path covers both.
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
+}

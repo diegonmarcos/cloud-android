@@ -1,0 +1,33 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`@components/app_version should match snapshot 1`] = `
+<View
+  pointerEvents="none"
+  style={
+    {
+      "opacity": 1,
+    }
+  }
+>
+  <View
+    style={
+      {
+        "bottom": 0,
+        "marginBottom": 12,
+        "marginLeft": 20,
+        "position": "absolute",
+      }
+    }
+  >
+    <Text
+      style={
+        {
+          "fontSize": 12,
+        }
+      }
+    >
+      App Version: 0.0.0 (Build 0)
+    </Text>
+  </View>
+</View>
+`;

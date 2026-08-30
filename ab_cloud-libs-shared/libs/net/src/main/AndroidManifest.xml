@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!--
+      The VpnService used to be declared here, and moved with the engine to
+      libs:net-wg. What is left is package visibility: on Android 11+ an app
+      cannot see, bind, or start anything in another package it has not
+      declared. Without this <queries> entry AidlBackend's bindService would
+      fail silently and the tunnel would simply never come up.
+    -->
+    <queries>
+        <package android:name="com.diegonmarcos.cloudlib.netwg" />
+    </queries>
+
+</manifest>

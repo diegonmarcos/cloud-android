@@ -1,0 +1,213 @@
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
+import React, {useCallback, useEffect, useMemo, useReducer, useState} from 'react';
+import {DeviceEventEmitter, type StyleProp, StyleSheet, View, type ViewStyle} from 'react-native';
+import Animated from 'react-native-reanimated';
+
+import {Events} from '@constants';
+import {GalleryInit} from '@context/gallery';
+import {useIsTablet} from '@hooks/device';
+import {useImageAttachments} from '@hooks/files';
+import {usePreventDoubleTap} from '@hooks/utils';
+import {isImage, isVideo} from '@utils/file';
+import {fileToGalleryItem, openGalleryAtIndex} from '@utils/gallery';
+import {getViewPortWidth} from '@utils/images';
+
+import File from './file';
+
+type FilesProps = {
+    canDownloadFiles: boolean;
+    enableSecureFilePreview: boolean;
+    failed?: boolean;
+    filesInfo: FileInfo[];
+    layoutWidth?: number;
+    location: string;
+    isReplyPost: boolean;
+    postId?: string;
+    postProps?: Record<string, unknown>;
+    isPermalinkPreview?: boolean;
+}
+
+const MAX_VISIBLE_ROW_IMAGES = 4;
+const styles = StyleSheet.create({
+    row: {
+        flexDirection: 'row',
+        marginTop: 5,
+        flexShrink: 0,
+    },
+    rowItemContainer: {
+        flex: 1,
+    },
+    gutter: {
+        marginLeft: 8,
+    },
+    failed: {
+        opacity: 0.5,
+    },
+    marginTop: {
+        marginTop: 10,
+    },
+    rowPermalinkPreview: {
+        marginTop: 0,
+    },
+});
+
+const Files = ({
+    canDownloadFiles,
+    enableSecureFilePreview,
+    failed,
+    filesInfo,
+    isReplyPost,
+    layoutWidth,
+    location,
+    postId,
+    postProps,
+    isPermalinkPreview = false,
+}: FilesProps) => {
+    const galleryIdentifier = `${postId}-fileAttachments-${location}`;
+    const [inViewPort, setInViewPort] = useState(false);
+    const isTablet = useIsTablet();
+
+    // Force re-render when a file is rejected (to move it from images to nonImages)
+    const [, forceUpdate] = useReducer((x: number) => x + 1, 0);
+
+    const {images: imageAttachments, nonImages: nonImageAttachments} = useImageAttachments(filesInfo);
+    const [filesForGallery, setFilesForGallery] = useState(() => [...imageAttachments, ...nonImageAttachments]);
+
+    const attachmentIndex = (fileId: string) => {
+        return filesForGallery.findIndex((file) => file.id === fileId) || 0;
+    };
+
+    const handlePreviewPress = usePreventDoubleTap(useCallback((idx: number) => {
+        const items = filesForGallery.map((f) => fileToGalleryItem(f, f.user_id, postProps, 0, f.id));
+        openGalleryAtIndex(galleryIdentifier, idx, items);
+    }, [filesForGallery, galleryIdentifier, postProps]));
+
+    const updateFileForGallery = useCallback((idx: number, file: FileInfo) => {
+        const newFilesForGallery = [...filesForGallery];
+        newFilesForGallery[idx] = file;
+        setFilesForGallery(newFilesForGallery);
+    }, [filesForGallery]);
+
+    const isSingleImage = useMemo(() => filesInfo.filter((f) => isImage(f) || isVideo(f)).length === 1, [filesInfo]);
+
+    const renderItems = (items: FileInfo[], moreImagesCount = 0, includeGutter = false, isImageRow = false) => {
+        let nonVisibleImagesCount: number;
+
+        // Apply flex: 1 for multiple items, except in permalink previews where vertical
+        // document lists should not use flex to prevent shrinking under maxHeight constraints.
+        // Horizontal image rows (includeGutter=true) still need flex for space distribution.
+        const shouldApplyFlex = items.length > 1 && !(isPermalinkPreview && !includeGutter);
+        let container: StyleProp<ViewStyle> = shouldApplyFlex ? styles.rowItemContainer : undefined;
+        const containerWithGutter = [container, styles.gutter];
+        const wrapperWidth = getViewPortWidth(isReplyPost, isTablet) - 6;
+
+        return items.map((file, idx) => {
+            if (moreImagesCount && idx === MAX_VISIBLE_ROW_IMAGES - 1) {
+                nonVisibleImagesCount = moreImagesCount;
+            }
+
+            if (idx !== 0 && includeGutter) {
+                container = containerWithGutter;
+            }
+            const shouldRemoveMarginTop = isPermalinkPreview && (
+                (isImageRow) || // Remove marginTop for all images in image row
+                (!isImageRow && idx === 0 && imageAttachments.length === 0) // Remove marginTop for first non-image only if no images present
+            );
+            return (
+                <View
+                    style={[container, styles.marginTop, shouldRemoveMarginTop && {marginTop: 0}]}
+                    testID={`${file.id}-file-container`}
+                    key={file.id}
+                >
+                    <File
+                        galleryIdentifier={galleryIdentifier}
+                        key={file.id}
+                        canDownloadFiles={canDownloadFiles}
+                        enableSecureFilePreview={enableSecureFilePreview}
+                        file={file}
+                        index={attachmentIndex(file.id!)}
+                        onPress={handlePreviewPress}
+                        isSingleImage={isSingleImage}
+                        nonVisibleImagesCount={nonVisibleImagesCount}
+                        updateFileForGallery={updateFileForGallery}
+                        wrapperWidth={layoutWidth || wrapperWidth}
+                        inViewPort={inViewPort}
+                    />
+                </View>
+            );
+        });
+    };
+
+    const renderImageRow = () => {
+        if (imageAttachments.length === 0) {
+            return null;
+        }
+
+        const visibleImages = imageAttachments.slice(0, MAX_VISIBLE_ROW_IMAGES);
+        const portraitPostWidth = layoutWidth || (getViewPortWidth(isReplyPost, isTablet) - 6);
+
+        let nonVisibleImagesCount;
+        if (imageAttachments.length > MAX_VISIBLE_ROW_IMAGES) {
+            nonVisibleImagesCount = imageAttachments.length - MAX_VISIBLE_ROW_IMAGES;
+        }
+
+        return (
+            <View
+                style={[
+                    styles.row,
+                    {width: portraitPostWidth},
+                    isPermalinkPreview && {marginTop: 0},
+                ]}
+                testID='image-row'
+            >
+                { renderItems(visibleImages, nonVisibleImagesCount, true, true) }
+            </View>
+        );
+    };
+
+    useEffect(() => {
+        const onScrollEnd = DeviceEventEmitter.addListener(Events.ITEM_IN_VIEWPORT, (viewableItems) => {
+            if (`${location}-${postId}` in viewableItems) {
+                setInViewPort(true);
+            }
+        });
+
+        return () => onScrollEnd.remove();
+    }, [location, postId]);
+
+    useEffect(() => {
+        setFilesForGallery([...imageAttachments, ...nonImageAttachments]);
+    }, [imageAttachments, nonImageAttachments]);
+
+    // Listen for file rejection events and re-render if one of our files is rejected
+    // This handles the race condition where files render before rejection status is known
+    useEffect(() => {
+        const fileIds = new Set(filesInfo.map((f) => f.id));
+        const onFileRejected = ({fileId}: {fileId: string}) => {
+            if (fileIds.has(fileId)) {
+                forceUpdate();
+            }
+        };
+        const listener = DeviceEventEmitter.addListener(Events.FILE_REJECTED, onFileRejected);
+        return () => listener.remove();
+    }, [filesInfo]);
+
+    return (
+        <GalleryInit galleryIdentifier={galleryIdentifier}>
+            <Animated.View
+                testID='files-container'
+                style={[
+                    failed ? styles.failed : undefined,
+                    isPermalinkPreview && {marginTop: 0},
+                ]}
+            >
+                {renderImageRow()}
+                {renderItems(nonImageAttachments)}
+            </Animated.View>
+        </GalleryInit>
+    );
+};
+
+export default React.memo(Files);

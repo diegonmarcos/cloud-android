@@ -1,0 +1,78 @@
+{
+  "_doc": "THE single source of truth for media sources in Cloud Media Center. Kotlin (once patched into the ReFra fork) iterates `profiles` at runtime to populate the source picker / Album list — a hardcoded source list in Kotlin is FORBIDDEN (FIRE rule 6). Every profile presents the SAME Album/MediaItem model to the UI regardless of source_type; only the fetch/sync backend differs. No secrets live here — auth material is a sops/vault reference BY NAME ONLY, never a literal value.",
+  "_doc_product": "This app is a Google-Photos / Samsung-Gallery replacement. 'local' is the Samsung-Gallery half (on-device gallery); 'photoprism' is the Google-Photos half (cloud library + auto-backup), backed by the ALREADY-DEPLOYED user-media_photoprism service. 'youtube' is our addition on top of what those apps do.",
+  "source_types": {
+    "local": {
+      "_doc": "Upstream ReFra's own MediaStore scanner — UNCHANGED code path. No config needed beyond enabling the profile.",
+      "required_fields": []
+    },
+    "photoprism": {
+      "_doc": "The cloud library, served by the deployed user-media_photoprism service (oci-apps, container port 3013). PhotoPrism exposes WebDAV at /originals/ (read the library) and /import/ (write; PhotoPrism AUTO-INDEXES whatever lands there) — that /import/ PUT is exactly the Google-Photos auto-backup mechanism. Auth is a PhotoPrism app password (`photoprism auth add --scope webdav`), NOT the account password, referenced here only by its sops key name. NOTE: upstream ReFra already ships an ownCloud provider, which is WebDAV — the open question (see README ## Spike) is whether that provider does UPLOAD or is read-only. That answer decides whether backup is a config change or a real patch.",
+      "required_fields": ["base_url", "webdav_read_path", "webdav_write_path", "auth_secret_ref", "wg_only"]
+    },
+    "newpipe": {
+      "_doc": "com.github.teamnewpipe:NewPipeExtractor (GPL-3.0, resolved via JitPack — the reason this whole app is GPL-3.0, see build.json::license). YouTube ONLY per current scope decision. 'feeds' lists what to pull (channel/playlist ids); empty feeds = source enabled but nothing subscribed yet.",
+      "required_fields": ["service", "feeds"]
+    }
+  },
+  "profiles": [
+    {
+      "key": "local",
+      "label": "This Device",
+      "source_type": "local",
+      "enabled_default": true,
+      "comment": "Upstream MediaStore gallery, unchanged."
+    },
+    {
+      "key": "personal-media",
+      "label": "Cloud (PhotoPrism)",
+      "source_type": "photoprism",
+      "enabled_default": true,
+      "base_url": "https://photos.diegonmarcos.com",
+      "_doc_base_url": "VERIFIED from user-media_photoprism/build.json::domain (service on oci-apps, container port 3013).",
+      "webdav_read_path": "/originals/",
+      "webdav_write_path": "/import/",
+      "_doc_webdav_write_path": "Uploads PUT here; PhotoPrism indexes automatically. Do NOT write into /originals/ directly — that bypasses indexing. BLOCKED TODAY: see _blockers below, the import dir is not mounted and originals is read-only.",
+      "auth_secret_ref": "PLACEHOLDER",
+      "_doc_auth_secret_ref": "UNRESOLVED — sops key NAME of the PhotoPrism WebDAV app password (create with `photoprism auth add --scope webdav`). A NAME ONLY. Never put the password itself in this file (FIRE rule 7A/7B).",
+      "wg_only": true,
+      "_doc_wg_only": "CHANGING to true per user instruction: the route is being moved from public+Authelia-2FA to WG-only (gated to the WG mesh, 10.0.0.0/24). A parallel agent is making this change in the cloud repo (user-media_photoprism/build.json) right now. WG-gating is expected to remove the Authelia-intercepts-WebDAV problem below, but whether `wg_only` actually bypasses Authelia in this fleet's Caddy deriver is PENDING VERIFICATION by that agent — treat as unverified until confirmed.",
+      "_blockers": {
+        "_doc": "Three blockers stand between here and a working backup. The first two are VERIFIED and need a change to user-media_photoprism (cloud repo) BEFORE any backup code is written. Do not write the SyncWorker until all three are cleared.",
+        "originals_read_only": "user-media_photoprism/build.json mounts `/opt/containers/photoprism/originals:/photoprism/originals:ro` — READ-ONLY. WebDAV writes to /originals/ will fail. The dir is an rclone mount of the `my-photos` OCI bucket, so PhotoPrism is currently a read-only viewer over object storage.",
+        "no_import_mount": "There is NO import volume in the compose at all — only photoprism_storage and the read-only originals. /import/ does not exist on disk, so nothing can be uploaded into it.",
+        "authelia_2fa_in_front": "CHOSEN FIX, PENDING VERIFICATION: the route is moving to `wg_only: true` instead of `auth: two_factor`, so a WebDAV client on the WG mesh should bypass the interactive Authelia flow entirely. Whether this fleet's Caddy deriver actually skips Authelia for wg_only routes is being verified by a parallel agent right now — do not assume this is fixed until that lands."
+      },
+      "backup": {
+        "_doc": "The Google-Photos auto-backup behaviour. Off by default: turning it on starts uploading the user's camera roll, which must be a deliberate choice, not a scaffold default.",
+        "enabled_default": false,
+        "require_unmetered_network": true,
+        "require_charging": true,
+        "delete_after_upload": false
+      }
+    },
+    {
+      "key": "instagram",
+      "label": "Instagram (mirrored)",
+      "source_type": "photoprism",
+      "enabled_default": false,
+      "base_url": "https://photos.diegonmarcos.com",
+      "webdav_read_path": "/originals/instagram/",
+      "webdav_write_path": null,
+      "auth_secret_ref": "PLACEHOLDER",
+      "wg_only": true,
+      "_doc": "Instagram is deliberately NOT a first-class app source — there is NO Instagram SDK/API/session-cookie integration in this app at all, and none is planned. A server-side gallery-dl job mirrors the account's OWN PUBLIC posts (no session cookie, no private-content scraping — decided scope) into PhotoPrism's import folder; PhotoPrism indexes them into an album. From the app's point of view this is just the PhotoPrism source pointed at a sub-path. Adding another mirrored network later = one more entry here plus one more gallery-dl job. No APK rebuild, no Kotlin.",
+      "_doc_webdav_write_path": "null — read-only. The app never writes to the mirror.",
+      "backup": { "enabled_default": false }
+    },
+    {
+      "key": "youtube",
+      "label": "YouTube",
+      "source_type": "newpipe",
+      "enabled_default": false,
+      "service": "YouTube",
+      "feeds": [],
+      "_doc_feeds": "Array of {kind, id} objects the app subscribes to via NewPipeExtractor, e.g. {\"kind\": \"channel\", \"id\": \"UC...\"} or {\"kind\": \"playlist\", \"id\": \"PL...\"}. Empty = source available in the picker but nothing subscribed; populate through in-app UI (not this file) once the newpipe patch series exists."
+    }
+  ]
+}
