@@ -214,6 +214,7 @@ html,body{height:100%;margin:0;background:#0b0e14;color:#c8ccd4;overflow:hidden}
   padding-left:12px;padding-right:12px;background:#101520;border-bottom:1px solid #3a3e4a;z-index:9}
 #bar b{color:#78c8ff;font-size:13px;font-weight:700}
 #bar .s{margin-left:auto;font-size:11px;color:#788091}
+#bar #env{color:#78c8ff;border-color:#3a3e4a}
 #bar button{background:none;border:1px solid #3a3e4a;border-radius:6px;color:#788091;
   font:inherit;font-size:11px;min-width:44px;min-height:34px;cursor:pointer}
 #view{position:absolute;top:calc(46px + env(safe-area-inset-top,0px));left:0;right:0;bottom:0;
@@ -232,7 +233,7 @@ html,body{height:100%;margin:0;background:#0b0e14;color:#c8ccd4;overflow:hidden}
 #msg{padding:18px;color:#f0de40;font:12px ui-monospace,monospace;white-space:pre-wrap}
 </style>
 <div id="bar"><b>watchdog</b><span class="s" id="age">connecting…</span>
-<button id="kb" type="button">keys</button></div>
+<button id="env" type="button">env</button><button id="kb" type="button">keys</button></div>
 <div id="view"><div id="msg">connecting…</div></div>
 
 <!-- Every key the CLI binds, reachable by thumb. The LABELS are a convenience
@@ -299,12 +300,14 @@ window.__wdEvent = function (kind, payload) {
   if (kind === 'frame') {
     view.innerHTML = payload;
     document.getElementById('age').textContent = new Date().toLocaleTimeString();
+    showEnv();
   } else if (kind === 'error') {
     view.innerHTML = '<div id="msg"></div>';
     // Verbatim: "cannot connect" and "command not found" send you to two
     // different places, and collapsing them into "error" helps nobody.
     view.firstChild.textContent = payload +
-      '\n\nadd this to ~/.ssh/authorized_keys in the env:\n\n' + AndroidWatchdog.publicKey();
+      '\n\ntried: ' + Object.keys(JSON.parse(AndroidWatchdog.backends())).join(', ') +
+      '\n\nadd this to ~/.ssh/authorized_keys in the env you use:\n\n' + AndroidWatchdog.publicKey();
     document.getElementById('age').textContent = 'unreachable';
   } else if (kind === 'closed') {
     document.getElementById('age').textContent = 'panel exited';
@@ -312,6 +315,29 @@ window.__wdEvent = function (kind, payload) {
 };
 
 const send = k => AndroidWatchdog.key(k);
+
+// Which env we are on, shown once connected. This is the env that ANSWERED,
+// not the one preferred — the app falls back, so those differ exactly when it
+// matters to know.
+function showEnv() {
+  const a = AndroidWatchdog.activeBackend();
+  document.getElementById('env').textContent = a || 'env';
+}
+
+// Tap to pin the next env in the list. A pin, not a switch: the panel is a
+// process on the far side, so changing it restarts the session rather than
+// re-pointing a live one and stranding the old process there.
+document.getElementById('env').onclick = () => {
+  const all = Object.keys(JSON.parse(AndroidWatchdog.backends()));
+  if (all.length < 2) return;
+  const cur = AndroidWatchdog.activeBackend();
+  const next = all[(Math.max(0, all.indexOf(cur)) + 1) % all.length];
+  AndroidWatchdog.setBackend(next);
+  document.getElementById('env').textContent = next + '…';
+  document.getElementById('age').textContent = 'reconnecting';
+  const [c, r] = grid();
+  AndroidWatchdog.start(c, r);
+};
 
 // The key bar. One listener on the container, so adding a button is markup.
 document.getElementById('keys').addEventListener('click', e => {

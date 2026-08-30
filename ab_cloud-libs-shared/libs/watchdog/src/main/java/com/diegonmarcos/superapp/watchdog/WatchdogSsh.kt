@@ -81,8 +81,11 @@ class WatchdogSsh(private val ctx: Context) {
         return pubFile.readText().trim()
     }
 
-    private fun connect(key: String): Session {
-        session?.let { if (it.isConnected) return it }
+    /** Which env the live session actually reached — not which one was asked for. */
+    @Volatile var activeBackend: String? = null
+        private set
+
+    private fun dial(key: String): Session {
         ensureKey()
         val t = targets.getJSONObject(key)
         jsch.addIdentity(keyFile.absolutePath)
@@ -92,8 +95,38 @@ class WatchdogSsh(private val ctx: Context) {
         // simply mean the app never connects — the same choice cloud-ide makes.
         s.setConfig("StrictHostKeyChecking", "no")
         s.connect(CONNECT_MS)
-        session = s
         return s
+    }
+
+    /**
+     * The preferred env, then the others — a real fallback, not a preference.
+     *
+     * Which Linux is installed on a phone is not something this app can know
+     * and not something a user should have to tell it twice: nix-on-droid and
+     * Termux are both plausible, either may be the only one present, and either
+     * may simply not be running its sshd right now. So the preferred one is
+     * tried first and the rest are tried after, in declaration order.
+     *
+     * The failure that matters is reported from the PREFERRED env, not from
+     * whichever was tried last: "termux: connection refused" on a phone that
+     * only ever had nix-on-droid sends the reader to the wrong place.
+     */
+    private fun connect(key: String): Session {
+        session?.let { if (it.isConnected) return it }
+        val order = listOf(key) + backendKeys().filter { it != key }
+        var first: Throwable? = null
+        for (k in order) {
+            try {
+                val s = dial(k)
+                session = s
+                activeBackend = k
+                return s
+            } catch (t: Throwable) {
+                if (first == null) first = t
+            }
+        }
+        activeBackend = null
+        throw IllegalStateException(first?.message ?: "no terminal reachable on this device")
     }
 
     /**
@@ -192,6 +225,7 @@ class WatchdogSsh(private val ctx: Context) {
     fun close() {
         session?.disconnect()
         session = null
+        activeBackend = null
     }
 
     companion object {

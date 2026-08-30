@@ -115,6 +115,11 @@ class WatchdogBridge(
         reader = null
     }
 
+    companion object {
+        const val PREFS = "watchdog"
+        const val KEY_BACKEND = "backend"
+    }
+
     private fun push(kind: String, payload: String) {
         val js = "window.__wdEvent(${JSONObject.quote(kind)}, ${JSONObject.quote(payload)})"
         webView.post { webView.evaluateJavascript(js, null) }
@@ -123,6 +128,24 @@ class WatchdogBridge(
     /** The authorized_keys line for the setup screen. */
     @JavascriptInterface
     fun publicKey(): String = runCatching { ssh.publicKeyLine() }.getOrElse { "" }
+
+    /**
+     * Pin an env, or clear the pin. Persisted, because a phone that only has
+     * Termux should not have to be told so on every launch.
+     *
+     * The panel is restarted rather than switched under the page: it is a
+     * process on the far side, and pointing the app at a different machine
+     * while a session is open would leave the old one running there.
+     */
+    @JavascriptInterface
+    fun setBackend(key: String) {
+        activity.getSharedPreferences(PREFS, 0).edit().putString(KEY_BACKEND, key).apply()
+        pool.execute { stopPanel(); ssh.close() }
+    }
+
+    /** The env actually reached, which is not always the one asked for. */
+    @JavascriptInterface
+    fun activeBackend(): String = ssh.activeBackend ?: ""
 
     /** Which envs this build knows about, as JSON, for the backend picker. */
     @JavascriptInterface

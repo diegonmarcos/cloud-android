@@ -68,11 +68,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Which env to talk to. A field for now, and the picker writes it later —
-     * the bridge reads it through a lambda precisely so it is read fresh at
-     * call time rather than captured once at construction.
+     * Which env to PREFER. Read fresh on every call — that is why the bridge
+     * takes a lambda rather than a value — so a pin written by the picker
+     * takes effect on the next connection without rebuilding anything.
+     *
+     * A preference, not a destination: WatchdogSsh tries the others after it,
+     * because which Linux is installed on a phone is not something this app
+     * can know and Termux may be the only one there.
      */
-    private var backend: String = com.diegonmarcos.superapp.watchdog.BuildConfig.WATCHDOG_BACKEND_DEFAULT
+    private val backend: String
+        get() = getSharedPreferences(WatchdogBridge.PREFS, 0)
+            .getString(WatchdogBridge.KEY_BACKEND, null)
+            ?: com.diegonmarcos.superapp.watchdog.BuildConfig.WATCHDOG_BACKEND_DEFAULT
 
     /**
      * The panel is a process on the other side, so leaving has to end it —
