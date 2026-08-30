@@ -20,13 +20,17 @@ package eu.faircode.email;
 */
 
 import android.content.Context;
+import android.content.SharedPreferences;
+import android.graphics.Typeface;
 import android.text.TextUtils;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -53,6 +57,13 @@ public class AdapterUnreadFolder extends RecyclerView.Adapter<AdapterUnreadFolde
     private final IUnreadFolderSelected listener;
     private final NumberFormat NF = NumberFormat.getNumberInstance();
 
+    // comms: typography/colour resolved at runtime, same as AdapterFolder --
+    // baking these into the layout XML is exactly what let this list drift
+    // out of sync with the user's compact/zoom/highlight prefs and the theme.
+    private final float textSize;
+    private final int textColorSecondary;
+    private final int colorUnread;
+
     private List<TupleFolderEx> items = new ArrayList<>();
 
     interface IUnreadFolderSelected {
@@ -63,6 +74,22 @@ public class AdapterUnreadFolder extends RecyclerView.Adapter<AdapterUnreadFolde
         this.context = context;
         this.inflater = LayoutInflater.from(context);
         this.listener = listener;
+
+        // comms: mirror AdapterFolder's constructor exactly (compact/zoom ->
+        // text size, theme attrs -> colours) so this list tracks the same
+        // prefs and theme as the real Folders page instead of a fixed look.
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        boolean compact = prefs.getBoolean("compact", false);
+        int zoom = prefs.getInt("view_zoom", compact ? 0 : 1);
+        if (zoom == 0)
+            zoom = 1;
+        this.textSize = Helper.getTextSize(context, zoom);
+        this.textColorSecondary = Helper.resolveColor(context, android.R.attr.textColorSecondary);
+
+        boolean highlight_unread = prefs.getBoolean("highlight_unread", true);
+        int colorHighlight = prefs.getInt("highlight_color", Helper.resolveColor(context, R.attr.colorUnreadHighlight));
+        this.colorUnread = (highlight_unread ? colorHighlight : Helper.resolveColor(context, R.attr.colorUnread));
+
         setHasStableIds(true);
     }
 
@@ -153,13 +180,25 @@ public class AdapterUnreadFolder extends RecyclerView.Adapter<AdapterUnreadFolde
         void bind(TupleFolderEx folder) {
             tvName.setText(folder.getDisplayName(context));
 
+            if (textSize != 0)
+                tvName.setTextSize(TypedValue.COMPLEX_UNIT_PX, textSize);
+
+            // Every row here is a folder that HAS unread mail (that is the
+            // whole point of this page), so it always takes the unread
+            // weight/colour -- same rule AdapterFolder applies per-row, just
+            // without a read branch since one never occurs on this page.
+            tvName.setTypeface(Helper.TYPEFACE_UNREAD);
+            tvName.setTextColor(colorUnread);
+
             // The unified list mixes accounts, so the account name is what tells
             // two identically named folders apart.
             String account = folder.accountName;
             tvAccount.setText(account);
             tvAccount.setVisibility(TextUtils.isEmpty(account) ? View.GONE : View.VISIBLE);
+            tvAccount.setTextColor(textColorSecondary);
 
             tvUnread.setText(NF.format(folder.unseen));
+            tvUnread.setTextColor(colorUnread);
         }
 
         @Override

@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- comms: one row of the unread lane's message list. Every row here is unread
      by construction (see DaoMessage.pagedUnread), so there is no read/unread
-     styling to switch on. -->
+     styling to switch on; it always renders the unread visual.
+     No textAppearance/textStyle/textColor here; text size, weight
+     (Helper.TYPEFACE_UNREAD) and colour are resolved at runtime in
+     AdapterUnreadMessage from the compact/zoom/highlight prefs and the
+     theme, matching the size hierarchy 7017d9d2 set for the real list. -->
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/clItem"
@@ -19,8 +23,7 @@
         android:layout_height="wrap_content"
         android:ellipsize="end"
         android:maxLines="1"
-        android:textAppearance="@style/TextAppearance.AppCompat.Medium"
-        android:textStyle="bold"
+        android:textAppearance="@android:style/TextAppearance.Medium"
         app:layout_constraintEnd_toStartOf="@+id/tvDate"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
@@ -31,7 +34,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
         android:maxLines="1"
-        android:textAppearance="@style/TextAppearance.AppCompat.Small"
+        android:textAppearance="@android:style/TextAppearance.Small"
         app:layout_constraintBaseline_toBaselineOf="@id/tvFrom"
         app:layout_constraintEnd_toEndOf="parent" />
 
@@ -41,7 +44,7 @@
         android:layout_height="wrap_content"
         android:ellipsize="end"
         android:maxLines="2"
-        android:textAppearance="@style/TextAppearance.AppCompat.Small"
+        android:textAppearance="@android:style/TextAppearance.Small"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/tvFrom" />

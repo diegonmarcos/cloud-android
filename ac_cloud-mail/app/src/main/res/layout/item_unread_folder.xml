@@ -23,14 +23,17 @@
         app:layout_constraintTop_toTopOf="parent"
         app:srcCompat="@drawable/twotone_folder_24" />
 
+    <!-- comms: no textAppearance/textStyle/textColor here; text size, weight
+         (Helper.TYPEFACE_UNREAD) and colour are resolved at runtime in
+         AdapterUnreadFolder from the compact/zoom/highlight prefs and the
+         theme, same as the real Folders page (item_folder.xml). -->
     <TextView
         android:id="@+id/tvName"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:ellipsize="end"
         android:maxLines="1"
-        android:textAppearance="@style/TextAppearance.AppCompat.Medium"
-        android:textStyle="bold"
+        android:textAppearance="@android:style/TextAppearance.Medium"
         app:layout_constraintEnd_toStartOf="@+id/tvUnread"
         app:layout_constraintStart_toEndOf="@id/ivFolder"
         app:layout_constraintTop_toTopOf="parent" />
@@ -41,7 +44,7 @@
         android:layout_height="wrap_content"
         android:ellipsize="end"
         android:maxLines="1"
-        android:textAppearance="@style/TextAppearance.AppCompat.Small"
+        android:textAppearance="@android:style/TextAppearance.Small"
         app:layout_constraintEnd_toStartOf="@+id/tvUnread"
         app:layout_constraintStart_toStartOf="@id/tvName"
         app:layout_constraintTop_toBottomOf="@id/tvName" />
@@ -52,8 +55,7 @@
         android:layout_height="wrap_content"
         android:minWidth="32dp"
         android:gravity="end"
-        android:textAppearance="@style/TextAppearance.AppCompat.Medium"
-        android:textStyle="bold"
+        android:textAppearance="@android:style/TextAppearance.Medium"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
