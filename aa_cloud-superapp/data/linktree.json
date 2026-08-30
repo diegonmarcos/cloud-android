@@ -455,7 +455,7 @@
             },
             {
               "label": "Keyboard Libs",
-              "url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ab_cloud-libs-shared/keyboard-engines",
+              "url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ab_cloud-keyboard-libs",
               "icon": "file-type-html.svg",
               "item": 5
             },

@@ -9,7 +9,7 @@ plugins {
 // stays correct when the module moves: '../../build.json' used to mean
 // ac_cloud-contacts/build.json and, after the consolidation into
 // ab_cloud-libs-shared/libs/, silently became ab_cloud-libs-shared/build.json
-// built by the app or shared by reference into ab_cloud-libs-shared/lib-apks.
+// built by the app or shared by reference into ab_cloud-libs.
 def buildJson   = new groovy.json.JsonSlurper().parse(file("${rootDir}/build.json"))
 def channelsB64 = groovy.json.JsonOutput.toJson(buildJson.channels?.registry ?: [])
                         .bytes.encodeBase64().toString()

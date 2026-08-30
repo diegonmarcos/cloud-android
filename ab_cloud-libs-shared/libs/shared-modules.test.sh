@@ -173,16 +173,16 @@ PY
 )
 note ok "every project() dependency names a declared module"
 
-# 11. ab_cloud-libs-shared/lib-apks ships one APK per library module. Three places derive that
+# 11. ab_cloud-libs ships one APK per library module. Three places derive that
 #     set from build.json::lib_apks — settings.gradle (the gradle modules),
 #     build.sh (the asset names) and data/regen.sh (the Libs tab). They must
 #     agree, or the store lists an APK the build never produced and the install
 #     button 404s on the release asset.
-LIBS_BJ=ab_cloud-libs-shared/lib-apks/build.json
+LIBS_BJ=ab_cloud-libs/build.json
 if [ -f "$LIBS_BJ" ]; then
     # LC_ALL=C: python sorts by byte, GNU sort by locale, and they disagree on
     # '-' vs '.' (Cloud-Lib-Voice-Vosk.apk vs Cloud-Lib-Voice.apk).
-    shipped=$(bash ab_cloud-libs-shared/lib-apks/build.sh list 2>/dev/null | command awk '{print $3}' | LC_ALL=C sort)
+    shipped=$(bash ab_cloud-libs/build.sh list 2>/dev/null | command awk '{print $3}' | LC_ALL=C sort)
     fleeted=$(python3 - <<'PY'
 import json
 d=json.load(open('aa_cloud-superapp/data/constellation-fleet.json'))
@@ -192,26 +192,19 @@ print('\n'.join(sorted(x['asset'] for x in a
 PY
 )
     if [ "$shipped" = "$fleeted" ]; then
-        note ok "ab_cloud-libs-shared/lib-apks: $(printf '%s\n' "$shipped" | command grep -c . ) lib APKs, build and fleet agree"
+        note ok "ab_cloud-libs: $(printf '%s\n' "$shipped" | command grep -c . ) lib APKs, build and fleet agree"
     else
-        note FAIL "ab_cloud-libs-shared/lib-apks: build.sh and constellation-fleet.json disagree — rerun aa_cloud-superapp/data/regen.sh"
+        note FAIL "ab_cloud-libs: build.sh and constellation-fleet.json disagree — rerun aa_cloud-superapp/data/regen.sh"
         diff <(printf '%s\n' "$shipped") <(printf '%s\n' "$fleeted") | command head -10
     fi
     # The CI trigger has to repeat the scan roots, because GitHub Actions cannot
     # read a path list out of build.json. Drift is silent and expensive: a lib
     # module changes, no workflow matches, and no APK is ever rebuilt.
     root_drift=$(python3 - <<'PYROOTS'
-import json, os, re
-BASE  = 'ab_cloud-libs-shared/lib-apks'
-cfg   = json.load(open(BASE + '/build.json'))['lib_apks']
+import json, re
+cfg   = json.load(open('ab_cloud-libs/build.json'))['lib_apks']
 roots = cfg['scan'] if isinstance(cfg['scan'], list) else [cfg['scan']]
-# Resolve each root against the project dir, then make it repo-relative.
-# Stripping '../' textually only worked while every scan root happened to sit
-# at the repo root; once lib-apks moved INSIDE ab_cloud-libs-shared, '../libs'
-# stripped to 'libs' and this rule demanded a CI trigger for a path that does
-# not exist - failing on the one layout that is actually correct.
-want  = {os.path.normpath(os.path.join(BASE, r)).rstrip('/') + '/**'
-         for r in roots}
+want  = {r.lstrip('./').replace('../', '').rstrip('/') + '/**' for r in roots}
 yml   = open('1_cicd/src/cicd/ship-cloud-libs.yml').read()
 have  = set(re.findall(r'^\s*-\s*"([^"]+/\*\*)"', yml, re.M))
 for m in sorted(want - have):
@@ -228,9 +221,9 @@ PYROOTS
     # a module someone silently dropped because it would not build.
     while read -r line; do note FAIL "$line"; done < <(python3 - <<'PY'
 import json
-for k,v in json.load(open('ab_cloud-libs-shared/lib-apks/build.json'))['lib_apks'].get('exclude',{}).items():
+for k,v in json.load(open('ab_cloud-libs/build.json'))['lib_apks'].get('exclude',{}).items():
     if not isinstance(v,str) or len(v) < 20:
-        print(f"ab_cloud-libs-shared/lib-apks excludes {k} without a reason — say why it cannot ship")
+        print(f"ab_cloud-libs excludes {k} without a reason — say why it cannot ship")
 PY
 )
 fi
@@ -353,17 +346,17 @@ echo
 #     careless `implementation project(':libs:net-wg')` away from being undone
 #     without anything failing - the app would just quietly grow libwg-go.so
 #     back. Two invariants: the contract carries no native build, and no app
-#     links the engine (only ab_cloud-libs-shared/lib-apks, which turns it into its own APK).
+#     links the engine (only ab_cloud-libs, which turns it into its own APK).
 # The directory is DERIVED, never named: hardcoding it is what silently
 # disarmed this whole rule when the modules moved to ab_cloud-libs-shared -
 # `[ -d <vanished path> ]` is false, so all four assertions below simply
 # stopped running and the suite still said PASS. Same trap rule 11b documents.
 NET_DIR=$(python3 - <<'PYNET'
 import json, os
-cfg = json.load(open('ab_cloud-libs-shared/lib-apks/build.json'))['lib_apks']
+cfg = json.load(open('ab_cloud-libs/build.json'))['lib_apks']
 roots = cfg['scan'] if isinstance(cfg['scan'], list) else [cfg['scan']]
 for r in roots:
-    d = os.path.normpath(os.path.join('ab_cloud-libs-shared/lib-apks', r, 'net'))
+    d = os.path.normpath(os.path.join('ab_cloud-libs', r, 'net'))
     if os.path.isfile(os.path.join(d, 'build.gradle')):
         print(d)
         break
