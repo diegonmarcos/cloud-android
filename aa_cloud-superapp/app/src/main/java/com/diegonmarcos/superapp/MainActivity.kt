@@ -1445,8 +1445,10 @@ class MainActivity : AppCompatActivity(),
             return
         }
         val forkKey = parts.getOrNull(1)?.takeIf { it.isNotBlank() }
-        // Candidate packages, most-specific first: the fork, then the hub.
-        val candidates = listOfNotNull(forkKey?.let { app.forks[it] }, app.hubPackage)
+        // Candidate packages, most-specific first: the fork, the hub, then the
+        // stock-resigned alt id (what the store actually installed for
+        // matrix/chat until those forks repackage — see ExternalApp.altPackage).
+        val candidates = listOfNotNull(forkKey?.let { app.forks[it] }, app.hubPackage, app.altPackage)
             .filter { it.isNotBlank() }
         for (pkg in candidates) {
             val launch = packageManager.getLaunchIntentForPackage(pkg) ?: continue

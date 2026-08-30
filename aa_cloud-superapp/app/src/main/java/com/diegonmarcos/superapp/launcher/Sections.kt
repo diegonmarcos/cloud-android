@@ -381,6 +381,12 @@ object Sections {
         val id: String,
         val label: String,
         val hubPackage: String,
+        /** Real installed package of a resigned STOCK upstream APK that is not
+         *  repackaged to [hubPackage] yet (matrix=io.element.android.x,
+         *  chat=com.mattermost.rnbeta) — same concept as Fleet.App.altId.
+         *  Without it the tile can't see the store-installed app and offers a
+         *  reinstall of something already on the device. */
+        val altPackage: String,
         val installApkUrl: String,
         val installPackage: String,
         /** forkKey → fork applicationId (mail/chat/matrix). */
@@ -1168,6 +1174,7 @@ object Sections {
                 id             = o.getString("id"),
                 label          = o.optString("label", o.getString("id")),
                 hubPackage     = o.optString("hub_package", ""),
+                altPackage     = o.optString("alt_package", ""),
                 installApkUrl  = o.optString("install_apk_url", ""),
                 installPackage = o.optString("install_package", o.optString("hub_package", "")),
                 forks          = forks,

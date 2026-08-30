@@ -5667,6 +5667,8 @@
         "id": "cloud-matrix",
         "label": "Messenger (Element)",
         "hub_package": "com.diegonmarcos.comms.matrix",
+        "_doc_alt_package": "The store ships a resigned STOCK Element X, so the installed applicationId is io.element.android.x, not hub_package (same fact the fleet records as alt_id). Without this the Suite/Comms tile can't see the installed app and offers a fresh install of something already on the phone. Remove once the matrix fork is repackaged to hub_package.",
+        "alt_package": "io.element.android.x",
         "install_package": "com.diegonmarcos.comms.matrix",
         "install_apk_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/cloud-comms-matrix.apk",
         "forks": {}
