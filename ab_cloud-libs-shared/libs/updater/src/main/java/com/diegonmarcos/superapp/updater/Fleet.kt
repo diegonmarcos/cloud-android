@@ -439,7 +439,11 @@ object Fleet {
         // It also makes the batch atomic in the way that matters: a network
         // that dies half way now fails BEFORE anything was installed, instead
         // of leaving the fleet half-updated.
-        val staged = ArrayList<Pair<App, File>>(batch.size)
+        // Pair<App, VerifiedApk>, not Pair<App, File>: the batch downloads
+        // everything first and installs afterwards, so the evidence has to
+        // survive that gap. Carrying a File here would have been the one
+        // remaining way to reach commit() with something unverified.
+        val staged = ArrayList<Pair<App, VerifiedApk>>(batch.size)
         batch.forEachIndexed { i, app ->
             if (UpdateProgress.cancelRequested) {
                 Log.i(TAG, "installAll cancelled by user during download")
