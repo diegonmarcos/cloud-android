@@ -210,6 +210,38 @@
       "kind": "app"
     },
     {
+      "id": "nix-on-droid",
+      "label": "Cloud Nix-on-Droid",
+      "package": "com.termux.nix",
+      "alt_id": null,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-nixdroid",
+      "tag": "latest",
+      "asset": "cloud-nixdroid.apk",
+      "release_url": "https://github.com/diegonmarcos/cloud-u-android/releases",
+      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ac_cloud-nix-on-droid",
+      "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-nixdroid",
+      "blocked": false,
+      "kind": "app"
+    },
+    {
+      "id": "termux",
+      "label": "Cloud Terminal (Termux)",
+      "package": "com.termux",
+      "alt_id": null,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-terminal",
+      "tag": "latest",
+      "asset": "cloud-terminal.apk",
+      "release_url": "https://github.com/diegonmarcos/cloud-u-android/releases",
+      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ac_cloud-termux",
+      "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-terminal",
+      "blocked": false,
+      "kind": "app"
+    },
+    {
       "id": "vault",
       "label": "cloud-vault",
       "package": "com.diegonmarcos.cloudvault",
@@ -268,7 +300,7 @@
       "tag": "latest",
       "asset": "Cloud-Keyboard-Libs.apk",
       "release_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Keyboard-Libs.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/keyboard-engines",
+      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ab_cloud-libs-shared/keyboard-engines",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-keyboard-libs",
       "blocked": false,
       "kind": "lib"
