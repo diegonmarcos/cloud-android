@@ -92,6 +92,26 @@ object DiagnosticsPush {
     /** True when a report can be sent at all — drives whether the Send button
      *  is offered. Empty URL is a legitimate configuration (an app that does
      *  not want to phone home), not an error. */
+    /** A place a report can be POSTed. [url] may contain {app}. */
+    data class ReportTarget(val id: String, val label: String, val url: String)
+
+    /** Declared destinations, in build.json order. Empty list = Send is hidden. */
+    fun reportTargets(): List<ReportTarget> = runCatching {
+        val arr = org.json.JSONArray(
+            String(android.util.Base64.decode(BuildConfig.DIAG_TARGETS_B64, android.util.Base64.NO_WRAP)))
+        (0 until arr.length()).map {
+            val o = arr.getJSONObject(it)
+            ReportTarget(o.optString("id"), o.optString("label"), o.optString("url"))
+        }.filter { it.url.isNotBlank() }
+    }.getOrDefault(emptyList())
+
+    /** POST to one named target; same contract as [postReport]. */
+    fun postReportTo(target: ReportTarget, app: String, body: String): Int {
+        val url = if (target.url.contains("{app}")) target.url.replace("{app}", app)
+                  else "${target.url.trimEnd('/')}/$app"
+        return postToUrl(url, body)
+    }
+
     fun canReport(): Boolean = BuildConfig.DIAG_REPORT_URL.isNotBlank()
 
     /**
@@ -108,6 +128,10 @@ object DiagnosticsPush {
         val base = BuildConfig.DIAG_REPORT_URL
         if (base.isBlank()) return -1
         val url = if (base.contains("{app}")) base.replace("{app}", app) else "$base/$app"
+        return postToUrl(url, body)
+    }
+
+    private fun postToUrl(url: String, body: String): Int {
         return runCatching {
             val c = URL(url).openConnection() as HttpURLConnection
             c.requestMethod = "POST"
@@ -126,7 +150,11 @@ object DiagnosticsPush {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val values = ContentValues().apply {
                 put(MediaStore.Downloads.DISPLAY_NAME, filename)
-                put(MediaStore.Downloads.MIME_TYPE, "application/json")
+                // Derive from the name: the install report is plain text and
+                // came out as "install-diagnosis-….txt.json", which is a
+                // confusing thing to hand someone who is already debugging.
+                put(MediaStore.Downloads.MIME_TYPE,
+                    if (filename.endsWith(".txt")) "text/plain" else "application/json")
                 put(MediaStore.Downloads.IS_PENDING, 1)
             }
             val resolver = ctx.contentResolver

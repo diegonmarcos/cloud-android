@@ -270,6 +270,12 @@ object Fleet {
      * the other channel, not a reason to fail an install the other channel
      * could still complete.
      */
+    /** True when [f] parses as a zip with at least one entry — the weakest
+     *  test that still separates "an APK arrived" from "something arrived". */
+    private fun looksLikeApk(f: File): Boolean = runCatching {
+        java.util.zip.ZipFile(f).use { it.size() > 0 }
+    }.getOrDefault(false)
+
     private fun releaseDownload(ctx: Context, app: App): File? {
         if (app.releaseUrl.isBlank()) return null
         return runCatching {
@@ -299,9 +305,32 @@ object Fleet {
             // A truncated download is the failure this catches: an APK that is
             // short is not an APK, and the installer's error for one is far
             // less useful than saying so here.
-            if (total > 0 && target.length() != total) {
+            //
+            // The size check USED to be guarded by `total > 0`, which made it
+            // no check at all whenever the CDN omitted Content-Length: total
+            // came back -1, the comparison was skipped, and an unverified file
+            // went to the installer. That is exactly how a 383 kB
+            // fleet-mail-release.apk — 1.3% of a 29 MB APK — reached
+            // PackageInstaller and came back
+            // "INSTALL_PARSE_FAILED_NOT_APK: Failed to load asset path".
+            // Unlike the GHCR path there is no digest here to catch it after
+            // the fact, so an unverifiable download must never be RETURNED;
+            // returning null falls through to GHCR, which does carry one.
+            if (total <= 0) {
+                target.delete()
+                error("no Content-Length — cannot verify, deferring to GHCR")
+            }
+            if (target.length() != total) {
                 target.delete()
                 error("short read: ${target.length()} of $total")
+            }
+            // Cheap structural check: a complete zip ends in an End Of Central
+            // Directory record. A response that is the right LENGTH but is an
+            // error page or an HTML redirect still fails here, and failing now
+            // is worth far more than failing inside the installer.
+            if (!looksLikeApk(target)) {
+                target.delete()
+                error("downloaded ${app.id} is not a zip — deferring to GHCR")
             }
             target
         }.getOrNull()
