@@ -63,6 +63,7 @@
       "type": "library"
     },
     "libs:maps": {
+      "dir": "../ab_cloud-libs-shared/libs/maps",
       "type": "library"
     },
     "libs:devtools": {

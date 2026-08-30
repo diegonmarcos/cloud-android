@@ -5,16 +5,13 @@
   "_doc": "ab_cloud-keyboard-libs bundles five modules into ONE companion APK. This repo is the general case: one APK per library module, so each lib is installable, updatable and inspectable on its own. Nothing here names a module - the set comes from scanning lib_apks.scan, so a new module in aa_cloud-superapp/libs/ ships an APK with no edit to this file (FIRE RULE #6).",
   "lib_apks": {
     "_doc_scan": "Every directory under ANY of these paths that contains a build.gradle is a library module and gets an APK. A list because ab_cloud-libs-shared/libs holds every SHARED module (consolidated there 2026-08-30 - it is the only multi-consumer root), while cal/contacts/maps/news/wallet are single-app feature modules that stayed in their own repos. Module names must be unique ACROSS roots - the name is both the gradle path and the applicationId suffix - and settings.gradle fails the build if two roots collide. Paths are relative to this repo's root.",
-    "scan": [
-      "../ab_cloud-libs-shared/libs",
-      "../ac_cloud-calendar/libs",
-      "../ac_cloud-contacts/libs",
-      "../ac_cloud-nav/libs",
-      "../ac_cloud-news/libs",
-      "../ac_cloud-wallet/libs"
-    ],
+    "scan": ["../ab_cloud-libs-shared/libs"],
     "_doc_exclude": "Modules that must NOT ship as a standalone APK, each with the reason. An exclusion is a claim about install-time behaviour, so it belongs in data next to the scan rule rather than as a silent skip in gradle.",
     "exclude": {
+      "cropper": "Upstream image-cropper UI for cloud-media-center, moved into the shared root with the rest of its libs/. It was never a lib APK — media-center was not a scan root — and a standalone cropper APK installs nothing anyone can open. Excluded so the shipped set is exactly what it was before the merge.",
+      "gesture": "Same: upstream gesture helper, compiled into cloud-media-center only.",
+      "panoramaviewer": "Same: upstream panorama viewer, compiled into cloud-media-center only.",
+      "scrollbar": "Same: upstream fast-scrollbar, compiled into cloud-media-center only.",
       "keyboard": "Already ships as its own APK (Cloud-Keyboard.apk, ac_cloud-keyboard). A second package carrying the same LatinIME service would register a duplicate input method, and its clipboard/gesture ContentProvider authorities come from string resources that both packages would claim - INSTALL_FAILED_CONFLICTING_PROVIDER."
     },
     "_doc_ids": "Flavor applicationId = <application_id_prefix>.<module name with '-' stripped>; release asset = <asset_prefix><Module-Name>.apk. Derived, never listed.",

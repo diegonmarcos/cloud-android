@@ -53,6 +53,7 @@
       "type": "library"
     },
     "libs:cal": {
+      "dir": "../ab_cloud-libs-shared/libs/cal",
       "type": "library",
       "_doc_not_linked": "Declared so gradle resolves the module tree, but the APP no longer depends on it: libs:cal ships as Cloud-Lib-Cal.apk and is reached through core's DataBackendClient (CalBridge). Credentials stay in the app and travel per call, so the engine having its own storage orphans nothing."
     },

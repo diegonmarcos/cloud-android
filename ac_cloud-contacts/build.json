@@ -53,6 +53,7 @@
       "type": "library"
     },
     "libs:contacts": {
+      "dir": "../ab_cloud-libs-shared/libs/contacts",
       "type": "library"
     },
     "libs:analytics": {

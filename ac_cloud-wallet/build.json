@@ -56,6 +56,7 @@
       "type": "library"
     },
     "libs:wallet": {
+      "dir": "../ab_cloud-libs-shared/libs/wallet",
       "type": "library"
     },
     "libs:updater": {
