@@ -253,6 +253,7 @@ public class AdapterMessage extends RecyclerView.Adapter<AdapterMessage.ViewHold
     private int colorUnread;
     private int colorRead;
     private int colorSubject;
+    private boolean highlight_subject;
     private int colorVerified;
     private int colorEncrypt;
     private int colorSeparator;
@@ -1358,7 +1359,8 @@ public class AdapterMessage extends RecyclerView.Adapter<AdapterMessage.ViewHold
                 //tvKeywords.setTextSize(TypedValue.COMPLEX_UNIT_PX, textSize * 0.9f);
                 //tvFolder.setTextSize(TypedValue.COMPLEX_UNIT_PX, textSize * 0.9f);
                 //tvLabels.setTextSize(TypedValue.COMPLEX_UNIT_PX, textSize * 0.9f);
-                tvPreview.setTextSize(TypedValue.COMPLEX_UNIT_PX, textSize * 0.9f);
+                // comms: row0 sender > row1 subject > row2 preview -- see bindSeen()
+                tvPreview.setTextSize(TypedValue.COMPLEX_UNIT_PX, textSize * 0.85f);
                 tvNotes.setTextSize(TypedValue.COMPLEX_UNIT_PX, textSize * 0.9f);
             }
 
@@ -2036,8 +2038,11 @@ public class AdapterMessage extends RecyclerView.Adapter<AdapterMessage.ViewHold
             }
 
             if (textSize != 0) {
-                float fz_sender = (font_size_sender == null ? textSize : font_size_sender) * (message.unseen > 0 ? 1.1f : 1f);
-                float fz_subject = (font_size_subject == null ? textSize : font_size_subject) * 0.9f;
+                // comms: three-row hierarchy -- sender (1.25/1.35) > subject
+                // (1.05) > preview (0.85, set in bindTo). The unread bump on the
+                // sender is kept on top of the new baseline.
+                float fz_sender = (font_size_sender == null ? textSize : font_size_sender) * (message.unseen > 0 ? 1.35f : 1.25f);
+                float fz_subject = (font_size_subject == null ? textSize : font_size_subject) * 1.05f;
                 tvFrom.setTextSize(TypedValue.COMPLEX_UNIT_PX, fz_sender);
                 tvSubject.setTextSize(TypedValue.COMPLEX_UNIT_PX, fz_subject);
 
@@ -2071,6 +2076,21 @@ public class AdapterMessage extends RecyclerView.Adapter<AdapterMessage.ViewHold
                 tvFrom.setTextColor(colorUnseen);
                 tvSize.setTextColor(colorUnseen);
                 tvTime.setTextColor(colorUnseen);
+            }
+
+            // comms: bold-vs-regular alone was too weak a read/unread cue, so all
+            // three rows carry the colour too -- unread is full-strength text,
+            // read drops to the muted grey. highlight_subject still wins on row1.
+            // The preview colour is set here rather than in bindTo because
+            // bindTo caches it by tag and knows nothing about the seen state.
+            if (tvSubject != null)
+                tvSubject.setTextColor(message.unseen > 0 && highlight_subject
+                        ? colorSubject : colorUnseen);
+            if (tvPreview != null) {
+                tvPreview.setTextColor(colorUnseen);
+                tvPreview.setTypeface(StyleHelper.getTypeface(display_font, context),
+                        (preview_italic ? Typeface.ITALIC : Typeface.NORMAL)
+                                | (message.unseen > 0 ? Typeface.BOLD : Typeface.NORMAL));
             }
         }
 
@@ -8633,7 +8653,7 @@ public class AdapterMessage extends RecyclerView.Adapter<AdapterMessage.ViewHold
         this.textColorHighlightInverse = Helper.resolveColor(context, android.R.attr.textColorHighlightInverse);
 
         boolean highlight_unread = prefs.getBoolean("highlight_unread", true);
-        boolean highlight_subject = prefs.getBoolean("highlight_subject", false);
+        highlight_subject = prefs.getBoolean("highlight_subject", false);
         this.colorUnreadHighlight = prefs.getInt("highlight_color", Helper.resolveColor(context, R.attr.colorUnreadHighlight));
 
         this.colorUnread = (highlight_unread ? colorUnreadHighlight : Helper.resolveColor(context, R.attr.colorUnread));

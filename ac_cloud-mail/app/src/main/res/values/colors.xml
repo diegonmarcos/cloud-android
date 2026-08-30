@@ -9,8 +9,9 @@
     <color name="colorReadLight">#b3000000</color>
     <color name="colorUnreadLight">#ff000000</color>
 
-    <!-- White 38%  secondary_text_material_dark -->
-    <color name="colorReadDark">#b3ffffff</color>
+    <!-- comms: a dimmed white (#b3ffffff) is not a strong enough read/unread
+         signal next to bold -- it still reads as white. A true grey is. -->
+    <color name="colorReadDark">#ff9e9e9e</color>
     <!-- White 87%  primary_text_default_material_dark -->
     <color name="colorUnreadDark">#ffffffff</color>
 

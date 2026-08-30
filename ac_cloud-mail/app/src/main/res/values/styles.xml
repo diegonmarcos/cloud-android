@@ -498,7 +498,9 @@
         <item name="android:textColorHighlight">@color/lightBluePrimary</item>
         <item name="android:textColorHighlightInverse">@color/lightBluePrimary</item>
 
-        <item name="colorRead">@color/white</item>
+        <!-- comms: colorRead was @color/white here, identical to colorUnread,
+             so in this theme bold/unbold was the ONLY read/unread cue. -->
+        <item name="colorRead">@color/colorReadDark</item>
         <item name="colorUnread">@color/white</item>
         <item name="colorUnreadHighlight">@color/white</item>
 
