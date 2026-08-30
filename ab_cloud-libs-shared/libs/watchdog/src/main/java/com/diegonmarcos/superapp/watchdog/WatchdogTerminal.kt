@@ -130,8 +130,12 @@ class WatchdogTerminal(private val ctx: Context) {
 
     companion object {
         /** Our Termux fork. Same applicationId as upstream — see its README. */
-        const val TERMUX_PKG = "com.termux"
-        const val ACTION = "com.termux.CLOUD_EXEC"
+        // OUR terminal fork, not the official app: renamed com.termux ->
+        // cld.termux (3aba806aa) precisely so both coexist on the phone.
+        // The AIDL descriptor stays com.termux.cloud.ICloudExec — the Java
+        // namespace was deliberately NOT renamed, only the applicationId.
+        const val TERMUX_PKG = "cld.termux"
+        const val ACTION = "cld.termux.CLOUD_EXEC"
 
         /** Loopback-fast. A bind that has not landed by now is not slow, it is absent. */
         const val BIND_MS = 3_000L
