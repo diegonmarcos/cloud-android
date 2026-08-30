@@ -353,13 +353,16 @@ object Fleet {
         // active sessions for UID".
         val batch = if (limit >= todo.size) todo
                     else todo.take(minOf(limit, UpdateInstaller(ctx).freeSessionSlots()))
-        if (batch.size < todo.size) {
-            // Never a silent cap: the rest are picked up by the next pass, and
-            // the log has to say so or "acted on 3 apps" reads as "3 needed it".
+        // Never a silent cap: the rest are picked up by the next pass, and a
+        // log line alone reads as "3 needed it" instead of "3 of N could run
+        // now" — this note rides along on every beginBatch label below so the
+        // overlay says so too, not just logcat.
+        val capNote = if (batch.size < todo.size) {
             Log.i(TAG, "installAll capped at ${batch.size} of ${todo.size} app(s) " +
                        "(limit=$limit, session headroom decides the rest); " +
                        "remainder deferred to the next pass")
-        }
+            " (capped at ${batch.size} of ${todo.size})"
+        } else ""
         UpdateProgress.beginDownload() // disarm any stale cancel before the batch
 
         // ── PHASE 1: download everything, install nothing ───────────────────
@@ -382,7 +385,7 @@ object Fleet {
                 UpdateProgress.update(UpdateProgress.State.Cancelled)
                 return 0
             }
-            UpdateProgress.beginBatch("↓ ${app.label}", i + 1, batch.size)
+            UpdateProgress.beginBatch("↓ ${app.label}$capNote", i + 1, batch.size)
             try {
                 staged += app to download(ctx, app)
             } catch (c: java.util.concurrent.CancellationException) {
@@ -410,7 +413,7 @@ object Fleet {
                 UpdateProgress.update(UpdateProgress.State.Cancelled)
                 return acted
             }
-            UpdateProgress.beginBatch(app.label, i + 1, staged.size)
+            UpdateProgress.beginBatch("${app.label}$capNote", i + 1, staged.size)
             try {
                 // commit() blocks until this install settles: UpdateInstaller
                 // runs every install through InstallGate, so the batch does not

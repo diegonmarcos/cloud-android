@@ -32,6 +32,11 @@ internal object ShellInstall : InstallChannel {
     private const val TAG = "FleetUpdater"
 
     override fun install(ctx: Context, app: Fleet.App, apk: VerifiedApk): Boolean {
+        // The blocking `pm install` call below can take up to ~25s. Without
+        // this, the overlay is left showing the last Downloading frame (or an
+        // even staler one) for the whole install, which reads as frozen —
+        // exactly the "batch progress looks stuck" bug this exists to end.
+        UpdateProgress.update(UpdateProgress.State.Installing)
         if (!shellInstall(ctx, apk)) return false
         UpdateProgress.update(UpdateProgress.State.Done)
         return true
