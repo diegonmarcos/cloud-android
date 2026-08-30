@@ -57,6 +57,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.snackbar.Snackbar;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -88,6 +89,13 @@ public class FragmentRules extends FragmentBase {
     private ContentLoadingProgressBar pbWait;
     private Group grpReady;
     private FloatingActionButton fab;
+
+    // comms: "Server rules (cloud)" section (all mode only) — see onLoadServerRules
+    private TextView tvServerRulesHeader;
+    private RecyclerView rvServerRule;
+    private TextView tvDeviceRulesHeader;
+    private TextView tvDeviceRulesEmpty;
+    private AdapterServerRule serverAdapter;
 
     private String searching = null;
     private AdapterRule adapter;
@@ -130,6 +138,11 @@ public class FragmentRules extends FragmentBase {
         pbWait = view.findViewById(R.id.pbWait);
         grpReady = view.findViewById(R.id.grpReady);
         fab = view.findViewById(R.id.fab);
+
+        tvServerRulesHeader = view.findViewById(R.id.tvServerRulesHeader);
+        rvServerRule = view.findViewById(R.id.rvServerRule);
+        tvDeviceRulesHeader = view.findViewById(R.id.tvDeviceRulesHeader);
+        tvDeviceRulesEmpty = view.findViewById(R.id.tvDeviceRulesEmpty);
 
         // Wire controls
 
@@ -211,6 +224,19 @@ public class FragmentRules extends FragmentBase {
         adapter = new AdapterRule(this, all);
         rvRule.setAdapter(adapter);
 
+        // comms: server rules section only makes sense in the global list —
+        // a per-folder rules page already has one specific account/folder and
+        // no ambiguity, so there's nothing extra worth fetching from the cloud.
+        if (all) {
+            tvServerRulesHeader.setVisibility(View.VISIBLE);
+            tvDeviceRulesHeader.setVisibility(View.VISIBLE);
+
+            serverAdapter = new AdapterServerRule(inflater);
+            rvServerRule.setLayoutManager(new LinearLayoutManager(getContext()));
+            rvServerRule.setAdapter(serverAdapter);
+            rvServerRule.setVisibility(View.VISIBLE);
+        }
+
         if (!cards) {
             DividerItemDecoration itemDecorator = new DividerItemDecoration(getContext(), llm.getOrientation());
             itemDecorator.setDrawable(getContext().getDrawable(R.drawable.divider));
@@ -273,10 +299,82 @@ public class FragmentRules extends FragmentBase {
                 adapter.set(protocol, type, sort, rules);
                 rvRule.invalidateItemDecorations();
 
+                if (all)
+                    tvDeviceRulesEmpty.setVisibility(rules.isEmpty() ? View.VISIBLE : View.GONE);
+
                 pbWait.setVisibility(View.GONE);
                 grpReady.setVisibility(View.VISIBLE);
             }
         });
+
+        if (all)
+            onLoadServerRules();
+    }
+
+    // comms: fetch the server-side rules (mail-rules.nix → per-account Stalwart
+    // Sieve) over the app's existing JMAP connection(s) and summarize them into
+    // the read-only "Server rules (cloud)" section. One JMAP account is the
+    // expected case, but every synchronizing JMAP account gets its own script
+    // fetched and labelled, in case more than one is ever configured.
+    private void onLoadServerRules() {
+        new SimpleTask<List<SieveRules.Row>>() {
+            @Override
+            protected List<SieveRules.Row> onExecute(Context context, Bundle args) {
+                DB db = DB.getInstance(context);
+                List<EntityAccount> accounts = new ArrayList<>();
+                for (EntityAccount a : db.account().getAccounts())
+                    if (a.synchronize && a.protocol == EntityAccount.TYPE_JMAP)
+                        accounts.add(a);
+
+                List<SieveRules.Row> rows = new ArrayList<>();
+                for (EntityAccount a : accounts) {
+                    EmailService iservice = null;
+                    try {
+                        iservice = new EmailService(context, a, EmailService.PURPOSE_USE, false);
+                        iservice.connect(a);
+                        JmapService jmap = iservice.getJmapService();
+                        String sieve = (jmap == null ? null : jmap.fetchSieveScript());
+                        List<SieveRules.Row> parsed = SieveRules.parse(sieve);
+                        // Prefix with the account when there's more than one, so
+                        // two accounts' rules don't read as one merged list.
+                        if (accounts.size() > 1)
+                            for (SieveRules.Row r : parsed)
+                                rows.add(new SieveRules.Row(a.name + ": " + r.title, r.subtitle));
+                        else
+                            rows.addAll(parsed);
+                    } catch (Throwable ex) {
+                        Log.w(ex);
+                        rows.add(new SieveRules.Row(
+                                accounts.size() > 1 ? a.name : getString(R.string.title_comms_server_rules_header),
+                                getString(R.string.title_comms_server_rules_error, JmapService.describe(ex))));
+                    } finally {
+                        if (iservice != null)
+                            try {
+                                iservice.close();
+                            } catch (Throwable ignored) {
+                            }
+                    }
+                }
+
+                if (accounts.isEmpty())
+                    rows.add(new SieveRules.Row(
+                            getString(R.string.title_comms_server_rules_header),
+                            getString(R.string.title_comms_server_rules_no_account)));
+
+                return rows;
+            }
+
+            @Override
+            protected void onExecuted(Bundle args, List<SieveRules.Row> rows) {
+                if (serverAdapter != null)
+                    serverAdapter.set(rows);
+            }
+
+            @Override
+            protected void onException(Bundle args, Throwable ex) {
+                Log.unexpectedError(getParentFragmentManager(), ex, false);
+            }
+        }.execute(this, new Bundle(), "rules:server");
     }
 
     @Override
@@ -380,6 +478,7 @@ public class FragmentRules extends FragmentBase {
         menu.setGroupVisible(R.id.group_backup, !all);
         menu.findItem(R.id.menu_delete_all).setVisible(!all);
         menu.findItem(R.id.menu_apply_all).setVisible(all);
+        menu.findItem(R.id.menu_run_engine).setVisible(all);
 
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getContext());
         String sort = prefs.getString("rule_sort", "order");
@@ -420,6 +519,9 @@ public class FragmentRules extends FragmentBase {
             return true;
         } else if (itemId == R.id.menu_apply_all) {
             onMenuApplyAll();
+            return true;
+        } else if (itemId == R.id.menu_run_engine) {
+            onMenuRunRulesEngine();
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -550,6 +652,64 @@ public class FragmentRules extends FragmentBase {
                 Log.unexpectedError(getParentFragmentManager(), ex, report);
             }
         }.execute(this, new Bundle(), "rules:apply_all");
+    }
+
+    // comms: trigger the server-side sorter's reapply pass (cloud-u-containers:
+    // user-comm_tools-stalwart/src/crate/src/main.rs — take_reapply_request)
+    // instead of the app's own device-side "Apply device rules". The sorter
+    // already re-evaluates routing for ALL mail on every ~30s poll (routing.rs:
+    // "the backfill IS the normal poll"); creating the ".reapply" JMAP mailbox
+    // just makes it happen within ~10s instead of waiting out the interval.
+    private void onMenuRunRulesEngine() {
+        new SimpleTask<Integer>() {
+            @Override
+            protected void onPreExecute(Bundle args) {
+                ToastEx.makeText(getContext(), R.string.title_executing, Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            protected Integer onExecute(Context context, Bundle args) {
+                DB db = DB.getInstance(context);
+                int triggered = 0;
+                for (EntityAccount a : db.account().getAccounts()) {
+                    if (!a.synchronize || a.protocol != EntityAccount.TYPE_JMAP)
+                        continue;
+                    EmailService iservice = null;
+                    try {
+                        iservice = new EmailService(context, a, EmailService.PURPOSE_USE, false);
+                        iservice.connect(a);
+                        JmapService jmap = iservice.getJmapService();
+                        if (jmap != null) {
+                            jmap.requestReapply();
+                            triggered++;
+                        }
+                    } catch (Throwable ex) {
+                        Log.w(ex);
+                    } finally {
+                        if (iservice != null)
+                            try {
+                                iservice.close();
+                            } catch (Throwable ignored) {
+                            }
+                    }
+                }
+                return triggered;
+            }
+
+            @Override
+            protected void onExecuted(Bundle args, Integer triggered) {
+                int msg = (triggered > 0)
+                        ? R.string.title_comms_rules_engine_triggered
+                        : R.string.title_comms_rules_engine_no_account;
+                Snackbar snackbar = Helper.setSnackbarOptions(Snackbar.make(view, msg, Snackbar.LENGTH_LONG));
+                snackbar.show();
+            }
+
+            @Override
+            protected void onException(Bundle args, Throwable ex) {
+                Log.unexpectedError(getParentFragmentManager(), ex);
+            }
+        }.execute(this, new Bundle(), "rules:run_engine");
     }
 
     private void onExport(Intent data) {

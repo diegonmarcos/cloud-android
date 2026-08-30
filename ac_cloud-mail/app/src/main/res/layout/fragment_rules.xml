@@ -10,6 +10,69 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
+        <!-- comms: global mode only (Settings > Rules) — the REAL rules live
+             server-side (mail-rules.nix → Stalwart Sieve); this section reads
+             them read-only via JMAP so the page isn't just an empty device
+             list. GONE by default; FragmentRules shows it only when all=true. -->
+        <TextView
+            android:id="@+id/tvServerRulesHeader"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="6dp"
+            android:layout_marginEnd="12dp"
+            android:text="@string/title_comms_server_rules_header"
+            android:textAppearance="@style/TextAppearance.AppCompat.Medium"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            tools:visibility="visible" />
+
+        <eu.faircode.email.FixedRecyclerView
+            android:id="@+id/rvServerRule"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:nestedScrollingEnabled="false"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tvServerRulesHeader"
+            tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/tvDeviceRulesHeader"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="12dp"
+            android:layout_marginEnd="12dp"
+            android:text="@string/title_comms_device_rules_header"
+            android:textAppearance="@style/TextAppearance.AppCompat.Medium"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/rvServerRule"
+            tools:visibility="visible" />
+
+        <!-- comms: shown instead of an empty rvRule in all mode, so "zero
+             device rules" doesn't read as "the Rules page is broken". -->
+        <TextView
+            android:id="@+id/tvDeviceRulesEmpty"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginEnd="12dp"
+            android:text="@string/title_comms_device_rules_hint"
+            android:textAppearance="@style/TextAppearance.AppCompat.Small"
+            android:textStyle="italic"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/tvDeviceRulesHeader" />
+
         <eu.faircode.email.FixedRecyclerView
             android:id="@+id/rvRule"
             android:layout_width="0dp"
@@ -22,7 +85,7 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toBottomOf="@id/tvDeviceRulesEmpty" />
 
         <eu.faircode.email.ContentLoadingProgressBar
             android:id="@+id/pbWait"

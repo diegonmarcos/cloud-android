@@ -29,8 +29,16 @@
     <string name="title_comms_about" translatable="false">About</string>
     <string name="title_comms_accounts" translatable="false">Accounts</string>
     <string name="title_comms_rules" translatable="false">Rules</string>
-    <string name="title_comms_rules_apply_all" translatable="false">Apply all rules</string>
+    <string name="title_comms_rules_apply_all" translatable="false">Apply device rules</string>
     <string name="title_comms_rules_applied_all" translatable="false">Applied to %1$d folder(s), %2$d message(s) affected</string>
+    <string name="title_comms_rules_run_engine" translatable="false">Run rules engine</string>
+    <string name="title_comms_rules_engine_triggered" translatable="false">Server rules engine triggered — re-applying to all mail</string>
+    <string name="title_comms_rules_engine_no_account" translatable="false">No cloud (JMAP) account to trigger</string>
+    <string name="title_comms_server_rules_header" translatable="false">Server rules (cloud)</string>
+    <string name="title_comms_device_rules_header" translatable="false">Device rules</string>
+    <string name="title_comms_device_rules_hint" translatable="false">Device rules run in the app; server rules run in the cloud.</string>
+    <string name="title_comms_server_rules_no_account" translatable="false">No cloud (JMAP) account configured</string>
+    <string name="title_comms_server_rules_error" translatable="false">Could not read server rules: %s</string>
     <string name="title_comms_app_name" translatable="false">Cloud Mail</string>
     <string name="title_comms_update_channel" translatable="false">Update channel</string>
     <string name="title_comms_check_for_updates" translatable="false">Check for updates</string>

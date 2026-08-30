@@ -26,6 +26,9 @@ import androidx.annotation.NonNull;
 
 import com.google.common.net.MediaType;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.time.Instant;
@@ -59,6 +62,7 @@ import rs.ltt.jmap.common.method.call.email.QueryEmailMethodCall;
 import rs.ltt.jmap.common.method.call.email.SetEmailMethodCall;
 import rs.ltt.jmap.common.method.call.identity.GetIdentityMethodCall;
 import rs.ltt.jmap.common.method.call.mailbox.GetMailboxMethodCall;
+import rs.ltt.jmap.common.method.call.mailbox.SetMailboxMethodCall;
 import rs.ltt.jmap.common.method.call.submission.SetEmailSubmissionMethodCall;
 import rs.ltt.jmap.common.method.response.email.GetEmailMethodResponse;
 import rs.ltt.jmap.common.method.response.email.QueryEmailMethodResponse;
@@ -107,6 +111,7 @@ public class JmapService {
 
     private JmapClient client;
     private String accountId; // resolved MailAccountCapability primary account
+    private String password; // comms: kept only to sign the raw Sieve HTTP calls below (no typed lib support)
 
     JmapService(Context context, EntityAccount account) {
         this(context, account.host, account.port, account.user);
@@ -132,6 +137,7 @@ public class JmapService {
     // root-cause chain is logged to EntityLog (visible in the app's log viewer)
     // so failures are diagnosable, not a bare "Failed".
     void connect(String password) throws MessagingException {
+        this.password = password;
         String sessionResourceUrl = "https://" + host + ":" + port + "/.well-known/jmap";
         HttpUrl sessionResource = HttpUrl.get(sessionResourceUrl);
         EntityLog.log(context, "JMAP connecting user=" + user + " → " + sessionResourceUrl);
@@ -538,6 +544,131 @@ public class JmapService {
         return (all.length == 0 ? null : all[0].getId());
     }
 
+    // ── Server rules (cloud) ─────────────────────────────────────────────────
+    //
+    // The real rules the SuperApp Rules page must show live server-side:
+    // mail-rules.nix compiles a canonical rule set into a per-account Stalwart
+    // Sieve script (cloud-u-containers: _shared/lib/mail-rules.nix::toSieve,
+    // uploaded per-account by user-comm_tools-stalwart/dist/configs/activate.sh
+    // Step C via SieveScript/set). rs.ltt.jmap 0.8.10 has no
+    // urn:ietf:params:jmap:sieve support at all, so both calls below are raw
+    // JMAP-over-HTTPS using the session's own apiUrl/downloadUrl and the same
+    // Basic-auth credentials the app already holds for this account (mirrors
+    // FragmentJmapAccount's connection check).
+
+    /**
+     * Fetch the account's active Sieve script source, or null if none is set.
+     */
+    String fetchSieveScript() throws MessagingException {
+        requireAccount();
+        try {
+            Session session = client.getSession().get();
+
+            String body = "{\"using\":[\"urn:ietf:params:jmap:core\",\"urn:ietf:params:jmap:sieve\"]," +
+                    "\"methodCalls\":[[\"SieveScript/get\",{\"accountId\":\"" + accountId + "\"},\"0\"]]}";
+            String response = rawJmapCall(session.getApiUrl(), body);
+
+            JSONObject jroot = new JSONObject(response);
+            JSONObject jargs = jroot.getJSONArray("methodResponses").getJSONArray(0).getJSONObject(1);
+            JSONArray jlist = jargs.optJSONArray("list");
+            if (jlist == null || jlist.length() == 0)
+                return null;
+
+            // Stalwart marks exactly one script isActive:true (the one
+            // activate.sh just installed); fall back to the first if none is
+            // flagged (a server that predates that convention).
+            JSONObject jscript = null;
+            for (int i = 0; i < jlist.length(); i++) {
+                JSONObject j = jlist.getJSONObject(i);
+                if (j.optBoolean("isActive", false)) {
+                    jscript = j;
+                    break;
+                }
+            }
+            if (jscript == null)
+                jscript = jlist.getJSONObject(0);
+
+            String blobId = jscript.optString("blobId", null);
+            if (TextUtils.isEmpty(blobId))
+                return null;
+
+            HttpUrl downloadUrl = session.getDownloadUrl(accountId, blobId,
+                    jscript.optString("name", "default") + ".sieve", "application/sieve");
+            return rawJmapDownload(downloadUrl);
+        } catch (MessagingException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw wrap("SieveScript/get", ex);
+        }
+    }
+
+    /**
+     * Name of the sentinel mailbox the sorter (cloud-u-containers:
+     * user-comm_tools-stalwart/src/crate/src/main.rs — REAPPLY_SENTINEL) polls
+     * for every ~10s: create it and the sorter destroys it and immediately
+     * re-runs its routing pass over ALL mail, not just new deliveries. A
+     * mailbox rather than a keyword or HTTP endpoint, so the app needs no new
+     * credential or port — just the JMAP connection it already has.
+     */
+    private static final String REAPPLY_SENTINEL = ".reapply";
+
+    /** Ask the server-side sorter to re-apply routing rules to all mail now. */
+    void requestReapply() throws MessagingException {
+        requireAccount();
+        try {
+            client.call(SetMailboxMethodCall.builder()
+                    .accountId(accountId)
+                    .create(java.util.Collections.singletonMap("r",
+                            Mailbox.builder().name(REAPPLY_SENTINEL).build()))
+                    .build()).get();
+        } catch (Exception ex) {
+            throw wrap("Mailbox/set(.reapply)", ex);
+        }
+    }
+
+    private String rawJmapCall(HttpUrl url, String jsonBody) throws Exception {
+        java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL(url.toString()).openConnection();
+        try {
+            c.setRequestMethod("POST");
+            c.setDoOutput(true);
+            c.setConnectTimeout(15_000);
+            c.setReadTimeout(15_000);
+            c.setRequestProperty("Content-Type", "application/json");
+            c.setRequestProperty("Authorization", basicAuth());
+            try (java.io.OutputStream os = c.getOutputStream()) {
+                os.write(jsonBody.getBytes("UTF-8"));
+            }
+            int code = c.getResponseCode();
+            String response = Helper.readStream(code >= 200 && code < 300 ? c.getInputStream() : c.getErrorStream());
+            if (code < 200 || code >= 300)
+                throw new MessagingException("JMAP HTTP " + code + ": " + response);
+            return response;
+        } finally {
+            c.disconnect();
+        }
+    }
+
+    private String rawJmapDownload(HttpUrl url) throws Exception {
+        java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL(url.toString()).openConnection();
+        try {
+            c.setConnectTimeout(15_000);
+            c.setReadTimeout(15_000);
+            c.setRequestProperty("Authorization", basicAuth());
+            int code = c.getResponseCode();
+            String response = Helper.readStream(code >= 200 && code < 300 ? c.getInputStream() : c.getErrorStream());
+            if (code < 200 || code >= 300)
+                throw new MessagingException("Sieve blob download HTTP " + code);
+            return response;
+        } finally {
+            c.disconnect();
+        }
+    }
+
+    private String basicAuth() throws java.io.UnsupportedEncodingException {
+        return "Basic " + android.util.Base64.encodeToString(
+                (user + ":" + password).getBytes("UTF-8"), android.util.Base64.NO_WRAP);
+    }
+
     // ── plumbing ─────────────────────────────────────────────────────────────
 
     JmapClient getClient() {
@@ -564,6 +695,7 @@ public class JmapService {
         } finally {
             client = null;
             accountId = null;
+            password = null;
         }
     }
 }

@@ -51,5 +51,13 @@
             android:id="@+id/menu_apply_all"
             android:title="@string/title_comms_rules_apply_all"
             app:showAsAction="never" />
+
+        <!-- comms: triggers the SERVER-side sorter/rules engine (Stalwart Sieve +
+             Rust sorter on the mail VM), as opposed to menu_apply_all above which
+             only replays the device's own local rules. -->
+        <item
+            android:id="@+id/menu_run_engine"
+            android:title="@string/title_comms_rules_run_engine"
+            app:showAsAction="never" />
     </group>
 </menu>
