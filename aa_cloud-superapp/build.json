@@ -1704,6 +1704,13 @@
                 "label": "Vault",
                 "icon": "ic_vault",
                 "target": "extapp:cloud-vault"
+              },
+              {
+                "_doc": "Cloud-Watchdog — the standalone fleet/host watchdog APK (ac_cloud-watchdog). extapp:, not app://, so a phone without it installed gets the APK offered instead of a dead tile: launchExternalApp opens com.diegonmarcos.watchdog when present, else installs ui.external_apps[id=cloud-watchdog].install_apk_url.",
+                "id": "watchdog",
+                "label": "Watchdog",
+                "icon": "ic_p_c3_health",
+                "target": "extapp:cloud-watchdog"
               }
             ]
           },
@@ -5736,6 +5743,15 @@
         "hub_package": "com.diegonmarcos.cloudvault",
         "install_package": "com.diegonmarcos.cloudvault",
         "install_apk_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Vault.apk",
+        "forks": {}
+      },
+      {
+        "_doc": "Cloud-Watchdog — standalone watchdog app (ac_cloud-watchdog). Added so the Suite/Cloud Tools Primary tile can use extapp:cloud-watchdog like every other tile in that group; with no entry here launchExternalApp has no package to open and no APK to offer.",
+        "id": "cloud-watchdog",
+        "label": "Cloud-Watchdog",
+        "hub_package": "com.diegonmarcos.watchdog",
+        "install_package": "com.diegonmarcos.watchdog",
+        "install_apk_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Watchdog.apk",
         "forks": {}
       },
       {
