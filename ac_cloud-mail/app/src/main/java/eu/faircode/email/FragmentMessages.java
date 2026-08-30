@@ -2795,8 +2795,24 @@ public class FragmentMessages extends FragmentBase
             if (!value && seen_delay != 0 && message.accountAutoSeen &&
                     !Boolean.TRUE.equals(message.ui_seen) &&
                     getValue("expanded", message.id) &&
-                    (message.uid != null || message.accountProtocol == EntityAccount.TYPE_POP))
+                    (message.uid != null || message.accountProtocol == EntityAccount.TYPE_POP)) {
+                // comms: markSeenOnCollapse() only queues the DB write; it never
+                // touches the in-memory `message` the adapter is about to
+                // redraw. The unconditional notifyItemChanged() a few lines
+                // below fires on this same tick -- long before that background
+                // write and the Room LiveData round-trip behind it can finish
+                // -- so the row got redrawn with the STALE unseen/ui_seen it
+                // already had and kept its unread visual. It only turned grey
+                // once a later, unrelated requery happened to catch up, which
+                // is exactly "closing a message never turns it grey" from the
+                // outside. Mirror the expand branch above so this tick's
+                // redraw already has the read state.
+                message.unseen = 0;
+                message.ui_seen = true;
+                message.visible_unseen = 0;
+                message.ui_unsnoozed = false;
                 markSeenOnCollapse(message.id);
+            }
 
             setValue("expanded", message.id, value);
             if (scroll)
