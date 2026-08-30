@@ -355,11 +355,6 @@ kotlin {
 
 dependencies {
     implementation(project(":libs:analytics"))
-    // libs:media-center — our cloud provider contract + Room schema, split out
-    // of this module. implementation() is right here: an application module has
-    // no consumers, so api() would widen nothing, and the app's own @Database
-    // and Hilt graph see these types on its compile classpath either way.
-    implementation(project(":libs:media-center"))
     coreLibraryDesugaring(libs.desugar.jdk.libs)
     implementation(libs.androidx.lifecycle.process)
     runtimeOnly(libs.androidx.profileinstaller)

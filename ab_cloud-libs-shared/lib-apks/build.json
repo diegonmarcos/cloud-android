@@ -10,12 +10,11 @@
     ],
     "_doc_exclude": "Modules that must NOT ship as a standalone APK, each with the reason. An exclusion is a claim about install-time behaviour, so it belongs in data next to the scan rule rather than as a silent skip in gradle.",
     "exclude": {
-      "cropper": "Upstream image-cropper UI for cloud-media-center, moved into the shared root with the rest of its libs/. It was never a lib APK — media-center was not a scan root — and a standalone cropper APK installs nothing anyone can open. Excluded so the shipped set is exactly what it was before the merge.",
+      "cropper": "Upstream image-cropper UI for cloud-media-center, moved into the shared root with the rest of its libs/. It was never a lib APK \u2014 media-center was not a scan root \u2014 and a standalone cropper APK installs nothing anyone can open. Excluded so the shipped set is exactly what it was before the merge.",
       "gesture": "Same: upstream gesture helper, compiled into cloud-media-center only.",
       "panoramaviewer": "Same: upstream panorama viewer, compiled into cloud-media-center only.",
       "scrollbar": "Same: upstream fast-scrollbar, compiled into cloud-media-center only.",
-      "keyboard": "Already ships as its own APK (Cloud-Keyboard.apk, ac_cloud-keyboard). A second package carrying the same LatinIME service would register a duplicate input method, and its clipboard/gesture ContentProvider authorities come from string resources that both packages would claim - INSTALL_FAILED_CONFLICTING_PROVIDER.",
-      "media-center": "App-specific cloud engine for ac_cloud-media-center, not a constellation library: it is Room entities/DAOs and provider contracts for that one app's database, useless without it. Also builds against media-center's version catalog and AGP 9, neither of which lib-apks configures. Same reason as cropper/gesture/panoramaviewer/scrollbar above."
+      "keyboard": "Already ships as its own APK (Cloud-Keyboard.apk, ac_cloud-keyboard). A second package carrying the same LatinIME service would register a duplicate input method, and its clipboard/gesture ContentProvider authorities come from string resources that both packages would claim - INSTALL_FAILED_CONFLICTING_PROVIDER."
     },
     "_doc_ids": "Flavor applicationId = <application_id_prefix>.<module name with '-' stripped>; release asset = <asset_prefix><Module-Name>.apk. Derived, never listed.",
     "application_id_prefix": "com.diegonmarcos.cloudlib",
@@ -103,7 +102,7 @@
     }
   },
   "analytics": {
-    "_doc": "Consumed by :libs:analytics, which reads THIS file (rootDir) at build time and bakes the values into BuildConfig. Both backends are single-site today, so every app reports into the same site and is told apart by .app — give each app its own site_id once per-app sites exist in Umami/Matomo.",
+    "_doc": "Consumed by :libs:analytics, which reads THIS file (rootDir) at build time and bakes the values into BuildConfig. Both backends are single-site today, so every app reports into the same site and is told apart by .app \u2014 give each app its own site_id once per-app sites exist in Umami/Matomo.",
     "enabled": true,
     "app": "ab_cloud-libs-shared/lib-apks",
     "umami": {
