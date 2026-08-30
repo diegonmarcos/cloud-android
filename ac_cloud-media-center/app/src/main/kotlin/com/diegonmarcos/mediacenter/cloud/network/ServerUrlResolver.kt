@@ -7,8 +7,8 @@ package com.diegonmarcos.mediacenter.cloud.network
 
 import android.content.Context
 import com.diegonmarcos.mediacenter.cloud.core.CloudServerConfig
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.currentWifiSsid
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.isOnLocalNetwork
+import com.diegonmarcos.mediacenter.core.util.currentWifiSsid
+import com.diegonmarcos.mediacenter.core.util.isOnLocalNetwork
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton

@@ -43,7 +43,7 @@ import androidx.compose.ui.unit.dp
 import com.diegonmarcos.mediacenter.R
 import com.diegonmarcos.mediacenter.core.presentation.components.DragHandle
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.AppBottomSheetState
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.currentWifiSsid
+import com.diegonmarcos.mediacenter.core.util.currentWifiSsid
 import com.diegonmarcos.mediacenter.ui.theme.Shapes
 import kotlinx.coroutines.launch
 

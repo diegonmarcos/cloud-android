@@ -70,7 +70,7 @@ import com.diegonmarcos.mediacenter.core.navigate
 import com.diegonmarcos.mediacenter.feature_node.presentation.settings.components.BaseSettingsScreen
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.Screen
 import com.diegonmarcos.mediacenter.feature_node.presentation.util.connectivityState
-import com.diegonmarcos.mediacenter.feature_node.presentation.util.isOnLocalNetwork
+import com.diegonmarcos.mediacenter.core.util.isOnLocalNetwork
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalCoroutinesApi::class)
