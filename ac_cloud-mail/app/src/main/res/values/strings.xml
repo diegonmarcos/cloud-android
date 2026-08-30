@@ -1546,11 +1546,6 @@
     <string name="title_folder_local_drafts">Local drafts</string>
     <string name="title_no_folders">No folders</string>
     <string name="title_no_messages">No messages</string>
-    <!-- comms: the unread lane -->
-    <string name="title_unread_tab_all">All</string>
-    <string name="title_unread_tab_unread">Unread</string>
-    <string name="title_unread_no_folders">No unread messages</string>
-    <string name="title_unread_no_messages">No unread messages in this folder</string>
     <string name="title_filters_active">One or more filters active</string>
     <string name="title_duplicate_in">Duplicate message in %1$s</string>
     <string name="title_trashed_from">Trashed message from %1$s</string>

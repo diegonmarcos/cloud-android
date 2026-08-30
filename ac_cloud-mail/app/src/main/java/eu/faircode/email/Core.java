@@ -83,14 +83,12 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
-import java.util.Set;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
@@ -536,10 +534,6 @@ class Core {
 
                                 case EntityOperation.SUBJECT:
                                     onSubject(context, jargs, account, folder, message, (IMAPStore) istore, (IMAPFolder) ifolder, state);
-                                    break;
-
-                                case EntityOperation.UNREAD:
-                                    onUnread(context, folder, (IMAPFolder) ifolder);
                                     break;
 
                                 default:
@@ -3172,32 +3166,6 @@ class Core {
             } else
                 Log.w(name + " keep type=" + folder.type + " (has live child on server)");
         }
-    }
-
-    // comms: the unread lane's server read-state probe (IMAP side).
-    //
-    // A separate path from onSynchronizeMessages on purpose -- see UnreadSync.
-    // A server that rejects a bare UNSEEN search must not fail this operation,
-    // so the SEARCH is isolated in its own try/catch (mirrors the date-search
-    // fallback above: log and treat it as "no server opinion").
-    private static void onUnread(Context context, EntityFolder folder, IMAPFolder ifolder) {
-        List<Long> uids;
-        try {
-            uids = UnreadSync.fetchUnreadUids(ifolder);
-        } catch (MessagingException ex) {
-            Log.w(ex);
-            return;
-        }
-
-        DB db = DB.getInstance(context);
-        Set<Long> ids = new HashSet<>();
-        for (Long uid : uids) {
-            EntityMessage message = db.message().getMessageByUid(folder.id, uid);
-            if (message != null)
-                ids.add(message.id);
-        }
-
-        UnreadSync.reconcile(context, folder, ids);
     }
 
     private static void onSubscribeFolder(Context context, JSONArray jargs, EntityFolder folder, IMAPFolder ifolder)

@@ -434,22 +434,6 @@
       "kind": "lib"
     },
     {
-      "id": "lib-search",
-      "label": "Lib: search",
-      "package": "com.diegonmarcos.cloudlib.search",
-      "alt_id": null,
-      "registry": "ghcr.io",
-      "namespace": "diegonmarcos",
-      "image": "cloud-lib-search",
-      "tag": "latest",
-      "asset": "Cloud-Lib-Search.apk",
-      "release_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Lib-Search.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ab_cloud-libs-shared/libs/search",
-      "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-lib-search",
-      "blocked": false,
-      "kind": "lib"
-    },
-    {
       "id": "lib-shizuku-adb-debug-tools",
       "label": "Lib: shizuku-adb-debug-tools",
       "package": "com.diegonmarcos.cloudlib.shizukuadbdebugtools",

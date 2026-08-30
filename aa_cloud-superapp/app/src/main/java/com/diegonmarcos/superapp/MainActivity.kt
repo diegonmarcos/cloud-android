@@ -135,40 +135,14 @@ class MainActivity : AppCompatActivity(),
     private lateinit var drawerTabs: TabLayout
     private lateinit var drawerPageTabs: TabLayout
 
-    // The section alone is NOT enough to decide whether the stars belong on
-    // screen. They are the last children of the root frame, so they float over
-    // everything, and plenty of surfaces appear without the section changing at
-    // all: the app-drawer sheet, the search sheet and the notification centre
-    // are added to overlay_container while currentSection stays "home", and a
-    // page pushed on the back stack can do the same. That is why the stars were
-    // showing across pages — the gate was right, the trigger was too narrow.
-    // [refreshStars] is now the single answer, and it is asked again whenever
-    // the screen can have changed: section set, back stack, resume.
+    // Custom setter = single chokepoint: every section change re-evaluates
+    // all three home stars' visibility (shown only on `home`). findViewById is
+    // null-safe so the very first assignment (before setContentView) no-ops.
     override var currentSection: String = ""
         set(value) {
             field = value
-            refreshStars()
+            siriusStar.update(value); canopusStar.update(value); centauriStar.update(value)
         }
-
-    /** Set once the layout and the star wrappers exist; before that every
-     *  refresh is a no-op rather than a findViewById on a missing view. */
-    private var starsReady = false
-
-    /**
-     * Home stars are for the HOME SCREEN: the home section, with nothing
-     * covering it. Anything on the back stack or in overlay_container means a
-     * page or sheet is in front, so they go away — passing a section that
-     * cannot match `show_on_section` rather than reaching into the lib's own
-     * visibility rules.
-     */
-    private fun refreshStars() {
-        if (!starsReady) return
-        val homeScreen = currentSection == "home" &&
-            supportFragmentManager.backStackEntryCount == 0 &&
-            supportFragmentManager.findFragmentById(R.id.overlay_container) == null
-        val section = if (homeScreen) currentSection else ""
-        siriusStar.update(section); canopusStar.update(section); centauriStar.update(section)
-    }
     override var currentLabel:   String = ""
 
     // All THREE home stars live in libs:launcher-onehand — Sirius/Canopus/Centauri are
@@ -191,17 +165,13 @@ class MainActivity : AppCompatActivity(),
      * The rules themselves still come from the data-driven files: edit, commit,
      * push, deploy -- then tap this to apply them to mail that already arrived.
      */
-    // The strings live in libs:mail, and android.nonTransitiveRClass=true means
-    // a library's resources are NOT in the app's R - they have to be reached
-    // through that library's own R. Unqualified R.string here is what broke
-    // 0777d9dd, 3334e872, eccd3f4f and every build since.
     private fun reapplyMailRules(anchor: android.view.View) {
         val prefs = com.diegonmarcos.superapp.mail.JmapPrefs(this)
         if (prefs.email.isBlank() || prefs.password.isBlank()) {
-            anchor.snack(getString(com.diegonmarcos.superapp.mail.R.string.mail_messages_login_first))
+            anchor.snack(getString(R.string.mail_messages_login_first))
             return
         }
-        anchor.snack(getString(com.diegonmarcos.superapp.mail.R.string.reapply_rules_sent))
+        anchor.snack(getString(R.string.reapply_rules_sent))
         Thread {
             val client = com.diegonmarcos.superapp.mail.JmapClient(
                 prefs.server, prefs.email, prefs.password,
@@ -210,16 +180,16 @@ class MainActivity : AppCompatActivity(),
                 is com.diegonmarcos.superapp.mail.JmapClient.Result.Success ->
                     when (val r = client.createMailbox(s.value, REAPPLY_SENTINEL)) {
                         is com.diegonmarcos.superapp.mail.JmapClient.Result.Success ->
-                            getString(com.diegonmarcos.superapp.mail.R.string.reapply_rules_ok)
+                            getString(R.string.reapply_rules_ok)
                         is com.diegonmarcos.superapp.mail.JmapClient.Result.HttpError ->
-                            getString(com.diegonmarcos.superapp.mail.R.string.reapply_rules_failed, "HTTP ${r.code}")
+                            getString(R.string.reapply_rules_failed, "HTTP ${r.code}")
                         is com.diegonmarcos.superapp.mail.JmapClient.Result.NetworkError ->
-                            getString(com.diegonmarcos.superapp.mail.R.string.reapply_rules_failed, r.message)
+                            getString(R.string.reapply_rules_failed, r.message)
                     }
                 is com.diegonmarcos.superapp.mail.JmapClient.Result.HttpError ->
-                    getString(com.diegonmarcos.superapp.mail.R.string.reapply_rules_failed, "HTTP ${s.code}")
+                    getString(R.string.reapply_rules_failed, "HTTP ${s.code}")
                 is com.diegonmarcos.superapp.mail.JmapClient.Result.NetworkError ->
-                    getString(com.diegonmarcos.superapp.mail.R.string.reapply_rules_failed, s.message)
+                    getString(R.string.reapply_rules_failed, s.message)
             }
             runOnUiThread { anchor.snack(msg) }
         }.start()
@@ -353,9 +323,9 @@ class MainActivity : AppCompatActivity(),
             com.diegonmarcos.superapp.apptabs.AppTabPrefs.cap = BuildConfig.UI_APP_TABS_CAP
             modePrefs = ModePrefs(this)
             currentLabel = getString(R.string.section_home)
-            siriusStar.setup(); canopusStar.setup(); centauriStar.setup()
-            starsReady = true
-            refreshStars()
+            siriusStar.setup(); siriusStar.update(currentSection)
+            canopusStar.setup(); canopusStar.update(currentSection)
+            centauriStar.setup(); centauriStar.update(currentSection)
 
             val toolbar: MaterialToolbar = findViewById(R.id.toolbar)
             setSupportActionBar(toolbar)
@@ -523,11 +493,6 @@ class MainActivity : AppCompatActivity(),
                     currentLabel = getString(R.string.section_home)
                     supportActionBar?.title = currentLabel
                 }
-                // A page or sheet appearing is the ground truth for "is the home
-                // screen actually in front", and neither goes through the section
-                // setter — which is why the stars were floating over pages. Asked
-                // here as well, so backing out brings them back on their own.
-                refreshStars()
                 // Tablet: popping the last DETAIL page leaves the detail pane
                 // empty — restore the "Select an item" placeholder so the
                 // master-detail split never shows a blank right column.
@@ -1947,9 +1912,6 @@ class MainActivity : AppCompatActivity(),
 
     override fun onResume() {
         super.onResume()
-        // Coming back from another app can land on any surface — re-ask rather
-        // than trusting whatever the stars were left showing.
-        refreshStars()
         // Configs → Launcher → Others: stars/pets live re-apply + system brightness.
         applyLauncherSettings()
         // Arm the screensaver idle timer.

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Loopback only: the terminal is another app on this device. Nothing is
+         contacted off the phone, and there is no cleartext exception because
+         ssh is not http. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:label="Watchdog"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.Watchdog">
+        <activity
+            android:name="com.diegonmarcos.watchdog.MainActivity"
+            android:exported="true"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
+            android:launchMode="singleTask">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

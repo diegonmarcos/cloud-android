@@ -1,0 +1,41 @@
+apply plugin: 'com.android.application'
+apply plugin: 'org.jetbrains.kotlin.android'
+
+def buildJson = new groovy.json.JsonSlurper().parse(file("${rootDir}/build.json"))
+def a = buildJson.android
+
+android {
+    namespace 'com.diegonmarcos.watchdog'
+    compileSdk a.compile_sdk
+
+    defaultConfig {
+        applicationId a.application_id
+        minSdk        a.min_sdk
+        targetSdk     a.target_sdk
+        versionCode   a.version_code
+        versionName   a.version_name
+        ndk { abiFilters a.abi_filters as String[] }
+    }
+
+    buildFeatures { buildConfig = true }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = '17' }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            // JSch reflects over its own algorithm classes; shrinking it needs
+            // rules that do not exist yet, and a monitor that crashes on
+            // connect is worse than one that ships a slightly larger APK.
+        }
+    }
+}
+
+dependencies {
+    implementation project(':libs:watchdog')
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+}

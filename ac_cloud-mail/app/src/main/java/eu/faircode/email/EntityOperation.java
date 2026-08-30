@@ -108,8 +108,6 @@ public class EntityOperation {
     static final String REPORT = "report";
     static final String DOWNLOAD = "download";
     static final String SUBJECT = "subject";
-    // comms: the unread lane's server read-state probe.
-    static final String UNREAD = "unread";
 
     private static final int MAX_FETCH = 100; // operations
     private static final long FORCE_WITHIN = 30 * 1000; // milliseconds

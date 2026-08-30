@@ -1,0 +1,272 @@
+<!doctype html><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Watchdog</title>
+<style>
+@charset "UTF-8";
+:root {
+  --bg: #0b0e14;
+  --lift: #101520;
+  --rule: #171c26;
+  --dim: #3a3e4a;
+  --floor: #404040;
+  --label: #788091;
+  --accent: #78c8ff;
+  --ok: #40dc78;
+  --warn: #f0de40;
+  --bad: #f04848;
+  --fg: #c8ccd4;
+  --w: 272px;
+}
+
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: ui-monospace, "JetBrainsMono Nerd Font", "JetBrains Mono", "FiraCode Nerd Font", "Fira Code", "Cascadia Code", Menlo, Consolas, "DejaVu Sans Mono", "Liberation Mono", monospace;
+  font-size: 13px;
+  line-height: 1.55;
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0, "calt" 0;
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+body::before, body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+body::before {
+  z-index: 98;
+  background: radial-gradient(130% 100% at 50% 42%, transparent 52%, rgba(0, 0, 0, 0.62) 100%), radial-gradient(90% 60% at 50% 0%, rgba(120, 200, 255, 0.045), transparent 70%);
+}
+
+body::after {
+  z-index: 99;
+  opacity: 0.55;
+  background: repeating-linear-gradient(180deg, rgba(0, 0, 0, 0.22) 0 1px, transparent 1px 3px);
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+  body::after {
+    display: none;
+  }
+
+
+@media (min-width: 1000px) {
+  :root:not([data-view=mobile]) .ham, :root:not([data-view=mobile]) .scrim, :root:not([data-view=mobile]) .x {
+    display: none;
+  }
+
+  :root:not([data-view=mobile]) .sidebar {
+    transform: none;
+  }
+
+  :root:not([data-view=mobile]) .content {
+    margin-left: var(--w);
+    padding-top: 18px;
+  }
+
+
+.panel-body {
+  padding: 16px 13px 13px;
+}
+
+
+.tui {
+  margin: 0;
+  padding: 4px 6px;
+  white-space: pre;
+  overflow-x: auto;
+  line-height: 1.18;
+  font-size: 12px;
+  letter-spacing: 0;
+  color: var(--fg);
+  background: var(--bg);
+  tab-size: 8;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+
+
+[data-view=mobile] .tui {
+  font-size: min(2.6vw, 11px);
+  padding: 2px;
+  line-height: 1.15;
+}
+
+[data-view=mobile] .panel-body {
+  padding: 14px 9px 10px;
+}
+
+
+.tui-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 0 0 18px;
+}
+
+
+.tui {
+  border: 0;
+  padding: 10px 14px;
+  border-radius: 6px;
+  background: var(--bg);
+  box-shadow: 0 0 0 1px var(--rule), 0 18px 40px rgba(0, 0, 0, 0.45);
+  user-select: text;
+}
+
+
+@media print {
+  body::before, body::after {
+    display: none;
+  }
+
+  .tui {
+    box-shadow: none;
+    padding: 0;
+  }
+
+  .tui-wrap {
+    padding: 0;
+  }
+
+[data-view=mobile] .appbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 70;
+  height: calc(var(--appbar) + var(--safe-t));
+  padding: var(--safe-t) 8px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--lift);
+  border-bottom: 1px solid var(--dim);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
+}
+
+[data-view=mobile] .appbar .t {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+[data-view=mobile] .appbar .age {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--label);
+}
+
+[data-view=mobile] .appbar .zoom {
+  background: none;
+  border: 1px solid var(--dim);
+  border-radius: 6px;
+  color: var(--label);
+  font: inherit;
+  font-size: 11px;
+  min-width: 44px;
+  min-height: 36px;
+  padding: 0 10px;
+  cursor: pointer;
+}
+
+[data-view=mobile] .appbar .zoom[aria-pressed=true] {
+  color: var(--bg);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+[data-view=mobile] .tui-wrap {
+  padding: 0 0 calc(var(--safe-b) + 16px);
+  overflow: hidden;
+}
+
+[data-view=mobile] .tui {
+  padding: 6px;
+  box-shadow: none;
+  border-radius: 0;
+  transform-origin: top left;
+}
+
+[data-view=mobile].zoom1 .tui-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+[data-view=mobile].zoom1 .tui {
+  transform: none !important;
+  font-size: 11px;
+}
+/* The app shell. The transcript brings its own frames and colours; this is
+   only the surface it sits on and the bar that says how old it is. */
+html,body{height:100%;margin:0;background:#0b0e14;color:#c8ccd4;overflow:hidden}
+#bar{position:fixed;top:0;left:0;right:0;height:calc(46px + env(safe-area-inset-top,0px));
+  padding-top:env(safe-area-inset-top,0px);display:flex;align-items:center;gap:10px;
+  padding-left:12px;padding-right:12px;background:#101520;border-bottom:1px solid #3a3e4a;z-index:9}
+#bar b{color:#78c8ff;font-size:13px;font-weight:700}
+#bar .s{margin-left:auto;font-size:11px;color:#788091}
+#bar button{background:none;border:1px solid #3a3e4a;border-radius:6px;color:#788091;
+  font:inherit;font-size:11px;min-width:44px;min-height:34px;cursor:pointer}
+#view{position:absolute;top:calc(46px + env(safe-area-inset-top,0px));left:0;right:0;bottom:0;
+  overflow:auto;-webkit-overflow-scrolling:touch;padding:6px}
+#view .tui{margin:0;padding:0;box-shadow:none;border-radius:0}
+#msg{padding:18px;color:#f0de40;font:12px ui-monospace,monospace;white-space:pre-wrap}
+</style>
+<div id="bar"><b>watchdog</b><span class="s" id="age">connecting…</span>
+<button id="r" type="button">refresh</button></div>
+<div id="view"><div id="msg">measuring…</div></div>
+<script>
+// The grid is MEASURED, never assumed. A monospace cell is whatever this
+// device's font makes it, and asking for a width the screen does not have is
+// how a terminal ends up either clipped or scaled into a texture.
+function cell() {
+  const p = document.createElement('pre');
+  p.className = 'tui';
+  p.style.cssText = 'position:absolute;visibility:hidden';
+  p.textContent = 'M'.repeat(100);
+  document.body.appendChild(p);
+  const w = p.getBoundingClientRect().width / 100;
+  const h = p.getBoundingClientRect().height;
+  p.remove();
+  return { w: w || 7, h: h || 14 };
+}
+let pending = null;
+window.__wdScreen = function (id, ok, payload) {
+  if (!pending || pending.id !== id) return;   // a stale reply after a rotation
+  const view = document.getElementById('view');
+  if (ok) {
+    view.innerHTML = payload;
+    document.getElementById('age').textContent = new Date().toLocaleTimeString();
+  } else {
+    // The reason, verbatim. "Cannot connect" and "command not found" send you
+    // to two different places, and collapsing them into "error" helps nobody.
+    view.innerHTML = '<div id="msg"></div>';
+    view.firstChild.textContent =
+      payload + '\n\nkey for ~/.ssh/authorized_keys:\n' + AndroidWatchdog.publicKey();
+    document.getElementById('age').textContent = 'unreachable';
+  }
+  pending = null;
+};
+function refresh() {
+  const c = cell();
+  const view = document.getElementById('view');
+  const cols = Math.max(40, Math.floor((view.clientWidth  - 12) / c.w));
+  const rows = Math.max(20, Math.floor((view.clientHeight - 12) / c.h));
+  pending = { id: String(Date.now()) };
+  AndroidWatchdog.screen(pending.id, cols, rows);
+}
+document.getElementById('r').onclick = refresh;
+// Rotation and unfold change the grid, so the screen is re-asked for rather
+// than stretched — a redrawn terminal is right, a stretched one is not.
+let t; addEventListener('resize', () => { clearTimeout(t); t = setTimeout(refresh, 250); });
+refresh();
+</script>

@@ -422,39 +422,6 @@ public class JmapSync {
                 null);
     }
 
-    // comms: the unread lane's server read-state probe (JMAP side).
-    //
-    // A separate path from syncMessages on purpose -- see UnreadSync. A server
-    // rejecting the Email/query must not fail this operation, so it is caught
-    // and logged here rather than left to the caller's catch, which would mark
-    // the operation as errored and retry it forever.
-    private static void onUnread(Context context, EntityFolder folder, String mailboxId, JmapService jmap) {
-        List<String> serverIds;
-        try {
-            serverIds = UnreadSync.fetchUnreadIds(jmap, mailboxId);
-        } catch (MessagingException ex) {
-            Log.w(ex);
-            return;
-        }
-
-        DB db = DB.getInstance(context);
-
-        // uidl = JMAP Email.id, same dedup key syncMessages uses.
-        Map<String, Long> uidlToId = new HashMap<>();
-        for (TupleUidl u : db.message().getUidls(folder.id))
-            if (u.uidl != null)
-                uidlToId.put(u.uidl, u.id);
-
-        Set<Long> ids = new HashSet<>();
-        for (String serverId : serverIds) {
-            Long id = uidlToId.get(serverId);
-            if (id != null)
-                ids.add(id);
-        }
-
-        UnreadSync.reconcile(context, folder, ids);
-    }
-
     // ── Operations (batch 6): map queued EntityOperations to Email/set ────────
     private static void processOperations(Context context, EntityAccount account, EntityFolder folder,
                                           String mailboxId, Map<String, Long> mailboxToFolder,
@@ -492,9 +459,6 @@ public class JmapSync {
                     case EntityOperation.DELETE:
                         if (ids != null)
                             jmap.deleteMessages(ids);
-                        break;
-                    case EntityOperation.UNREAD:
-                        onUnread(context, folder, mailboxId, jmap);
                         break;
                     default:
                         // ADD/EXISTS/KEYWORD etc. — no-op for JMAP for now.

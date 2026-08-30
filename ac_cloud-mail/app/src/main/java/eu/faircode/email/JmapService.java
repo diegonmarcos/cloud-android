@@ -61,7 +61,6 @@ import rs.ltt.jmap.common.method.call.identity.GetIdentityMethodCall;
 import rs.ltt.jmap.common.method.call.mailbox.GetMailboxMethodCall;
 import rs.ltt.jmap.common.method.call.submission.SetEmailSubmissionMethodCall;
 import rs.ltt.jmap.common.method.response.email.GetEmailMethodResponse;
-import rs.ltt.jmap.common.method.response.email.QueryEmailMethodResponse;
 import rs.ltt.jmap.common.method.response.email.ImportEmailMethodResponse;
 import rs.ltt.jmap.common.method.response.identity.GetIdentityMethodResponse;
 import rs.ltt.jmap.common.method.response.mailbox.GetMailboxMethodResponse;
@@ -323,45 +322,6 @@ public class JmapService {
             return result;
         } catch (Exception ex) {
             throw wrap("Email/query+get", ex);
-        }
-    }
-
-    // comms: the unread lane's server-side query. Same one round-trip shape as
-    // getFolderMessages, but the filter also carries notKeyword $seen, so the
-    // SERVER decides what is unread rather than the device inferring it from
-    // whatever it has synced.
-    //
-    // Returns only ids: this is a read-state probe, not a sync. Callers
-    // reconcile against the local rows (see UnreadSync) and never create
-    // messages from the result -- an id here that is not in the database is a
-    // sync gap to report, not a message to invent.
-    @NonNull
-    List<String> getFolderUnreadIds(String mailboxId, int limit) throws MessagingException {
-        requireAccount();
-        try {
-            JmapClient.MultiCall multiCall = client.newMultiCall();
-            JmapRequest.Call queryCall = multiCall.call(
-                    QueryEmailMethodCall.builder()
-                            .accountId(accountId)
-                            .filter(EmailFilterCondition.builder()
-                                    .inMailbox(mailboxId)
-                                    .notKeyword(Keyword.SEEN)
-                                    .build())
-                            // Same explicit newest-first sort as getFolderMessages:
-                            // RFC 8621 leaves unsorted query order server-defined.
-                            .sort(new Comparator[]{new Comparator("receivedAt", false)})
-                            .limit((long) limit)
-                            .build());
-            multiCall.execute();
-            String[] ids = queryCall.getMethodResponses().get()
-                    .getMain(QueryEmailMethodResponse.class).getIds();
-            List<String> result = new ArrayList<>();
-            if (ids != null)
-                for (String id : ids)
-                    result.add(id);
-            return result;
-        } catch (Exception ex) {
-            throw wrap("Email/query unseen", ex);
         }
     }
 

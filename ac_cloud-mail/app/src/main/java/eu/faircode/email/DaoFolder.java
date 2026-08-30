@@ -102,46 +102,6 @@ public interface DaoFolder {
             " GROUP BY folder.id")
     LiveData<List<TupleFolderEx>> liveFolders(Long account, boolean primary);
 
-    // comms: the unread lane's folder query.
-    //
-    // Deliberately NOT liveFolders() with the caller filtering afterwards: the
-    // unread test belongs in SQL so the LiveData only re-emits when the unread
-    // SET changes, instead of on every folder row change followed by a filter
-    // pass that usually produces the same list.
-    //
-    // The result is FLAT by design -- no parent is carried along to host an
-    // unread child, because the unread page does not render a hierarchy. That
-    // is why there is no recursive CTE here: every row returned is a folder
-    // that itself holds unread mail.
-    @Transaction
-    @Query("SELECT folder.*" +
-            ", account.id AS accountId, account.pop AS accountProtocol, account.`order` AS accountOrder" +
-            ", account.name AS accountName, account.category AS accountCategory, account.color AS accountColor" +
-            ", account.state AS accountState, account.error AS accountError" +
-            ", COUNT(DISTINCT CASE WHEN rule.enabled THEN rule.id ELSE NULL END) rules" +
-            ", COUNT(DISTINCT CASE WHEN message.ui_hide THEN NULL ELSE message.id END) AS messages" +
-            ", COUNT(DISTINCT CASE WHEN message.content = 1 AND NOT message.ui_hide THEN message.id ELSE NULL END) AS content" +
-            ", COUNT(DISTINCT CASE WHEN NOT message.ui_seen AND NOT message.ui_hide THEN message.id ELSE NULL END) AS unseen" +
-            ", COUNT(DISTINCT CASE WHEN NOT message.ui_seen AND NOT message.ui_hide AND message.received > folder.last_view THEN message.id ELSE NULL END) AS unexposed" +
-            ", COUNT(DISTINCT CASE WHEN message.ui_flagged AND NOT message.ui_hide THEN message.id ELSE NULL END) AS flagged" +
-            ", COUNT(DISTINCT CASE WHEN operation.state = 'executing' THEN operation.id ELSE NULL END) AS executing" +
-            " FROM folder" +
-            " JOIN account ON account.id = folder.account" +
-            " LEFT JOIN message ON message.folder = folder.id" +
-            " LEFT JOIN rule ON rule.folder = folder.id" +
-            " LEFT JOIN operation ON operation.folder = folder.id" +
-            " WHERE CASE WHEN :primary THEN account.`primary` ELSE" +
-            "  CASE WHEN :account IS NULL" +
-            "   THEN folder.unified AND account.synchronize" +
-            "   ELSE folder.account = :account AND account.synchronize" +
-            "  END" +
-            " END" +
-            " GROUP BY folder.id" +
-            // The aggregate is repeated rather than referenced by its alias so
-            // Room can verify the HAVING clause at compile time.
-            " HAVING COUNT(DISTINCT CASE WHEN NOT message.ui_seen AND NOT message.ui_hide THEN message.id ELSE NULL END) > 0")
-    LiveData<List<TupleFolderEx>> liveUnreadFolders(Long account, boolean primary);
-
     final String queryUnified = "SELECT folder.*" +
             ", account.id AS accountId, account.pop AS accountProtocol, account.`order` AS accountOrder" +
             ", account.name AS accountName, account.category AS accountCategory, account.color AS accountColor" +
