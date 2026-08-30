@@ -37,7 +37,8 @@
         "gradle_task": ":app:assembleFdroidRelease",
         "apk_glob": "app/build/outputs/apk/fdroid/release/*.apk",
         "gradle_props": {}
-      }
+      },
+      "_doc_rebrand": "Rebranded in the vendored tree (patches/0001, historical record): BuildTimeConfig.APPLICATION_ID is now app_id and APPLICATION_NAME is 'Cloud Matrix', so the from-source build ships under our identity rather than upstream's. alt_id stays: Fleet.installedId checks app_id FIRST and falls back to alt_id, which is what still detects a previously installed resigned STOCK build so it can be replaced. Launcher artwork in appicon/element/ is NOT yet replaced - see NOTICE.md."
     }
   },
   "signing": {
