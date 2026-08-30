@@ -8,9 +8,8 @@
   },
   "_doc": "The app owns no layout. It asks the terminal for a screen at the grid this device actually has and injects what comes back. Every previous attempt to re-draw that dashboard outside the panel diverged on frames, alignment and colour, so nothing here reproduces any of it.",
   "watchdog": {
-    "_doc": "Baked into libs:watchdog as WATCHDOG_TARGETS_JSON_B64 / _CMD. Host, port, user and the command are DATA, never Kotlin constants \u2014 the same rule cloud-ide's terminal-targets.json follows. Loopback because Android shares 127.0.0.1 across app sandboxes. Auth is key-based and the key is generated in-app: add the public line (Setup screen) to ~/.ssh/authorized_keys in the env.",
+    "_doc": "Baked into libs:watchdog as WATCHDOG_TARGETS_JSON_B64 / _CMD. Host, port, user and the command are DATA, never Kotlin constants \u2014 the same rule cloud-ide's terminal-targets.json follows. Loopback because Android shares 127.0.0.1 across app sandboxes. Auth is key-based and the key is generated in-app: add the public line (Setup screen) to ~/.ssh/authorized_keys in the env. The app pushes its own panel and sampler into the env's cache at connect time and runs them from there, so a bare nix-on-droid needs nothing installed \u2014 only the ssh key, which the env's own installer provisions.",
     "backend_default": "nix-on-droid",
-    "cmd": "my-watchdog-tui tui",
     "targets": {
       "backends": {
         "nix-on-droid": {
@@ -27,6 +26,11 @@
           "user": "termux"
         }
       }
+    },
+    "tools": {
+      "_doc": "Where libs:watchdog fetches the binaries it SHIPS. The APK carries them; nothing is ever installed on the phone. aarch64 static musl, because that is every Android device this decade and musl does not care which libc the environment has \u2014 or whether it has one.",
+      "repo": "diegonmarcos/cloud-u-linux",
+      "tag": "my-watchdog-latest"
     }
   },
   "android": {

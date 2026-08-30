@@ -35,9 +35,10 @@ android {
         minSdk 26
         buildConfigField "String", "WATCHDOG_TARGETS_JSON_B64", "\"${targetsB64}\""
         buildConfigField "String", "WATCHDOG_BACKEND_DEFAULT",  "\"${wd.backend_default ?: 'nix-on-droid'}\""
-        // The command is data too. The binary lives in the env's PATH and its
-        // name is a fact about that env, not about this app.
-        buildConfigField "String", "WATCHDOG_CMD", "\"${wd.cmd ?: 'my-watchdog-tui tui'}\""
+        // No WATCHDOG_CMD any more: the binary is not looked up on the env's
+        // PATH, it is one this APK carries and places itself. Its path is a
+        // fact about this app, so it lives in the code beside the code that
+        // puts it there (WatchdogSsh.REMOTE_DIR).
         // The DECLARED constellation key, resolved from the vault by build.sh
         // (_resolve_ssh_key) and handed here through the environment. Base64
         // because a PEM has newlines and a BuildConfig string does not.
@@ -55,6 +56,58 @@ android {
     }
     kotlinOptions { jvmTarget = '17' }
 }
+
+// ── the tools this library carries ─────────────────────────────────────────
+// THE APP IS SELF-CONTAINED. nix-on-droid and Termux are where a command RUNS;
+// they are not somewhere anything gets installed. The only thing that ever
+// reaches a phone is the ssh public key, and the env's own installer puts that
+// there — not this app.
+//
+// So the binaries ride INSIDE the library, get merged into whichever APK
+// consumes it, and are pushed into the terminal's scratch directory at connect
+// time. A bare nix-on-droid on a fresh phone then works with nothing to fetch,
+// nothing to add to PATH, and no way for the panel to drift from the app
+// driving it — they ship as one artifact.
+//
+// They live HERE and not in the app because this module is the logic: the ssh
+// channel, the protocol and the tools it speaks to. ac_cloud-watchdog is the
+// UI on top.
+//
+// aarch64 static musl: every Android device this decade, and musl means it
+// does not care which libc the environment has, or whether it has one.
+def toolsDir = file("$projectDir/src/main/assets/bin")
+def toolsRepo = wd.tools?.repo ?: 'diegonmarcos/cloud-u-linux'
+def toolsTag  = wd.tools?.tag  ?: 'my-watchdog-latest'
+
+tasks.register('fetchWatchdogTools') {
+    description = 'Download the aarch64 panel + sampler this library ships inside the APK.'
+    outputs.dir toolsDir
+    doLast {
+        toolsDir.mkdirs()
+        [['my-watchdog-aarch64', 'my-watchdog'],
+         ['my-watchdog-tui-aarch64', 'my-watchdog-tui']].each { asset, name ->
+            def out = new File(toolsDir, name)
+            // Skip a good copy: CI runs this on every build and the release
+            // only moves when the watchdog does.
+            if (out.exists() && out.length() > 100_000) {
+                logger.lifecycle("tool: ${name} cached (${out.length()} bytes)")
+                return
+            }
+            def p = ['gh', 'release', 'download', toolsTag, '--repo', toolsRepo,
+                     '--pattern', asset, '--output', out.absolutePath, '--clobber'].execute()
+            p.waitForProcessOutput(System.out, System.err)
+            if (p.exitValue() != 0 || !out.exists()) {
+                // No fallback: an APK without its tools cannot work at all, and
+                // shipping one would move the failure to the user's phone.
+                throw new GradleException(
+                    "could not fetch ${asset} from ${toolsRepo}@${toolsTag} — " +
+                    "this library ships the binaries rather than installing them on the device")
+            }
+            logger.lifecycle("tool: ${name} (${out.length()} bytes)")
+        }
+    }
+}
+preBuild.dependsOn tasks.named('fetchWatchdogTools')
 
 dependencies {
     implementation 'androidx.core:core-ktx:1.13.1'

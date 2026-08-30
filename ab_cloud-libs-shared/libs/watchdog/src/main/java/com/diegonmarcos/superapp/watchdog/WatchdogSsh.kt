@@ -181,8 +181,11 @@ class WatchdogSsh(private val ctx: Context) {
      * the panel already knows how to be any width. That is the whole reason it
      * is asked to draw rather than being reimplemented here.
      */
-    fun screen(backend: String, cols: Int, rows: Int): Result<String> =
-        exec(backend, "${BuildConfig.WATCHDOG_CMD} $cols $rows")
+    fun screen(backend: String, cols: Int, rows: Int): Result<String> {
+        ensureTools(backend).getOrThrow()
+        ensureDaemon(backend)
+        return exec(backend, "'$REMOTE_DIR/$BIN_PANEL' tui $cols $rows")
+    }
 
     /**
      * A SESSION, not a request: one long-lived `tui --serve` on the far side,
@@ -229,10 +232,65 @@ class WatchdogSsh(private val ctx: Context) {
         }
     }
 
+    /**
+     * Put this library's own binaries where the terminal can run them.
+     *
+     * NOTHING IS INSTALLED ON THE PHONE. The env is where a command runs, not
+     * somewhere anything lives: the only thing that ever reaches it is the ssh
+     * public key, and its own installer puts that there. So the tools ride
+     * inside the APK and are streamed into a scratch directory under the
+     * terminal's own cache — a bare nix-on-droid works with nothing fetched,
+     * nothing added to PATH, and no way for the panel to drift from the app
+     * driving it, because they shipped together.
+     *
+     * Pushed only when the size differs, which is enough: these come from one
+     * release and change together, so a byte-identical length means the same
+     * build. A hash would cost a second round trip on every open to answer a
+     * question the length already answers.
+     */
+    private fun ensureTools(backend: String): Result<Unit> = runCatching {
+        val dir = REMOTE_DIR
+        for (name in listOf(BIN_DAEMON, BIN_PANEL)) {
+            val local = ctx.assets.open("bin/$name").readBytes()
+            val have = exec(backend, "stat -c %s '$dir/$name' 2>/dev/null || echo 0")
+                .getOrDefault("0").trim().toLongOrNull() ?: 0L
+            if (have == local.size.toLong()) continue
+            // cat > file: the env may have no scp, no rsync and no curl, and
+            // this needs none of them — the bytes ride the channel already open.
+            val ch = connect(backend).openChannel("exec") as ChannelExec
+            ch.setCommand("mkdir -p '$dir' && cat > '$dir/$name.new' && " +
+                "chmod +x '$dir/$name.new' && mv -f '$dir/$name.new' '$dir/$name'")
+            val stdin = ch.outputStream
+            ch.connect(CONNECT_MS)
+            stdin.write(local)
+            stdin.flush()
+            stdin.close()
+            while (!ch.isClosed) Thread.sleep(20)
+            val code = ch.exitStatus
+            ch.disconnect()
+            if (code != 0) error("could not place $name (exit $code)")
+        }
+    }
+
+    /**
+     * The sampler, running in the env, because the panel reads what it
+     * publishes and shows an empty screen without it. Started detached and
+     * headless — a phone has no tray and no D-Bus session for one.
+     */
+    private fun ensureDaemon(backend: String) {
+        runCatching {
+            exec(backend,
+                "pgrep -x $BIN_DAEMON >/dev/null 2>&1 || " +
+                "(nohup '$REMOTE_DIR/$BIN_DAEMON' --no-tray >/dev/null 2>&1 &) ; true")
+        }
+    }
+
     /** Start the panel and hand back the channel to drive it. */
     fun open(backend: String, cols: Int, rows: Int): Result<Panel> = runCatching {
+        ensureTools(backend).getOrThrow()
+        ensureDaemon(backend)
         val ch = connect(backend).openChannel("exec") as ChannelExec
-        ch.setCommand("${BuildConfig.WATCHDOG_CMD} --serve $cols $rows")
+        ch.setCommand("'$REMOTE_DIR/$BIN_PANEL' tui --serve $cols $rows")
         // stdin has to be a pipe we own: this is the half that carries the
         // keystrokes, and jsch defaults it to nothing.
         ch.setInputStream(null, true)
@@ -257,6 +315,16 @@ class WatchdogSsh(private val ctx: Context) {
          */
         const val PUBLIC_KEY =
             "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICP/TWd0q7KEm29dOrPMX5sEn/8THgsrdHJ1NfPiKElK cloud-constellation@android"
+
+        /**
+         * Where this app's own binaries live in the terminal env. Under the
+         * env's cache rather than its PATH: they belong to the app, are
+         * replaced when the app is, and nothing else should find them by
+         * accident.
+         */
+        const val REMOTE_DIR = ".cache/cloud-watchdog/bin"
+        const val BIN_DAEMON = "my-watchdog"
+        const val BIN_PANEL = "my-watchdog-tui"
 
         /** Must match monitor::FRAME_END on the other side. */
         const val FRAME_END = "@@WATCHDOG-FRAME-END@@"
