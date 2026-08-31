@@ -248,7 +248,7 @@ LINKTREE="${3:-}"
 
 if [ -z "$CONSOLIDATED" ]; then
     for cand in \
-        "$HOME/git/cloud-infra/2_configs/dist/_cloud-data-consolidated.json" \
+        "$HOME/git/cloud-infra/1_cloud-configs/dist/_cloud-data-consolidated.json" \
         "$HOME/git/cloud-infra/I_cloud-data/_cloud-data-consolidated.json" \
         "$HOME/git/cloud-data/_cloud-data-consolidated.json" \
         "$HOME/git/cloud-infra-desktop/cloud-data/_cloud-data-consolidated.json"; do
@@ -257,8 +257,8 @@ if [ -z "$CONSOLIDATED" ]; then
 fi
 if [ -z "$MESH" ]; then
     for cand in \
-        "$HOME/git/cloud-infra/2_configs/dist/mesh-snapshot.json" \
-        "$HOME/git/cloud-infra/a_solutions/bb-net_wireguard-mesh/src/data/mesh.json" \
+        "$HOME/git/cloud-infra/1_cloud-configs/dist/mesh-snapshot.json" \
+        "$HOME/git/cloud-infra/a_solutions/infra-net_wireguard-mesh/src/code/src/data/mesh.json" \
         "$HOME/git/cloud-data/cloud-data-wg-mesh-snapshot.json"; do
         [ -f "$cand" ] && { MESH="$cand"; break; }
     done
@@ -295,6 +295,7 @@ cp "$LINKTREE" "$HERE/linktree.json"
 jq '
 [.services | to_entries[] as $s
  | ($s.value.containers // []) | .[]
+ | select(type == "object")
  | select(.proxy.domain or .proxy.parent_domain)
  | {
      name: .container_name,
@@ -312,7 +313,8 @@ jq '
 jq '
 [.services | to_entries[] as $s
  | ($s.value.containers // []) | .[]
- | select(.proxy.domain or .proxy.parent_domain | not)
+ | select(type == "object")
+ | select((.proxy.domain or .proxy.parent_domain) | not)
  | select(.container_name)
  | {
      name: .container_name,

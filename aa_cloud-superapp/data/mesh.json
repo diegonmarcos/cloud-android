@@ -1,10 +1,10 @@
 {
   "_meta": {
     "generated_at": "",
-    "generated_by": "2_configs/src/engines/derive-mesh-snapshot.ts",
+    "generated_by": "1_cloud-configs/src/derive/derive-mesh-snapshot.ts",
     "schema": "wg-mesh/v1",
     "sources": {
-      "consolidated": "2_configs/dist/_cloud-data-consolidated.json",
+      "consolidated": "1_cloud-configs/dist/_cloud-data-consolidated.json",
       "ws_tunnel": "a_solutions/infra-net_wireguard-mesh-ws-tunnel/build.json"
     }
   },
@@ -73,7 +73,7 @@
       "alias": "gcp-proxy",
       "public_ip": "35.226.147.64",
       "wg_ip": "10.0.0.1",
-      "region": "?",
+      "region": "us-central1-a",
       "provider": "gcloud",
       "os": "NixOS",
       "public_key_fp": "vV/ph…mDc=",

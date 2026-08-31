@@ -1,15 +1,5 @@
 [
   {
-    "name": "continuwuity",
-    "service": "matrix-continuwuity",
-    "vm": "oci-A1-f_0",
-    "public_url": "matrix.diegonmarcos.com",
-    "auth": "none",
-    "private_dns": "matrix-continuwuity.app:8008",
-    "port": 8008,
-    "category": "app"
-  },
-  {
     "name": "languagetool",
     "service": "languagetool",
     "vm": "oci-A1-f_0",
@@ -27,16 +17,6 @@
     "auth": "two_factor",
     "private_dns": "c3-infra-api.app:8081",
     "port": 8081,
-    "category": "sec"
-  },
-  {
-    "name": "c3-infra-mcp",
-    "service": "c3-infra-mcp",
-    "vm": "oci-A1-f_0",
-    "public_url": "mcp.diegonmarcos.com/c3-infra-mcp",
-    "auth": "none",
-    "private_dns": "c3-infra-mcp.app:3100",
-    "port": 3100,
     "category": "sec"
   },
   {
@@ -60,8 +40,48 @@
     "category": "obs"
   },
   {
-    "name": "c3-services-mcp",
-    "service": "c3-services-mcp",
+    "name": "cloud-drive-mcp",
+    "service": "cloud-drive-mcp",
+    "vm": "oci-A1-f_0",
+    "public_url": "mcp.diegonmarcos.com/cloud-drive-mcp",
+    "auth": "none",
+    "private_dns": "drive-mcp.app:3109",
+    "port": 3109,
+    "category": "app"
+  },
+  {
+    "name": "cloud-infra-mcp",
+    "service": "cloud-infra-mcp",
+    "vm": "oci-A1-f_0",
+    "public_url": "mcp.diegonmarcos.com/c3-infra-mcp",
+    "auth": "none",
+    "private_dns": "c3-infra-mcp.app:3100",
+    "port": 3100,
+    "category": "sec"
+  },
+  {
+    "name": "cloud-mail-mcp",
+    "service": "cloud-mail-mcp",
+    "vm": "oci-A1-f_0",
+    "public_url": "mcp.diegonmarcos.com/mail-mcp",
+    "auth": "none",
+    "private_dns": "mail-mcp.app:3103",
+    "port": 3103,
+    "category": "app"
+  },
+  {
+    "name": "cloud-mattermost-mcp",
+    "service": "cloud-mattermost-mcp",
+    "vm": "oci-A1-f_0",
+    "public_url": "mcp.diegonmarcos.com/mattermost-mcp",
+    "auth": "none",
+    "private_dns": "mattermost-mcp.app:3102",
+    "port": 3102,
+    "category": "app"
+  },
+  {
+    "name": "cloud-services-mcp",
+    "service": "cloud-services-mcp",
     "vm": "oci-A1-f_0",
     "public_url": "mcp.diegonmarcos.com/c3-services-mcp",
     "auth": "none",
@@ -87,26 +107,6 @@
     "auth": "none",
     "private_dns": "g-workspace-mcp.app:3104",
     "port": 3104,
-    "category": "app"
-  },
-  {
-    "name": "mail-mcp",
-    "service": "mail-mcp",
-    "vm": "oci-A1-f_0",
-    "public_url": "mcp.diegonmarcos.com/mail-mcp",
-    "auth": "none",
-    "private_dns": "mail-mcp.app:3103",
-    "port": 3103,
-    "category": "app"
-  },
-  {
-    "name": "mattermost-mcp",
-    "service": "mattermost-mcp",
-    "vm": "oci-A1-f_0",
-    "public_url": "mcp.diegonmarcos.com/mattermost-mcp",
-    "auth": "none",
-    "private_dns": "mattermost-mcp.app:3102",
-    "port": 3102,
     "category": "app"
   },
   {
@@ -165,8 +165,8 @@
     "vm": "oci-A1-f_0",
     "public_url": "analytics.diegonmarcos.com/matomo",
     "auth": "two_factor",
-    "private_dns": "matomo.app:8084",
-    "port": 8084,
+    "private_dns": "matomo.app:8080",
+    "port": 8080,
     "category": "tools"
   },
   {
@@ -192,7 +192,7 @@
   {
     "name": "umami",
     "service": "umami",
-    "vm": "oci-A1-f_0",
+    "vm": "oci-E2-f_1",
     "public_url": "analytics.diegonmarcos.com",
     "auth": "two_factor",
     "private_dns": "umami.app:3006",
@@ -220,12 +220,12 @@
     "category": "sec"
   },
   {
-    "name": "cloud-cgc-mcp",
-    "service": "cloud-cgc-mcp",
+    "name": "cloud-cgc-pub-mcp",
+    "service": "cloud-cgc-pub-mcp",
     "vm": "oci-A1-f_0",
-    "public_url": "mcp.diegonmarcos.com/cloud-cgc-mcp",
+    "public_url": "mcp.diegonmarcos.com/cloud-cgc-pub-mcp",
     "auth": "none",
-    "private_dns": "cloud-cgc-mcp.app:3105",
+    "private_dns": "cloud-cgc-pub-mcp.app:3105",
     "port": 3105,
     "category": "obs"
   },
@@ -237,6 +237,16 @@
     "auth": "two_factor",
     "private_dns": "mattermost.app:8065",
     "port": 8065,
+    "category": "app"
+  },
+  {
+    "name": "continuwuity",
+    "service": "matrix-continuwuity",
+    "vm": "oci-A1-f_0",
+    "public_url": "matrix.diegonmarcos.com",
+    "auth": "none",
+    "private_dns": "matrix-continuwuity.app:8008",
+    "port": 8008,
     "category": "app"
   },
   {
@@ -287,6 +297,16 @@
     "auth": "two_factor",
     "private_dns": "photoprism.app:3013",
     "port": 3013,
+    "category": "app"
+  },
+  {
+    "name": "playlist-syncer",
+    "service": "playlist-syncer",
+    "vm": "oci-A1-f_0",
+    "public_url": "playlist.diegonmarcos.com",
+    "auth": "two_factor",
+    "private_dns": "playlist-syncer.app:8090",
+    "port": 8090,
     "category": "app"
   },
   {
