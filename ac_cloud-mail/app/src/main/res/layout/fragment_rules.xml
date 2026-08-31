@@ -10,36 +10,222 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <!-- comms: global mode only (Settings > Rules) — the REAL rules live
-             server-side (mail-rules.nix → Stalwart Sieve); this section reads
-             them read-only via JMAP so the page isn't just an empty device
-             list. GONE by default; FragmentRules shows it only when all=true. -->
-        <TextView
-            android:id="@+id/tvServerRulesHeader"
+        <!-- comms: global mode only (Settings > Rules) — collapsible pipeline
+             explainer (mail-rules.nix -> Sieve + sorter -> device rules).
+             GONE by default; FragmentRules shows it only when all=true. -->
+        <androidx.cardview.widget.CardView
+            android:id="@+id/cardAbout"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
+            android:layout_marginStart="6dp"
             android:layout_marginTop="6dp"
-            android:layout_marginEnd="12dp"
-            android:text="@string/title_comms_server_rules_header"
-            android:textAppearance="@style/TextAppearance.AppCompat.Medium"
+            android:layout_marginEnd="6dp"
             android:visibility="gone"
+            app:cardBackgroundColor="?attr/colorCardBackground"
+            app:cardCornerRadius="6dp"
+            app:cardElevation="0dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            tools:visibility="visible" />
+            tools:visibility="visible">
 
-        <eu.faircode.email.FixedRecyclerView
-            android:id="@+id/rvServerRule"
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="12dp">
+
+                <ImageView
+                    android:id="@+id/ivAboutIcon"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:contentDescription="@string/title_comms_rules_about_header"
+                    app:layout_constraintBottom_toBottomOf="@id/tvAboutHeader"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="@id/tvAboutHeader"
+                    app:srcCompat="@drawable/twotone_info_24"
+                    app:tint="?attr/colorWarning" />
+
+                <TextView
+                    android:id="@+id/tvAboutHeader"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:layout_marginEnd="8dp"
+                    android:text="@string/title_comms_rules_about_header"
+                    android:textAppearance="@style/TextAppearance.AppCompat.Medium"
+                    app:layout_constraintEnd_toStartOf="@id/ivAboutChevron"
+                    app:layout_constraintStart_toEndOf="@id/ivAboutIcon"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+                <ImageView
+                    android:id="@+id/ivAboutChevron"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:contentDescription="@string/title_comms_rules_about_header"
+                    app:layout_constraintBottom_toBottomOf="@id/tvAboutHeader"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintTop_toTopOf="@id/tvAboutHeader"
+                    app:srcCompat="@drawable/twotone_expand_more_24"
+                    app:tint="?android:attr/textColorSecondary" />
+
+                <!-- comms: clickable header row driving the collapse/expand -->
+                <View
+                    android:id="@+id/vAboutHeaderClick"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:background="?attr/selectableItemBackground"
+                    app:layout_constraintBottom_toBottomOf="@id/tvAboutHeader"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+                <TextView
+                    android:id="@+id/tvAboutBody"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="10dp"
+                    android:lineSpacingExtra="3dp"
+                    android:textAppearance="@style/TextAppearance.AppCompat.Small"
+                    android:textIsSelectable="true"
+                    android:visibility="gone"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/tvAboutHeader"
+                    tools:text="@string/title_comms_rules_about_pipeline"
+                    tools:visibility="visible" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- comms: global mode only — one action row per real command the
+             server sorter supports (cloud-u-containers:
+             user-comm_tools-stalwart/src/crate/src/main.rs). Today that is
+             exactly one: the ".reapply" sentinel mailbox. -->
+        <androidx.cardview.widget.CardView
+            android:id="@+id/cardCommands"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:nestedScrollingEnabled="false"
+            android:layout_marginStart="6dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="6dp"
             android:visibility="gone"
+            app:cardBackgroundColor="?attr/colorCardBackground"
+            app:cardCornerRadius="6dp"
+            app:cardElevation="0dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/tvServerRulesHeader"
-            tools:visibility="visible" />
+            app:layout_constraintTop_toBottomOf="@id/cardAbout"
+            tools:visibility="visible">
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="12dp">
+
+                <TextView
+                    android:id="@+id/tvCommandsHeader"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:text="@string/title_comms_rules_commands_header"
+                    android:textAppearance="@style/TextAppearance.AppCompat.Medium"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+                <ImageView
+                    android:id="@+id/ivCmdReapplyIcon"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_marginTop="10dp"
+                    android:contentDescription="@string/title_comms_rules_cmd_reapply"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/tvCommandsHeader"
+                    app:srcCompat="@drawable/twotone_sync_24"
+                    app:tint="?attr/colorWarning" />
+
+                <TextView
+                    android:id="@+id/tvCmdReapplyTitle"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="8dp"
+                    android:text="@string/title_comms_rules_cmd_reapply"
+                    android:textAppearance="@style/TextAppearance.AppCompat.Body1"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toEndOf="@id/ivCmdReapplyIcon"
+                    app:layout_constraintTop_toTopOf="@id/ivCmdReapplyIcon" />
+
+                <TextView
+                    android:id="@+id/tvCmdReapplyDesc"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="@string/title_comms_rules_cmd_reapply_desc"
+                    android:textAppearance="@style/TextAppearance.AppCompat.Small"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="@id/tvCmdReapplyTitle"
+                    app:layout_constraintTop_toBottomOf="@id/tvCmdReapplyTitle" />
+
+                <Button
+                    android:id="@+id/btnCmdReapply"
+                    style="?android:attr/buttonStyleSmall"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:drawableEnd="@drawable/twotone_play_arrow_24"
+                    android:drawablePadding="6dp"
+                    android:text="@string/title_comms_rules_cmd_run"
+                    app:layout_constraintStart_toStartOf="@id/tvCmdReapplyTitle"
+                    app:layout_constraintTop_toBottomOf="@id/tvCmdReapplyDesc" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
+        </androidx.cardview.widget.CardView>
+
+        <!-- comms: global mode only — the REAL rules live server-side
+             (mail-rules.nix -> Stalwart Sieve); this section reads them
+             read-only via JMAP so the page isn't just an empty device list. -->
+        <androidx.cardview.widget.CardView
+            android:id="@+id/cardServerRules"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="6dp"
+            android:visibility="gone"
+            app:cardBackgroundColor="?attr/colorCardBackground"
+            app:cardCornerRadius="6dp"
+            app:cardElevation="0dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/cardCommands"
+            tools:visibility="visible">
+
+            <androidx.constraintlayout.widget.ConstraintLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingTop="12dp"
+                android:paddingBottom="4dp">
+
+                <TextView
+                    android:id="@+id/tvServerRulesHeader"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:layout_marginEnd="12dp"
+                    android:text="@string/title_comms_server_rules_header"
+                    android:textAppearance="@style/TextAppearance.AppCompat.Medium"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+
+                <eu.faircode.email.FixedRecyclerView
+                    android:id="@+id/rvServerRule"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:nestedScrollingEnabled="false"
+                    app:layout_constraintEnd_toEndOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toBottomOf="@id/tvServerRulesHeader" />
+            </androidx.constraintlayout.widget.ConstraintLayout>
+        </androidx.cardview.widget.CardView>
 
         <TextView
             android:id="@+id/tvDeviceRulesHeader"
@@ -53,7 +239,7 @@
             android:visibility="gone"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/rvServerRule"
+            app:layout_constraintTop_toBottomOf="@id/cardServerRules"
             tools:visibility="visible" />
 
         <!-- comms: shown instead of an empty rvRule in all mode, so "zero

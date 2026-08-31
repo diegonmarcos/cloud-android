@@ -37,6 +37,8 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -90,8 +92,19 @@ public class FragmentRules extends FragmentBase {
     private Group grpReady;
     private FloatingActionButton fab;
 
+    // comms: "About this engine" collapsible section (all mode only)
+    private View cardAbout;
+    private View vAboutHeaderClick;
+    private TextView tvAboutBody;
+    private ImageView ivAboutChevron;
+    private boolean aboutExpanded;
+
+    // comms: "Commands" section (all mode only) — one row per real server engine command
+    private View cardCommands;
+    private Button btnCmdReapply;
+
     // comms: "Server rules (cloud)" section (all mode only) — see onLoadServerRules
-    private TextView tvServerRulesHeader;
+    private View cardServerRules;
     private RecyclerView rvServerRule;
     private TextView tvDeviceRulesHeader;
     private TextView tvDeviceRulesEmpty;
@@ -139,7 +152,15 @@ public class FragmentRules extends FragmentBase {
         grpReady = view.findViewById(R.id.grpReady);
         fab = view.findViewById(R.id.fab);
 
-        tvServerRulesHeader = view.findViewById(R.id.tvServerRulesHeader);
+        cardAbout = view.findViewById(R.id.cardAbout);
+        vAboutHeaderClick = view.findViewById(R.id.vAboutHeaderClick);
+        tvAboutBody = view.findViewById(R.id.tvAboutBody);
+        ivAboutChevron = view.findViewById(R.id.ivAboutChevron);
+
+        cardCommands = view.findViewById(R.id.cardCommands);
+        btnCmdReapply = view.findViewById(R.id.btnCmdReapply);
+
+        cardServerRules = view.findViewById(R.id.cardServerRules);
         rvServerRule = view.findViewById(R.id.rvServerRule);
         tvDeviceRulesHeader = view.findViewById(R.id.tvDeviceRulesHeader);
         tvDeviceRulesEmpty = view.findViewById(R.id.tvDeviceRulesEmpty);
@@ -228,13 +249,42 @@ public class FragmentRules extends FragmentBase {
         // a per-folder rules page already has one specific account/folder and
         // no ambiguity, so there's nothing extra worth fetching from the cloud.
         if (all) {
-            tvServerRulesHeader.setVisibility(View.VISIBLE);
+            cardAbout.setVisibility(View.VISIBLE);
+            cardCommands.setVisibility(View.VISIBLE);
+            cardServerRules.setVisibility(View.VISIBLE);
             tvDeviceRulesHeader.setVisibility(View.VISIBLE);
+
+            tvAboutBody.setText(TextUtils.join("\n\n", new String[]{
+                    getString(R.string.title_comms_rules_about_pipeline),
+                    getString(R.string.title_comms_rules_about_sieve),
+                    getString(R.string.title_comms_rules_about_sorter),
+                    getString(R.string.title_comms_rules_about_device),
+                    getString(R.string.title_comms_rules_about_commands),
+            }));
+
+            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getContext());
+            aboutExpanded = prefs.getBoolean("rules_about_expanded", false);
+            setAboutExpanded(aboutExpanded);
+            View.OnClickListener toggleAbout = new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    setAboutExpanded(!aboutExpanded);
+                    PreferenceManager.getDefaultSharedPreferences(getContext())
+                            .edit().putBoolean("rules_about_expanded", aboutExpanded).apply();
+                }
+            };
+            vAboutHeaderClick.setOnClickListener(toggleAbout);
+
+            btnCmdReapply.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    onCommandReapply();
+                }
+            });
 
             serverAdapter = new AdapterServerRule(inflater);
             rvServerRule.setLayoutManager(new LinearLayoutManager(getContext()));
             rvServerRule.setAdapter(serverAdapter);
-            rvServerRule.setVisibility(View.VISIBLE);
         }
 
         if (!cards) {
@@ -309,6 +359,16 @@ public class FragmentRules extends FragmentBase {
 
         if (all)
             onLoadServerRules();
+    }
+
+    // comms: expand/collapse the "About this engine" body, mirroring the
+    // chevron-swap idiom AdapterNavAccountFolder uses for folder groups.
+    private void setAboutExpanded(boolean expanded) {
+        aboutExpanded = expanded;
+        tvAboutBody.setVisibility(expanded ? View.VISIBLE : View.GONE);
+        ivAboutChevron.setImageResource(expanded
+                ? R.drawable.twotone_expand_less_24
+                : R.drawable.twotone_expand_more_24);
     }
 
     // comms: fetch the server-side rules (mail-rules.nix → per-account Stalwart
@@ -478,7 +538,6 @@ public class FragmentRules extends FragmentBase {
         menu.setGroupVisible(R.id.group_backup, !all);
         menu.findItem(R.id.menu_delete_all).setVisible(!all);
         menu.findItem(R.id.menu_apply_all).setVisible(all);
-        menu.findItem(R.id.menu_run_engine).setVisible(all);
 
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getContext());
         String sort = prefs.getString("rule_sort", "order");
@@ -519,9 +578,6 @@ public class FragmentRules extends FragmentBase {
             return true;
         } else if (itemId == R.id.menu_apply_all) {
             onMenuApplyAll();
-            return true;
-        } else if (itemId == R.id.menu_run_engine) {
-            onMenuRunRulesEngine();
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -660,7 +716,9 @@ public class FragmentRules extends FragmentBase {
     // already re-evaluates routing for ALL mail on every ~30s poll (routing.rs:
     // "the backfill IS the normal poll"); creating the ".reapply" JMAP mailbox
     // just makes it happen within ~10s instead of waiting out the interval.
-    private void onMenuRunRulesEngine() {
+    // Wired to the "Commands" card's "Reapply now" button — this is the only
+    // command the server engine exposes (one sentinel mailbox, main.rs).
+    private void onCommandReapply() {
         new SimpleTask<Integer>() {
             @Override
             protected void onPreExecute(Bundle args) {

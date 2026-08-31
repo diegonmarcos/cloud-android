@@ -39,6 +39,24 @@
     <string name="title_comms_device_rules_hint" translatable="false">Device rules run in the app; server rules run in the cloud.</string>
     <string name="title_comms_server_rules_no_account" translatable="false">No cloud (JMAP) account configured</string>
     <string name="title_comms_server_rules_error" translatable="false">Could not read server rules: %s</string>
+
+    <!-- comms: "About this engine" collapsible section on the Rules page —
+         translatable, unlike the labels above, since this is prose a user
+         reads rather than an internal config-UI label. Facts are drawn from
+         cloud-u-containers: _shared/lib/mail-rules.nix (toSieve) and
+         user-comm_tools-stalwart/src/crate/src/{main,routing,rules,filters}.rs. -->
+    <string name="title_comms_rules_about_header">About this engine</string>
+    <string name="title_comms_rules_about_pipeline">Rules are declared once, in mail-rules.nix, and rendered into two places: a Sieve script installed on the Stalwart mail server, and a mail-rules.json file the sorter service reads on startup.</string>
+    <string name="title_comms_rules_about_sieve">At delivery, Stalwart runs that Sieve script against the new message — filing it into a routing folder and tagging it. Sieve fires exactly once per message and never revisits it, so on its own a rule fix would only ever affect mail that arrives after the fix.</string>
+    <string name="title_comms_rules_about_sorter">That is the sorter service\'s job: it polls the same JMAP account every ~30 seconds (checking every 10 seconds for a request to run sooner) and re-applies the routing rules to every message, not just new ones — adding and removing folder membership so a rule change or fix reaches history too. It maintains the size/time/read-state/attachment filter views the same way.</string>
+    <string name="title_comms_rules_about_device">A third, independent tier runs on the device: the rules below under \"Device rules\" execute in this app, against mail already synced to the phone — for actions the server side can\'t do, like snoozing a message or sending a canned local reply.</string>
+    <string name="title_comms_rules_about_commands">The command below asks the sorter to act immediately instead of waiting for its next poll. It works by creating a JMAP mailbox with a reserved name (a sentinel); the sorter checks for that mailbox every ~10 seconds, and when it sees one it deletes it and runs the requested pass right away.</string>
+
+    <string name="title_comms_rules_commands_header">Commands</string>
+    <string name="title_comms_rules_cmd_reapply">Reapply now</string>
+    <string name="title_comms_rules_cmd_reapply_desc">Re-run routing and the filter views over ALL mail in this account right now, instead of waiting up to ~30s for the next poll. Creates the \".reapply\" sentinel mailbox over JMAP; the sorter consumes it and runs immediately.</string>
+    <string name="title_comms_rules_cmd_run">Run</string>
+
     <string name="title_comms_app_name" translatable="false">Cloud Mail</string>
     <string name="title_comms_update_channel" translatable="false">Update channel</string>
     <string name="title_comms_check_for_updates" translatable="false">Check for updates</string>
