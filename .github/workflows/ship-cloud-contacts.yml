@@ -157,7 +157,7 @@ jobs:
 
       - name: Login to GHCR
         if: ${{ steps.gate.outputs.skip != 'true' && (github.event_name != 'workflow_dispatch' || inputs.push_oras) }}
-        run: echo "${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
 
       - name: Push APK to GHCR via ORAS
         if: ${{ steps.gate.outputs.skip != 'true' && (github.event_name != 'workflow_dispatch' || inputs.push_oras) }}
@@ -169,6 +169,17 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GHCR_CREATE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./build.sh oras-push
+
+      # Whether anyone else can actually pull what we just pushed. The push
+      # itself says nothing about it: visibility is decided when the package is
+      # CREATED and inherited silently forever after, so this is the one cheap
+      # moment to find out. A warning, not a failure — the APK is also on the
+      # GH release, which is public by construction, so a private mirror
+      # degrades the install route without breaking it.
+      - name: Is the GHCR package publicly pullable
+        if: ${{ always() && steps.gate.outputs.skip != 'true' }}
+        continue-on-error: true
+        run: sh 1_cicd/dist/scripts/cloud-android-ghcr-visibility.sh diegonmarcos cloud-contacts
 
       - name: Publish to GitHub Releases
         if: ${{ steps.gate.outputs.skip != 'true' && (github.event_name != 'workflow_dispatch' || inputs.create_release) }}

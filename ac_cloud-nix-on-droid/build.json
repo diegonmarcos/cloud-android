@@ -1,6 +1,6 @@
 {
   "vendored_engine": "cloud-nix-on-droid-fork-engine.sh",
-  "_doc_vendored_engine": "CI does NOT run the engine source in 1_cicd/src/scripts — it runs the VENDORED COPY at ./build.sh, from this directory. This key DECLARES that copy relationship so the workflow generator can enforce byte-identity (cloud-android-ship-repo-workflow-engine.sh, step 'verify engine ↔ vendored build.sh parity') and go red on drift. Editing the engine alone used to change nothing at ship time, silently — which is how the ABI gate and the GHCR auto-delete gate came to exist only in the file nobody executes. Re-sync with: cp 1_cicd/src/scripts/<engine> ./build.sh",
+  "_doc_vendored_engine": "CI does NOT run the engine source in 1_cicd/src/scripts \u2014 it runs the VENDORED COPY at ./build.sh, from this directory. This key DECLARES that copy relationship so the workflow generator can enforce byte-identity (cloud-android-ship-repo-workflow-engine.sh, step 'verify engine \u2194 vendored build.sh parity') and go red on drift. Editing the engine alone used to change nothing at ship time, silently \u2014 which is how the ABI gate and the GHCR auto-delete gate came to exist only in the file nobody executes. Re-sync with: cp 1_cicd/src/scripts/<engine> ./build.sh",
   "forks": {
     "nixdroid": {
       "app_id": "cld.termux.nix",
@@ -39,8 +39,8 @@
   },
   "release": {
     "ghcr": {
-      "_doc": "DISABLED, and that is the fix rather than a workaround. A GHCR package is owned by the ACCOUNT, not the repository: GitHub creates every new user-owned package PRIVATE whatever repo it was pushed from, image.source only LINKS it and inherits nothing, and PATCH /user/packages returns 404 even with write:packages \u2014 proven on cloud-watchdog. A private APK in a public repo must not exist here, so the channel is the GH Release, whose assets ARE the repo and are public by construction. registry/namespace/image stay declared because regen.sh reads them to build the store entry.",
-      "enabled": false,
+      "_doc": "ENABLED. It was disabled when packages came out private \u2014 the cause was the login preferring secrets.GHCR_TOKEN, a PAT, which creates an ACCOUNT-owned package that is born private and cannot be patched. Every workflow here logs in with GITHUB_TOKEN now, which creates the package FOR THE REPOSITORY and takes the repository's visibility; verified on cloud-u-linux, whose first GITHUB_TOKEN push produced a public package. The workflow checks after every push and says so if it ever regresses.",
+      "enabled": true,
       "registry": "ghcr.io",
       "namespace": "diegonmarcos",
       "image": "cloud-nixdroid",
