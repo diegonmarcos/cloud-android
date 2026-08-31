@@ -1315,7 +1315,7 @@ class DevControlFragment : Fragment() {
             // saves hunting for it in the drawer.
             it.addView(actionButton(ctx, "Start Shizuku", GRAY) {
                 val pm = requireContext().packageManager
-                val intent = pm.getLaunchIntentForPackage(SHIZUKU_PKG)
+                val intent = pm.getLaunchIntentForPackage("moe.shizuku.privileged.api")
                 if (intent != null) runCatching { startActivity(intent) }
                 else Toast.makeText(requireContext(), "Shizuku not installed", Toast.LENGTH_SHORT).show()
             })
