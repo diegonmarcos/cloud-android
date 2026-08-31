@@ -716,10 +716,28 @@ step_publish_fork() {
   local abi="${COMMS_BUNDLE_ABI:-arm64-v8a}" suffix=""
   [ "$abi" = "arm64-v8a" ] || suffix="-$abi"
   local tag ref
+  # CREATE WITH GITHUB_TOKEN, UPDATE WITH THE AMBIENT PAT LOGIN. A GHCR
+  # package's visibility is decided by the token that CREATES it and can never
+  # be changed afterwards (there is no visibility API - PATCH/PUT/POST on
+  # /user/packages/container/{pkg}[/visibility] all 404). A repo-scoped
+  # GITHUB_TOKEN creates a package linked to this repo, inheriting its public
+  # visibility; the user-scoped PAT creates it unlinked and PRIVATE forever.
+  # But GITHUB_TOKEN cannot UPDATE a package that is not linked to this repo,
+  # so the token is chosen per PACKAGE, not per repo - same pattern as
+  # ab_cloud-libs-shared/lib-apks/build.sh and ac_cloud-camera/build.sh.
+  #
+  # Without this, publish-fork always pushed under the ambient login: that is
+  # how cloud-camera was created private and unlinked on 2026-08-31.
+  local creds=()
+  if [ -n "${GHCR_CREATE_TOKEN:-}" ] && command -v gh >/dev/null 2>&1 \
+     && ! gh api "/user/packages/container/${image}" >/dev/null 2>&1; then
+    log "ghcr: ${image} does not exist - creating it with GITHUB_TOKEN so it inherits the repo"
+    creds=(--username "${GITHUB_ACTOR:-diegonmarcos}" --password "${GHCR_CREATE_TOKEN}")
+  fi
   for tag in latest "sha-${sha:0:8}"; do
     ref="$registry/$namespace/$image:${tag}${suffix}"
     log "publish-fork[$key]: oras push $ref"
-    ( cd "$DIST_DIR" && in_nix oras push "$ref" "cloud-comms-${key}.apk:$media_type" \
+    ( cd "$DIST_DIR" && in_nix oras push "${creds[@]}" "$ref" "cloud-comms-${key}.apk:$media_type" \
         --artifact-type "$media_type" )
   done
   _ghcr_gate_public "$namespace" "$image" "${tag}${suffix}" "$registry"

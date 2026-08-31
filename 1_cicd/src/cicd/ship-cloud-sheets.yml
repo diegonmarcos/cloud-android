@@ -164,16 +164,34 @@ jobs:
 
       - name: Push to GHCR via ORAS
         if: ${{ steps.gate.outputs.skip != 'true' && (github.event_name != 'workflow_dispatch' || inputs.push_oras) }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_CREATE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           echo "${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}" \
             | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
           REF="${{ steps.pin.outputs.ref }}"
           MT="${{ steps.pin.outputs.media_type }}"
+          # CREATE WITH GITHUB_TOKEN, UPDATE WITH THE AMBIENT PAT LOGIN. A GHCR
+          # package's visibility is fixed at CREATION and there is no API to
+          # change it later. A package created by the user-scoped PAT is
+          # unlinked and PRIVATE forever; one created by this repo's
+          # GITHUB_TOKEN inherits the public repo. But GITHUB_TOKEN cannot
+          # UPDATE a package that is not linked to this repo, so the token is
+          # chosen per PACKAGE: override the ambient login only when the
+          # package does not exist yet.
+          CREDS=()
+          PKG="${REF##*/}"
+          if [ -n "${GHCR_CREATE_TOKEN:-}" ] && command -v gh >/dev/null 2>&1 \
+             && ! gh api "/user/packages/container/${PKG}" >/dev/null 2>&1; then
+            echo "ghcr: ${PKG} does not exist - creating it with GITHUB_TOKEN so it inherits the repo"
+            CREDS=(--username "${GITHUB_ACTOR:-diegonmarcos}" --password "${GHCR_CREATE_TOKEN}")
+          fi
           # Layer title annotation comes from the filename in the file spec, so
           # the AppStore's downloader finds Cloud-Sheets.apk by title exactly as
           # it does for every built app.
-          oras push "$REF:latest" \
+          oras push "${CREDS[@]}" "$REF:latest" \
             "${{ steps.pin.outputs.asset }}:$MT" \
             --artifact-type "$MT" \
             --annotation "org.opencontainers.image.revision=$GITHUB_SHA" \

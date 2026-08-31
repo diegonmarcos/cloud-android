@@ -225,6 +225,8 @@ jobs:
         if: ${{ steps.gate.outputs.skip != 'true' && (github.event_name != 'workflow_dispatch' || inputs.push_oras) }}
         working-directory: ${{ env.WORK_DIR }}
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_CREATE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BYPASS_NIX: "1"
           COMMS_BUNDLE_ABI: ${{ matrix.abi }}
           GITHUB_SHA: ${{ github.sha }}

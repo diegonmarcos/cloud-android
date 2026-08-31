@@ -154,6 +154,8 @@ jobs:
         if: steps.gate.outputs.skip != 'true'
         working-directory: ${{ env.WORK_DIR }}
         env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_CREATE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BYPASS_NIX: "1"
           GITHUB_SHA: ${{ github.sha }}
         run: ./build.sh publish-fork "$FORK"
