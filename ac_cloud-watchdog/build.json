@@ -120,11 +120,14 @@
       ]
     },
     "auto_update": {
-      "_doc": "The in-app updater reads release_url first (libs:updater Fleet.kt) and only falls back to GHCR, which this app no longer publishes \u2014 so updates come off the release asset, which follows repo visibility. NOTE: version_code is 1 and never bumped, so this channel is inert until it is.",
       "enabled": true,
       "tag": "latest",
       "interval_hours": 6,
-      "max_installs_per_pass": 3
+      "require_unmetered_network": false,
+      "require_charging": false,
+      "install_mode": "silent",
+      "max_installs_per_pass": 3,
+      "_doc": "Read by :libs:updater at CONFIGURE time into BuildConfig. Not optional: the booleans are interpolated straight into generated Java, so a missing key becomes the literal null and javac fails with 'incompatible types: <null> cannot be converted to boolean' in a generated file \u2014 an error naming neither this app nor the library. Same values as every other constellation app."
     },
     "gh_release": {
       "_doc": "rolling_tag is canonical: one release the ship workflow overwrites on every main push, so /releases/latest/download/Cloud-Watchdog.apk is a stable URL.",
