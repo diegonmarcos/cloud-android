@@ -80,7 +80,10 @@
     "libs:updater": {
       "dir": "../ab_cloud-libs-shared/libs/updater"
     },
-    "_doc_updater": "libs:updater is how every other app in the constellation keeps itself current, and this one shipped without it \u2014 the only way to update the watchdog was to pull the APK by hand. Shared BY REFERENCE (dir), like everywhere else, so the fix lands in all of them at build time and copies cannot drift. libs:core comes with it: the updater depends on it."
+    "_doc_updater": "libs:updater is how every other app in the constellation keeps itself current, and this one shipped without it \u2014 the only way to update the watchdog was to pull the APK by hand. libs:core comes with it (the updater depends on it) and libs:devtools comes with core, which declares it as an `api` dependency: a transitive edge gradle cannot satisfy from a module the app never included, so it fails at CONFIGURATION time in libs/core/build.gradle rather than as a missing symbol. Shared BY REFERENCE (dir) like every other module here.",
+    "libs:devtools": {
+      "dir": "../ab_cloud-libs-shared/libs/devtools"
+    }
   },
   "toolchain": {
     "_doc": "Pinned for reproducibility \u2014 all derived in flake.nix. Mirrors aa_cloud-superapp / ea_cloud-comms pins so all the Android projects share one toolchain story. Node is added for the Acode (Cordova) fork's JS/plugin build.",
