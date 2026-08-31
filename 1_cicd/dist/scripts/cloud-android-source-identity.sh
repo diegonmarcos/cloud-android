@@ -106,6 +106,49 @@ _paths() {
     return 0
 }
 
+# ── external inputs: artifacts this APK bakes in from ANOTHER repo ──
+# Declared as data in build.json::build.external_inputs[] — {repo, tag, asset}.
+#
+# WHY THIS EXISTS (2026-08-31): cloud-watchdog ships my-watchdog + the panel +
+# the app shell, all downloaded from the cloud-u-linux rolling release at build
+# time. None of that is in this repo, so the identity above could not see it:
+# the panel binary was rebuilt with a fix, the APK's own source had not moved,
+# and the gate skipped publishing — forever. The phone kept an APK whose
+# bundled panel was three fixes behind, and every rebuild agreed it was current.
+#
+# The asset id moves on every re-upload (gh --clobber deletes and re-creates),
+# and size plus updated_at are carried too so a same-id overwrite still counts.
+_external() {
+    bj="$ROOT/$APP/build.json"
+    [ -f "$bj" ] || return 0
+    command -v jq >/dev/null 2>&1 || return 0
+    # A `while` fed by a PIPE runs in a subshell, so the `exit 3` below would
+    # kill only that subshell and leave the caller hashing a short list — the
+    # silent partial identity this whole guard exists to prevent. A heredoc
+    # keeps the loop in this shell, where exit means exit.
+    _list="$(jq -r '(.build.external_inputs // [])[]
+           | select(type=="object" and .repo != null and .tag != null and .asset != null)
+           | "\(.repo)\t\(.tag)\t\(.asset)"' "$bj" 2>/dev/null)"
+    [ -n "$_list" ] || return 0
+    while IFS="$(printf '\t')" read -r repo tag asset; do
+        [ -n "$repo" ] && [ -n "$tag" ] && [ -n "$asset" ] || continue
+        id="$(gh release view "$tag" --repo "$repo" \
+                --json assets \
+                --jq "[.assets[]|select(.name==\"$asset\")|\"\(.size):\(.updatedAt)\"][0] // empty" \
+              2>/dev/null)"
+        # Fail loud rather than hash a short list — the same rule the shared
+        # libs follow above. An identity that silently drops an external input
+        # is how this bug happened in the first place.
+        [ -n "$id" ] || {
+            echo "$APP: cannot read $asset from $repo@$tag — refusing to compute a partial identity" >&2
+            exit 3
+        }
+        printf '%s  external:%s@%s/%s\n' "$id" "$repo" "$tag" "$asset"
+    done <<EOF
+$_list
+EOF
+}
+
 # ── per-path git object ids ────────────────────────────────────────
 # `git rev-parse HEAD:<path>` yields the TREE sha for a directory and the BLOB
 # sha for a file — one content hash for an arbitrarily deep subtree, already
@@ -117,6 +160,9 @@ _explain() {
         h="$(git -C "$ROOT" rev-parse "HEAD:$p" 2>/dev/null || printf 'missing')"
         printf '%s  %s\n' "$h" "$p"
     done
+    # Sorted with the rest so the order of the declaration cannot change the
+    # identity of an otherwise identical build.
+    _external | LC_ALL=C sort -u
 }
 
 case "$CMD" in
