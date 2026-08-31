@@ -49,10 +49,54 @@ import java.util.Date
 import java.util.TimeZone
 
 /**
- * About page — comprehensive runtime + build metadata for the user
- * to inspect. Long-press any monospace row to copy to clipboard.
+ * About page — comprehensive runtime + build metadata for the user to inspect.
+ * Long-press any monospace row to copy it to the clipboard.
+ *
+ * ── STRUCTURE ────────────────────────────────────────────────────────────
+ * Three levels, and they are three different helpers — do not mix them up
+ * when adding to this page:
+ *
+ *   [title]        the page title, exactly once
+ *   [macroHeader]  a MACRO GROUP — the eight bands below
+ *   [section]      a collapsible block inside a group
+ *   [row]          a key/value line inside a section
+ *
+ * The eight macro groups, in render order, with the sections each owns:
+ *
+ *   1. 🔍  LOGCAT           App logs (this process)
+ *   2. ☁  CLOUD IDENTITY   Profile · VPN / WireGuard / Mesh
+ *   3. 📱  APP & BUILD      App · Release / GHCR · APK · Signing ·
+ *                           APK provenance · Sections (from build.json) · Stack
+ *   4. 🖥️  DEVICE            Device / stack · Kernel / OS · SoC / CPU ·
+ *                           Thermal zones · Display · Sensors · Locale & time
+ *   5. 🔋  RESOURCES        Storage · Battery & Usage · Memory ·
+ *                           Memory & CPU Usage · SYSFS-PROC
+ *   6. 🌐  NETWORK          Network · Wi-Fi · IPC Contract · Firewall
+ *   7. 🔐  SECURITY         Security posture
+ *   8. 🛠️  DEV TOOLS        Dev Control - Http (API) & SSH (Termux) ·
+ *                           Curl shortcuts
+ *
+ * 29 sections across 8 groups. Every [macroHeader] call registers itself in
+ * [macroAnchors], which is what builds the jump index at the top of the page —
+ * so adding a group needs no edit there, and one cannot be forgotten.
+ *
+ * NOTE: "Sections (from build.json)" under APP & BUILD is unrelated to the
+ * sections here. It lists the app's own configured UI sections, and the name
+ * collision is a genuine trap when reading this file.
+ *
+ * Sections whose body lives elsewhere: Firewall renders entirely from
+ * libs:firewall (FirewallInfo + FirewallDialog); this page supplies only the
+ * layout around it.
  */
 class DevControlFragment : Fragment() {
+
+    /** Macro-group headers in render order, keyed by their label — the source
+     *  the jump index is built from.
+     *
+     *  Rebuilt on every onCreateView, and cleared there first: these are Views,
+     *  so keeping them across a reattach would leak the old hierarchy and
+     *  scroll to destroyed nodes. */
+    private val macroAnchors = LinkedHashMap<String, TextView>()
 
     /** Accumulator that mirrors everything written to the UI by
      *  [title] / [section] / [row] + the inline folder-tree block, so
@@ -236,6 +280,14 @@ class DevControlFragment : Fragment() {
 
         column.addView(title(ctx, "About Cloud SuperApp"))
 
+        // Jump index. Added HERE so it renders under the title, but populated
+        // at the very end of this method — the anchors do not exist until the
+        // macro headers have been created, and deriving it from macroAnchors is
+        // what stops the index and the page disagreeing.
+        val indexHost = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
+        column.addView(indexHost)
+
+        macroAnchors.clear()
         addLogcatSection(ctx, column)
 
         // ══ CLOUD macro section — who/what this device is in the cloud mesh: the
@@ -1377,8 +1429,78 @@ class DevControlFragment : Fragment() {
         column.addView(actionButton(ctx, "Copy All Infos") { copyAll() })
         if (copyOnOpen) { copyOnOpen = false; copyAll() }
 
+        buildJumpIndex(ctx, indexHost, scroll)
         return scroll
     }
+
+    /**
+     * The "jump to" index under the page title: one tappable chip per macro
+     * group, in render order, scrolling the page to that header.
+     *
+     * Built from [macroAnchors], never from a hardcoded list — the page is ~1400
+     * lines and a second copy of the group names would drift the first time
+     * someone adds or renames a band.
+     *
+     * The scroll is deferred with post(): at the moment this runs the page has
+     * been constructed but not laid out, so every header's `top` is still 0 and
+     * scrolling would land on the title regardless of what was tapped.
+     */
+    private fun buildJumpIndex(ctx: Context, host: LinearLayout, scroll: ScrollView) {
+        if (macroAnchors.isEmpty()) return
+        host.addView(small(ctx, "Jump to:"))
+
+        var line = newIndexLine(ctx)
+        host.addView(line)
+        var used = 0
+        for ((label, anchor) in macroAnchors) {
+            // Strip the leading icon: the chips are narrow and the words carry it.
+            val short = label.substringAfter("  ").ifBlank { label }
+            if (used >= PER_ROW) {
+                line = newIndexLine(ctx); host.addView(line); used = 0
+            }
+            line.addView(indexChip(ctx, short) {
+                scroll.post { scroll.smoothScrollTo(0, anchor.top) }
+            })
+            used++
+        }
+        // Pad the final row. The chips are weighted, so a short last row would
+        // stretch its two chips to half-width each while every row above shows
+        // thirds — the ragged edge reads as a layout bug rather than as "that
+        // is simply how many groups there are".
+        repeat(PER_ROW - used) {
+            line.addView(View(ctx).apply {
+                layoutParams = LinearLayout.LayoutParams(
+                    0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f,
+                ).apply { marginEnd = dp(4) }
+            })
+        }
+    }
+
+    /** Chips per index row. Three keeps the longest label ("CLOUD IDENTITY")
+     *  readable at 11sp on a narrow phone. */
+    private val PER_ROW = 3
+
+    private fun newIndexLine(ctx: Context) = LinearLayout(ctx).apply {
+        orientation = LinearLayout.HORIZONTAL
+        layoutParams = LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT,
+        ).apply { topMargin = dp(4) }
+    }
+
+    private fun indexChip(ctx: Context, label: String, onClick: () -> Unit) =
+        TextView(ctx).apply {
+            text = label
+            textSize = 11f
+            setTextColor(0xFFE9D8FD.toInt())
+            setBackgroundColor(0x22B794F4.toInt())
+            setPadding(dp(10), dp(6), dp(10), dp(6))
+            isClickable = true
+            setOnClickListener { onClick() }
+            layoutParams = LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f,
+            ).apply { marginEnd = dp(4) }
+        }
 
     // ── helpers ──────────────────────────────────────────────────────
 
@@ -1598,6 +1720,9 @@ class DevControlFragment : Fragment() {
 
     /** Big macro-section divider ("☁ CLOUD", "📱 PHONE") splitting the
      *  About page into the cloud-identity half and the phone-device half. */
+    /** A macro-group header. Registers itself in [macroAnchors] so the jump
+     *  index at the top of the page is derived from what is actually rendered
+     *  rather than from a second list that could drift out of step. */
     private fun macroHeader(ctx: Context, text: String) = TextView(ctx).apply {
         this.text = text
         setTextColor(0xFFE9D8FD.toInt())
@@ -1611,7 +1736,7 @@ class DevControlFragment : Fragment() {
         ).apply { topMargin = dp(20) }
         layoutParams = lp
         setPadding(p, dp(12), p, dp(10))
-    }
+    }.also { macroAnchors[text] = it }
 
     /** Repo {label,url} list for the Profile section — data-driven from
      *  build.json::ui.profile_default.repos (UI_PROFILE_REPOS_B64). */
