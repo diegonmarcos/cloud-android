@@ -1052,8 +1052,6 @@
         "id": "communication",
         "label": "Inboxes",
         "icon": "ic_p_inbox",
-        "icon_apps": "ic_chat",
-        "icon_admin": "ic_p_c3_workflows",
         "module": null,
         "bottom_nav": true,
         "is_aggregator": true,
@@ -1228,8 +1226,6 @@
         "id": "infos",
         "label": "Projects",
         "icon": "ic_pm_boards",
-        "icon_apps": "ic_p_logs",
-        "icon_admin": "ic_p_c3_workflows",
         "module": null,
         "bottom_nav": true,
         "is_aggregator": true,
@@ -4877,12 +4873,12 @@
           {
             "id": "section:communication",
             "label": "Inboxes",
-            "icon": "ic_chat"
+            "icon": "ic_p_inbox"
           },
           {
             "id": "section:infos",
-            "label": "Infos",
-            "icon": "ic_p_logs"
+            "label": "Projects",
+            "icon": "ic_pm_boards"
           },
           {
             "id": "section:suite",
@@ -5978,7 +5974,7 @@
           "install_app": "cloud-ide"
         },
         {
-          "label": "Cloud Comms",
+          "label": "Inboxes",
           "target": "section:communication",
           "_doc": "The Cloud-Comms hub is decommissioned; its 4 ex-forks are standalone apps. This parent now opens SuperApp's Communications section (Mail/Chat/Messenger/Dialer tiles → extapp:cloud-{mail,chat,matrix,dialer}) instead of launching/installing a dead hub. The `comms` context below still bolds this parent + lists the 4 apps (app:com.diegonmarcos.comms.*) when any is foreground."
         },
@@ -6022,7 +6018,7 @@
               "target": "section:communication"
             },
             {
-              "label": "Infos",
+              "label": "Projects",
               "target": "section:infos"
             },
             {
