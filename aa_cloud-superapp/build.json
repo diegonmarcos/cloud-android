@@ -437,7 +437,7 @@
           "target": "page:tools/apps"
         },
         {
-          "label": "Labs Admin",
+          "label": "Labs C3",
           "icon": "ic_p_c3_stack",
           "target": "page:tools/admin"
         }
@@ -1796,15 +1796,10 @@
           },
           {
             "id": "admin",
-            "label": "Admin",
-            "icon": "ic_p_c3_stack",
-            "facet": true
-          },
-          {
-            "id": "c3",
             "label": "C3",
             "icon": "ic_p_c3_stack",
-            "hidden": true
+            "facet": true,
+            "_doc": "Cloud Control Center. The page id stays `admin` on purpose: it is the tiles_admin/stack_admin data key, the target of page:tools/admin, and the only page left in the app whose id still drives ModePrefs (LauncherNavController.syncModeForPage applies Apps/Admin mode from the page id). Renaming the id would quietly mean nothing ever selects admin mode again — so the LABEL moved and the key stayed."
           },
           {
             "id": "data-ml",
@@ -1842,7 +1837,7 @@
             "id": "c3",
             "label": "C3",
             "icon": "ic_p_c3_stack",
-            "target": "page:tools/c3"
+            "target": "page:tools/admin"
           },
           {
             "id": "data-ml",
