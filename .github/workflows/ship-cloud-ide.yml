@@ -222,6 +222,17 @@ jobs:
           GHCR_CREATE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./build.sh oras-push
 
+      # Whether anyone else can actually pull what we just pushed. The push
+      # itself says nothing about it: visibility is decided when the package is
+      # CREATED and inherited silently forever after, so this is the one cheap
+      # moment to find out. A warning, not a failure — the APK is also on the
+      # GH release, which is public by construction, so a private mirror
+      # degrades the install route without breaking it.
+      - name: Is the GHCR package publicly pullable
+        if: ${{ always() && steps.gate.outputs.skip != 'true' }}
+        continue-on-error: true
+        run: sh 1_cicd/dist/scripts/cloud-android-ghcr-visibility.sh diegonmarcos cloud-ide-hub
+
       # ── GitHub Release (engine reads build.json::release.gh_release) ──
       # Only the default abi (unsuffixed Cloud-IDE-Hub.apk) feeds the rolling
       # GH Release asset; x86_64 distributes via GHCR `latest-x86_64`. Running
