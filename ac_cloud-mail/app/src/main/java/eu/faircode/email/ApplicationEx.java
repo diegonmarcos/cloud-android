@@ -1163,6 +1163,31 @@ public class ApplicationEx extends Application
             }
         }
 
+        // comms: make R.attr.colorUnread actually decide the unread colour.
+        //
+        // highlight_unread defaults to TRUE, and AdapterMessage reads:
+        //     colorUnread = highlight_unread ? colorUnreadHighlight
+        //                                    : resolveColor(R.attr.colorUnread)
+        // so with the default on, R.attr.colorUnread is NEVER consulted and the
+        // unread colour comes from the `highlight_color` pref (falling back to
+        // R.attr.colorUnreadHighlight) instead. Every theme fix aimed at
+        // colorUnread was therefore dead code, and the read/unread cue stayed
+        // whatever the accent happened to be -- which is exactly the "nothing
+        // changed" this was supposed to fix.
+        //
+        // The design is: unread = full-strength text (colorUnread), read =
+        // muted grey (colorRead). Turning the highlight off once is what makes
+        // the theme authoritative. Anyone who prefers an accent highlight can
+        // switch it back on; this never runs again.
+        //
+        // A one-shot marker, NOT a `version <` guard: versionCode is derived
+        // from the build timestamp now, so any numeric bound either misses or
+        // re-fires on every launch of builds below it.
+        if (!prefs.contains("comms_unread_uses_theme")) {
+            editor.putBoolean("highlight_unread", false);
+            editor.putBoolean("comms_unread_uses_theme", true);
+        }
+
         if (version < 3620) {
             // comms: cloud-mail-dark is now THE app theme, but a new default
             // only reaches fresh installs -- every existing device already has
