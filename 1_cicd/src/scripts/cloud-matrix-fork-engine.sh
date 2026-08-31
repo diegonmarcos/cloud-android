@@ -684,6 +684,7 @@ step_publish_fork() {
     ( cd "$DIST_DIR" && in_nix oras push "$ref" "cloud-comms-${key}.apk:$media_type" \
         --artifact-type "$media_type" )
   done
+  _ghcr_gate_public "$namespace" "$image" "${tag}${suffix}" "$registry"
 }
 
 # ── GHCR distribution (hub APK) ─────────────────────────────────────────
@@ -764,6 +765,48 @@ _resolve_template() {
   echo "${tmpl//\{sha\}/${sha:0:8}}" | sed "s|{version_name}|$ver|g"
 }
 
+# Anonymous-pull probe + auto-delete gate. Call after EVERY successful GHCR
+# push, in the SAME run. The GH Release is the only REQUIRED distribution
+# channel for the store — it is public by construction, since a repo's
+# release assets follow the repo's own visibility. GHCR is an OPTIONAL
+# MIRROR the store's updater falls back off of on a clean 404. GitHub
+# creates every brand-new user-owned package PRIVATE regardless of the
+# repo, and there is no API to flip that after the fact — so a private
+# mirror cannot self-heal. Worse than missing: it looks present (an
+# authenticated HEAD succeeds) but 401s anonymously, so the store waits on
+# it instead of falling through to the release. Delete it in the same run
+# rather than leave that trap for the next check to discover. NEVER fails
+# the build for this — the release already succeeded, and that is what
+# actually matters; a failed delete only warns.
+_ghcr_gate_public() {
+  local namespace="$1" image="$2" tag="$3" registry="${4:-ghcr.io}"
+  local scope="repository:${namespace}/${image}:pull"
+  local token status
+  # curl in CI/dev environments here can silently inject an ambient
+  # Authorization header — strip it explicitly so this probe is truly
+  # anonymous, not accidentally authenticated.
+  token="$(curl -H "Authorization:" -sS --max-time 30 \
+    "https://${registry}/token?scope=${scope}&service=${registry}" 2>/dev/null \
+    | jq -r '.token // empty')"
+  if [ -n "$token" ]; then
+    status="$(curl -H "Authorization: Bearer $token" -sS --max-time 30 \
+      -H "Accept: application/vnd.oci.image.manifest.v1+json,application/vnd.oci.image.index.v1+json,application/vnd.docker.distribution.manifest.v2+json" \
+      -o /dev/null -w '%{http_code}' \
+      "https://${registry}/v2/${namespace}/${image}/manifests/${tag}" 2>/dev/null)"
+  fi
+  [ -n "$token" ] && [ "$status" = "200" ] && return 0
+  errlog "GHCR mirror ${namespace}/${image}:${tag} is NOT anonymously pullable (token=${token:+present}${token:-absent}, manifest=${status:-none}) — deleting it now."
+  errlog "  The GH Release is the REQUIRED channel and is public by construction; a private GHCR package looks present-but-unreachable and blinds the store's updater instead of a clean 404 fallthrough."
+  errlog "  A private mirror must not outlive the run that created it."
+  command -v gh >/dev/null 2>&1 || { errlog "  gh CLI not found — cannot auto-delete; fix visibility manually at https://github.com/users/diegonmarcos/packages/container/${image}/settings"; return 0; }
+  if gh api -X DELETE "/user/packages/container/${image}" >/dev/null 2>&1; then
+    errlog "  deleted /user/packages/container/${image} — store will now see a clean 404 and fall through to the release."
+  else
+    errlog "  auto-delete FAILED for ${image} — package may still be private. Not failing the build: the release already succeeded and is what matters. Fix manually: https://github.com/users/diegonmarcos/packages/container/${image}/settings"
+  fi
+  return 0
+}
+
 step_oras_push() {
   [ "$(_json '.release.ghcr.enabled')" = "true" ] || { log "oras-push: disabled — skip"; return 0; }
   local registry namespace image media_type artifact
@@ -797,6 +840,7 @@ step_oras_push() {
     log "oras push $ref ← $aname"
     ( cd "$adir" && in_nix oras push "${creds[@]}" "$ref" "$aname:$media_type" --artifact-type "$media_type" )
   done < <(prefer_host jq -r '.release.ghcr.tags[]' "$SCRIPT_DIR/build.json")
+  _ghcr_gate_public "$namespace" "$image" "$tag" "$registry"
 }
 
 step_oras_pull() {
@@ -845,7 +889,36 @@ step_phone_install() {
 # see aa_cloud-superapp/build.sh for the full "why" (2026-08-30 same-size
 # collision that hid a real update from the store; Fleet.kt's releaseSha256
 # reads this sidecar).
-_sha256_sidecar() { sha256sum "$1" | awk '{print $1}' > "$1.sha256"; }
+# Guard against publishing an ABI-specific APK under an UNSUFFIXED name —
+# the name every per-app registration and the store's default install URL
+# point at, which is a promise the APK installs everywhere. 2026-08-31:
+# media-center's x86_64 matrix job clobbered the arm64 asset under the
+# unsuffixed name this way, leaving phones failing
+# INSTALL_FAILED_NO_MATCHING_ABIS. Applies to every app, forever — this
+# runs in the one place the sha256 sidecar is emitted, right before
+# upload, so nothing can skip it.
+_verify_asset_abi_neutral() {
+  local f="$1" name; name="$(basename "$f")"
+  # An explicitly ABI-suffixed name is a deliberate non-default variant —
+  # ABI-specific content there is the point, not a bug.
+  case "$name" in
+    *-x86_64.apk|*-x86.apk|*-armeabi-v7a.apk|*-arm64-v8a.apk|*-arm64.apk) return 0 ;;
+  esac
+  if ! command -v unzip >/dev/null 2>&1; then
+    errlog "gh-release: unzip not on PATH — skipping ABI-neutrality check for $name (best-effort, not enforced this run)"
+    return 0
+  fi
+  local libs
+  libs="$(unzip -l "$f" 2>/dev/null | awk '{print $NF}' | grep '^lib/' || true)"
+  if [ -n "$libs" ] && ! grep -q '^lib/arm64-v8a/' <<<"$libs"; then
+    errlog "gh-release: $name carries native libs with none under lib/arm64-v8a/ — refusing to publish an ABI-specific APK under an unsuffixed/universal name (would break install on arm64 phones, INSTALL_FAILED_NO_MATCHING_ABIS)"
+    exit 1
+  fi
+}
+_sha256_sidecar() {
+  _verify_asset_abi_neutral "$1"
+  sha256sum "$1" | awk '{print $1}' > "$1.sha256"
+}
 _verify_release_asset() {
   local tag="$1" f="$2" name; name="$(basename "$f")"
   local list; list="$(in_nix gh release view "$tag" --json assets --jq '.assets[] | "\(.name) \(.size)"')"

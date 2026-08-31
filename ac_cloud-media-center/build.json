@@ -120,7 +120,20 @@
       "draft": false,
       "prerelease": false,
       "generate_release_notes": false
-    }
+    },
+    "variants": [
+      {
+        "_doc": "2026-08-31: the two-job ABI matrix (COMMS_BUNDLE_ABI=arm64-v8a|x86_64) both resolved to the single fixed gh_release.asset_name above and uploaded with --clobber, so whichever job finished last silently overwrote the other's asset under the same public name — arm64 phones ended up installing the x86_64 build and failed with INSTALL_FAILED_NO_MATCHING_ABIS. Mirrors ac_cloud-termux::release.variants, id matches COMMS_BUNDLE_ABI directly (this app has no separate CLOUDNAV_VARIANT-style short id).",
+        "id": "arm64-v8a",
+        "gh_asset": "cloud-media-center.apk",
+        "ghcr_tag_suffix": ""
+      },
+      {
+        "id": "x86_64",
+        "gh_asset": "cloud-media-center-x86_64.apk",
+        "ghcr_tag_suffix": "-x86_64"
+      }
+    ]
   },
   "analytics": {
     "_doc": "Consumed by :libs:analytics, which reads THIS file (rootDir) at build time and bakes the values into BuildConfig. Both backends are single-site today, so every app reports into the same site and is told apart by .app — give each app its own site_id once per-app sites exist in Umami/Matomo.",
