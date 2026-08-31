@@ -1,6 +1,7 @@
 package com.diegonmarcos.superapp.watchdog
 
 import android.app.Activity
+import android.util.Log
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import org.json.JSONObject
@@ -147,13 +148,20 @@ class WatchdogBridge(
             // had four, and reported all of them as the same ECONNREFUSED.
             // ssh stays behind it because it is the only way to another
             // machine, which is what it was always for.
-            val viaTerminal = if (terminal.available()) {
-                terminal.exec(
-                    terminal.toolPath(BIN_PANEL) ?: "",
-                    arrayOf("snapshot"),
-                    timeoutMs = 20_000,
-                ).getOrNull()
-            } else null
+            val panelBin = if (terminal.available()) terminal.toolPath(BIN_PANEL) else null
+            val viaTerminal = if (panelBin != null) {
+                // The sampler first. The panel only RENDERS a snapshot, so
+                // asking for one before anything is publishing gets "the
+                // sampler did not publish" on a phone where everything else
+                // is right.
+                terminal.toolPath(BIN_DAEMON)?.let { terminal.ensureDaemon(it) }
+                terminal.exec(panelBin, arrayOf("snapshot"), timeoutMs = 20_000)
+                    .onFailure { Log.w(WatchdogTerminal.TAG, "terminal snapshot: ${it.message}") }
+                    .getOrNull()
+            } else {
+                Log.w(WatchdogTerminal.TAG, "terminal: ${WatchdogTerminal.TERMUX_PKG} did not answer")
+                null
+            }
 
             if (viaTerminal != null) {
                 val js = "window.__wdRender(${JSONObject.quote(viaTerminal)})"
@@ -168,7 +176,14 @@ class WatchdogBridge(
                     webView.post { webView.evaluateJavascript(js, null) }
                     push("fresh", ssh.activeBackend ?: "")
                 },
-                onFailure = { push("stale", it.message ?: "unreachable") },
+                onFailure = {
+                    // Named here because the page cannot say it: the shipped
+                    // shell defines __wdRender and nothing else, so an event
+                    // pushed at it lands on an undefined function and the
+                    // only symptom left is a dashboard that never fills in.
+                    Log.w(WatchdogTerminal.TAG, "ssh snapshot (${backend()}): ${it.message}")
+                    push("stale", it.message ?: "unreachable")
+                },
             )
         }
     }
@@ -207,6 +222,9 @@ class WatchdogBridge(
 
         /** Resolved against the terminal's own toolsDir(), never a path we assume. */
         const val BIN_PANEL = "libmywatchdogtui.so"
+
+        /** The sampler beside it — the panel draws what THIS publishes. */
+        const val BIN_DAEMON = "libmywatchdog.so"
     }
 
     private fun push(kind: String, payload: String) {

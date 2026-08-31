@@ -2,6 +2,7 @@ package com.diegonmarcos.superapp.watchdog
 
 import android.content.Context
 import android.util.Base64
+import android.util.Log
 import com.jcraft.jsch.ChannelExec
 import com.jcraft.jsch.JSch
 import com.jcraft.jsch.Session
@@ -150,6 +151,22 @@ class WatchdogSsh(private val ctx: Context) {
     }
 
     /**
+     * Every remote command, run by /bin/sh instead of by whoever the account's
+     * login shell happens to be.
+     *
+     * `ssh host "…"` does not run a command, it hands a STRING to the user's
+     * shell — and this env's is fish, which has no `(cmd &)` subshell. The
+     * sampler launcher is exactly that shape, so it died at parse time with
+     * "fish: command substitutions not allowed here", the launcher is
+     * best-effort so nothing surfaced, and every snapshot afterwards failed
+     * with "the sampler did not publish" — a message about the far side that
+     * was really about this line. Which shell a user prefers is not something
+     * this app gets to have an opinion about; sending POSIX and asking for a
+     * POSIX shell is.
+     */
+    private fun posix(cmd: String) = "sh -c '" + cmd.replace("'", "'\\''") + "'"
+
+    /**
      * Run one command and return its stdout.
      *
      * stderr is folded into the failure message rather than the result: a
@@ -157,7 +174,7 @@ class WatchdogSsh(private val ctx: Context) {
      */
     fun exec(backend: String, cmd: String): Result<String> = runCatching {
         val ch = connect(backend).openChannel("exec") as ChannelExec
-        ch.setCommand(cmd)
+        ch.setCommand(posix(cmd))
         val err = ByteArrayOutputStream()
         ch.setErrStream(err)
         val out = ch.inputStream
@@ -264,8 +281,8 @@ class WatchdogSsh(private val ctx: Context) {
             // cat > file: the env may have no scp, no rsync and no curl, and
             // this needs none of them — the bytes ride the channel already open.
             val ch = connect(backend).openChannel("exec") as ChannelExec
-            ch.setCommand("mkdir -p '$dir' && cat > '$dir/$name.new' && " +
-                "chmod +x '$dir/$name.new' && mv -f '$dir/$name.new' '$dir/$name'")
+            ch.setCommand(posix("mkdir -p '$dir' && cat > '$dir/$name.new' && " +
+                "chmod +x '$dir/$name.new' && mv -f '$dir/$name.new' '$dir/$name'"))
             val stdin = ch.outputStream
             ch.connect(CONNECT_MS)
             stdin.write(local)
@@ -284,11 +301,13 @@ class WatchdogSsh(private val ctx: Context) {
      * headless — a phone has no tray and no D-Bus session for one.
      */
     private fun ensureDaemon(backend: String) {
-        runCatching {
-            exec(backend,
-                "pgrep -x $BIN_DAEMON >/dev/null 2>&1 || " +
-                "(nohup '$REMOTE_DIR/$BIN_DAEMON' --no-tray >/dev/null 2>&1 &) ; true")
-        }
+        exec(backend,
+            "pgrep -x $BIN_DAEMON >/dev/null 2>&1 || " +
+            "(nohup '$REMOTE_DIR/$BIN_DAEMON' --no-tray >/dev/null 2>&1 &) ; true")
+            // Best effort, but no longer silent: this failing is the reason
+            // every later snapshot says the sampler did not publish, and it
+            // used to be the one step that could not be seen failing.
+            .onFailure { Log.w(WatchdogTerminal.TAG, "sampler ($backend): ${it.message}") }
     }
 
     /**
@@ -313,7 +332,7 @@ class WatchdogSsh(private val ctx: Context) {
         ensureTools(backend).getOrThrow()
         ensureDaemon(backend)
         val ch = connect(backend).openChannel("exec") as ChannelExec
-        ch.setCommand("'$REMOTE_DIR/$BIN_PANEL' tui --serve $cols $rows")
+        ch.setCommand(posix("'$REMOTE_DIR/$BIN_PANEL' tui --serve $cols $rows"))
         // stdin has to be a pipe we own: this is the half that carries the
         // keystrokes, and jsch defaults it to nothing.
         ch.setInputStream(null, true)

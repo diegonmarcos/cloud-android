@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
+import android.util.Log
 import com.termux.cloud.ICloudExec
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -119,6 +120,29 @@ class WatchdogTerminal(private val ctx: Context) {
     fun toolPath(name: String): String? =
         runCatching { connect()?.toolsDir() }.getOrNull()?.let { "$it/$name" }
 
+    /**
+     * The sampler, running inside the terminal.
+     *
+     * The panel RENDERS a snapshot it does not collect, so without this
+     * `my-watchdog-tui snapshot` exits 1 with "the sampler did not publish" —
+     * every time, on a phone where the terminal is installed, the service is
+     * bound and the binary is right there. [WatchdogSsh] has always started it
+     * and this path never did, which is the whole of why binding looked like
+     * the broken one.
+     *
+     * Detached through /system/bin/sh — always present, never the user's login
+     * shell — with both streams closed, so the exec returns as soon as the
+     * daemon is off rather than blocking for the life of it.
+     */
+    fun ensureDaemon(daemon: String) {
+        exec(
+            "/system/bin/sh",
+            arrayOf("-c", "pgrep -f '$daemon' >/dev/null 2>&1 || " +
+                "nohup '$daemon' --no-tray >/dev/null 2>&1 &"),
+            timeoutMs = 5_000,
+        ).onFailure { Log.w(TAG, "sampler: ${it.message}") }
+    }
+
     /** This terminal's ${'$'}PREFIX — where a binary we placed there actually is. */
     fun prefix(): String? = runCatching { connect()?.prefix() }.getOrNull()
 
@@ -139,5 +163,9 @@ class WatchdogTerminal(private val ctx: Context) {
 
         /** Loopback-fast. A bind that has not landed by now is not slow, it is absent. */
         const val BIND_MS = 3_000L
+
+        /** One tag for the whole terminal path, so `logcat -s Watchdog` is the
+         *  whole story rather than half of it. */
+        const val TAG = "Watchdog"
     }
 }
