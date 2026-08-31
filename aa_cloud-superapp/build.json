@@ -51,21 +51,21 @@
     "jdk": "17"
   },
   "constellation": {
-    "_doc": "Fleet members that regen.sh cannot discover by scanning this monorepo's siblings, because they ship from a DIFFERENT repo. The scan predicate in data/regen.sh is deliberately prefix-agnostic so a repo self-registers via its own build.json, but it only reaches sibling directories of cloud-u-android. cloud-infra-desktop-termux-boot lives in cloud-infra-desktop and is released + GHCR-pushed from there by ship-cloud-infra-desktop-termux-boot.yml, so its URLs point at cloud-infra-desktop, not here. Declared as DATA rather than hardcoded in the script (FIRE RULE #6). Before the 2026-08-25 android split the scan picked this up automatically; the split made it invisible and it silently left the store.",
+    "_doc": "Fleet members regen.sh cannot discover by scanning this monorepo's siblings. Declared as DATA rather than hardcoded in the script (FIRE RULE #6). CORRECTED 2026-08-31: every URL here used to point at cloud-infra-desktop and 404'd, because this entry was never updated when the app was MOVED into this repo by cloud-infra-desktop commit 204da3397 ('hand devices to cloud-android'), which also deleted ship-cloud-infra-desktop-termux-boot.yml. It now lives at a_solutions/ae-tool_termux-boot/ and ships from here via .github/workflows/ship-termux-boot.yml. The GitHub Release asset is the REQUIRED channel and is anonymously pullable; the ghcr_page/image below is best-effort and may 404 or answer private (the package was created through the PAT path before the 2026-08-28 per-package token fix), so nothing load-bearing may depend on it. FUTURE OPTION, deliberately not taken in this edit: a_solutions/ae-tool_termux-boot/build.json already declares android.application_id + release.ghcr, so widening the scan root to a_solutions/ would let it self-register and this hand-maintained entry — exactly the thing that went stale — could be deleted.",
     "external": [
       {
-        "id": "cloud-infra-desktop-termux-boot",
-        "label": "cloud-infra-desktop-termux-boot",
-        "package": "com.termux.nix.boot",
+        "id": "cloud-unix-termux-boot",
+        "label": "Cloud Terminal Boot (Nix)",
+        "package": "cld.termux.nix.boot",
         "alt_id": null,
         "registry": "ghcr.io",
         "namespace": "diegonmarcos",
-        "image": "cloud-infra-desktop-termux-boot",
+        "image": "cloud-unix-termux-boot",
         "tag": "latest",
         "asset": "Cloud-Unix-Termux-Boot.apk",
-        "release_url": "https://github.com/diegonmarcos/cloud-infra-desktop/releases/latest/download/Cloud-Unix-Termux-Boot.apk",
-        "repo_url": "https://github.com/diegonmarcos/cloud-infra-desktop/tree/main/cloud-infra-desktop-termux-boot",
-        "ghcr_page": "https://github.com/diegonmarcos/cloud-infra-desktop/pkgs/container/cloud-infra-desktop-termux-boot",
+        "release_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Unix-Termux-Boot.apk",
+        "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/a_solutions/ae-tool_termux-boot",
+        "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-unix-termux-boot",
         "blocked": false,
         "kind": "lib"
       }

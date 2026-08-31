@@ -883,8 +883,8 @@
     },
     {
       "id": "ae-tool_termux-boot",
-      "label": "termux-boot",
-      "package": "com.termux.nix.boot",
+      "label": "Cloud Terminal Boot (Nix)",
+      "package": "cld.termux.nix.boot",
       "alt_id": null,
       "registry": "ghcr.io",
       "namespace": "diegonmarcos",
