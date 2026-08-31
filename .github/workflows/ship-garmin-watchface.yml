@@ -43,6 +43,10 @@ permissions:
   contents: write   # gh release create/upload
   packages: write   # ghcr push (oras)
 
+concurrency:
+  group: ship-garmin-watchface-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   WORK_DIR: c_devices/garmin-watchface
 

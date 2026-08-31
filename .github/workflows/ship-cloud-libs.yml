@@ -47,6 +47,10 @@ permissions:
   contents: write
   packages: write
 
+concurrency:
+  group: ship-cloud-libs-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   WORK_DIR: ab_cloud-libs-shared/lib-apks
 

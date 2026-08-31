@@ -44,6 +44,10 @@ permissions:
   contents: write
   packages: write
 
+concurrency:
+  group: ship-termux-boot-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   WORK_DIR: a_solutions/ae-tool_termux-boot
 
