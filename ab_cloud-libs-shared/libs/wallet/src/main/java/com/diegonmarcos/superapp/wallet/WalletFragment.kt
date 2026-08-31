@@ -120,7 +120,7 @@ private fun WalletScreen(modeState: MutableState<WalletMode>) {
     }
     var cards by remember { mutableStateOf(orderedCards(WalletStore.all(ctx))) }
     var mode  by modeState
-    var tab   by remember { mutableStateOf(WalletTab.Cards) }
+    var tab   by remember { mutableStateOf(WalletTab.Pay) }
     var ticketsSub          by remember { mutableStateOf(TicketsSubTab.Events) }
     var ticketsShowArchive  by remember { mutableStateOf(false) }
     var calShowArchive      by remember { mutableStateOf(false) }
@@ -136,7 +136,7 @@ private fun WalletScreen(modeState: MutableState<WalletMode>) {
 
     val cardsForTab = remember(cards, tab, ticketsSub, ticketsShowArchive, bookingsShowArchive) {
         when (tab) {
-            WalletTab.Cards   -> cards.filter { !it.isTicket && it.category.isEmpty() && it.kind in bankingKinds }
+            WalletTab.Pay   -> cards.filter { !it.isTicket && it.category.isEmpty() && it.kind in bankingKinds }
             WalletTab.IDs     -> cards.filter { it.category == "id" || it.category == "doc" || it.kind in vcardKinds }
             WalletTab.Tickets -> when (ticketsSub) {
                 TicketsSubTab.Events   -> cards.filter {
@@ -279,7 +279,7 @@ private fun WalletScreen(modeState: MutableState<WalletMode>) {
                             onCardTap = { mode = WalletMode.Full(it.id) },
                         )
 
-                        WalletTab.Cards -> WalletDeck(
+                        WalletTab.Pay -> WalletDeck(
                             cards        = cardsForTab,
                             mode         = m,
                             onModeChange = { mode = it },
