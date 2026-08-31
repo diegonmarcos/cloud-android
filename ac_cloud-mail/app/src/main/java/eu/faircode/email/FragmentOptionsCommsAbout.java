@@ -31,6 +31,7 @@ import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
+import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -88,6 +89,70 @@ public class FragmentOptionsCommsAbout extends FragmentBase {
             refreshUpdateButtons(ctx, btnAuto, btnGrant);
         });
         btnGrant.setOnClickListener(v -> openUnknownAppSources(v.getContext()));
+
+        bindUnreadDiagnostics(view);
+    }
+
+    /**
+     * Print the values that actually decide the read/unread colour.
+     *
+     * Three attempts to fix that cue each verified the layer that had just
+     * been edited -- theme attributes, adapter code, the published APK -- and
+     * each reported success while the screen was unchanged. The miss every
+     * time was that AdapterMessage does:
+     *
+     *     colorUnread = highlight_unread ? colorUnreadHighlight
+     *                                    : resolveColor(R.attr.colorUnread)
+     *
+     * so with the highlight on (its default) the theme's colorUnread is never
+     * consulted at all. Reading it out of the running app answers in one look
+     * what inference kept getting wrong.
+     *
+     * Resolved against THIS view's context, which carries the same theme the
+     * message list is drawn with -- resolving against the application context
+     * would report attributes nothing on screen uses.
+     */
+    private void bindUnreadDiagnostics(View view) {
+        TextView tv = view.findViewById(R.id.comms_tv_unread_diag);
+        if (tv == null)
+            return;
+        try {
+            Context ctx = view.getContext();
+            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(ctx);
+
+            boolean highlightUnread = prefs.getBoolean("highlight_unread", true);
+            int highlightColor = prefs.getInt("highlight_color",
+                    Helper.resolveColor(ctx, R.attr.colorUnreadHighlight));
+            int attrUnread = Helper.resolveColor(ctx, R.attr.colorUnread);
+            int attrRead = Helper.resolveColor(ctx, R.attr.colorRead);
+            int effectiveUnread = (highlightUnread ? highlightColor : attrUnread);
+
+            String themeName;
+            TypedValue tval = new TypedValue();
+            ctx.getTheme().resolveAttribute(R.attr.themeName, tval, true);
+            themeName = (tval.string == null ? "?" : tval.string.toString());
+
+            String verdict = (effectiveUnread == attrRead)
+                    ? "  <-- IDENTICAL: no colour cue"
+                    : "";
+
+            tv.setText("read/unread diagnostics\n"
+                    + "theme pref      " + prefs.getString("theme", FragmentDialogTheme.DEFAULT_THEME) + "\n"
+                    + "themeName attr  " + themeName + "\n"
+                    + "highlight_unread " + highlightUnread + "\n"
+                    + "attr colorRead   " + hex(attrRead) + "\n"
+                    + "attr colorUnread " + hex(attrUnread) + "\n"
+                    + "highlight_color  " + hex(highlightColor) + "\n"
+                    + "EFFECTIVE unread " + hex(effectiveUnread) + verdict + "\n"
+                    + "EFFECTIVE read   " + hex(attrRead));
+        } catch (Throwable ex) {
+            Log.w(ex);
+            tv.setText("diagnostics failed: " + ex);
+        }
+    }
+
+    private static String hex(int color) {
+        return String.format("#%08X", color);
     }
 
     private void refreshUpdateButtons(Context ctx, Button btnAuto, Button btnGrant) {

@@ -124,5 +124,27 @@
             app:layout_constraintStart_toEndOf="@id/comms_btn_auto_update"
             app:layout_constraintTop_toTopOf="@id/comms_btn_auto_update" />
 
+        <!-- comms: read/unread diagnostics.
+             Three separate attempts to fix the read/unread cue each verified
+             the layer that had just been edited (theme attrs, adapter code,
+             the published APK) and each reported success while the screen was
+             unchanged. This prints the values that ACTUALLY decide the colour
+             at runtime, so the next question is answered by looking instead of
+             by inference. Monospace: these are hex colours meant to be
+             compared character by character. -->
+        <TextView
+            android:id="@+id/comms_tv_unread_diag"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="3dp"
+            android:layout_marginTop="24dp"
+            android:fontFamily="monospace"
+            android:textIsSelectable="true"
+            android:textAppearance="@style/TextAppearance.AppCompat.Small"
+            android:textColor="?android:attr/textColorSecondary"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/comms_btn_auto_update" />
+
     </androidx.constraintlayout.widget.ConstraintLayout>
 </ScrollView>
