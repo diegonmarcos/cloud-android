@@ -122,6 +122,37 @@
       "rolling_tag": "latest",
       "tag_pattern": "ac_cloud-watchdog-v*",
       "asset_name": "Cloud-Watchdog.apk"
-    }
+    },
+    "variants": [
+      {
+        "_doc": "The same shape ac_cloud-browser and every other per-ABI app declares. Without it both matrix legs uploaded ONE asset name to the rolling release and raced: the second leg's --clobber deleted the first's asset mid-upload, which surfaced as HTTP 404 on the assets endpoint. Worse than the error, the winner was arbitrary \u2014 an x86_64 APK could land as Cloud-Watchdog.apk and be installed on an arm64 phone.",
+        "id": "arm64",
+        "abis": [
+          "arm64-v8a"
+        ],
+        "supported_abis": [
+          "arm64-v8a",
+          "armeabi-v7a"
+        ],
+        "artifact_debug": "Cloud-Watchdog.apk",
+        "gh_asset": "Cloud-Watchdog.apk",
+        "ghcr_tag_suffix": "",
+        "update_tag": "latest"
+      },
+      {
+        "id": "x86_64",
+        "abis": [
+          "x86_64"
+        ],
+        "supported_abis": [
+          "x86_64",
+          "x86"
+        ],
+        "artifact_debug": "Cloud-Watchdog-x86_64.apk",
+        "gh_asset": "Cloud-Watchdog-x86_64.apk",
+        "ghcr_tag_suffix": "-x86_64",
+        "update_tag": "latest-x86_64"
+      }
+    ]
   }
 }
