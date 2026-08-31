@@ -192,6 +192,8 @@ jobs:
         env:
           BYPASS_NIX: "1"
           GITHUB_SHA: ${{ github.sha }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_CREATE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./build.sh publish-fork "$(jq -r '.forks | keys[0]' build.json)"
 
       # ── GitHub Release (engine reads build.json::release.gh_release) ──
