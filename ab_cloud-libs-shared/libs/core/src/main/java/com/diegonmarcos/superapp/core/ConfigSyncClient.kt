@@ -34,7 +34,9 @@ object ConfigSyncClient {
 
     /** Named failure modes. A blank/unknown state is not one of them. */
     enum class Kind {
-        /** 401 — token missing, malformed, or expired. */
+        /** 401 from introspect-proxy (token present but bad/expired), OR a 3xx
+         *  redirect to the Authelia login page (token missing/empty). Same
+         *  cause, so the same name. */
         UNAUTHORIZED,
         /** 403 — token is valid but lacks the audience/scope this route needs. */
         FORBIDDEN,
@@ -82,17 +84,24 @@ object ConfigSyncClient {
         var conn: HttpURLConnection? = null
         val code: Int
         val body: String
+        val location: String
         try {
             conn = (URL(url).openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
                 connectTimeout = connectTimeoutMs
                 readTimeout = readTimeoutMs
-                instanceFollowRedirects = true
+                // NEVER follow redirects. The Authelia forward-auth gate answers
+                // an unauthenticated request with `302 → auth.diegonmarcos.com/?rd=…`.
+                // Following that fetches an HTML LOGIN PAGE with status 200, which
+                // would surface as "malformed JSON" — or worse, look like success.
+                // The redirect itself is the diagnosis, so we keep it.
+                instanceFollowRedirects = false
                 setRequestProperty("Accept", "application/json")
                 setRequestProperty("User-Agent", "Cloud-SuperApp-ConfigSync/1")
                 setRequestProperty("Authorization", "Bearer $bearer")
             }
             code = conn.responseCode
+            location = conn.getHeaderField("Location").orEmpty()
             val stream = if (code in 200..299) conn.inputStream else conn.errorStream
             body = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
         } catch (t: Throwable) {
@@ -108,9 +117,27 @@ object ConfigSyncClient {
         }
 
         val snippet = redact(body.take(300), bearer)
-        Log.i(TAG, "HTTP $code, ${body.length} bytes")
+        Log.i(TAG, "HTTP $code, ${body.length} bytes" + if (location.isBlank()) "" else ", Location=$location")
 
         return when {
+            // A redirect AWAY from the API host is the Authelia login page.
+            // Empirically: no/blank token → 302 to auth.diegonmarcos.com/?rd=…,
+            // whereas a bogus token → a real 401 from introspect-proxy. Both mean
+            // "not authenticated", so both must READ as that and not as a broken
+            // response body.
+            code in 300..399 && !redirectStaysOnHost(url, location) -> fail(
+                Kind.UNAUTHORIZED,
+                "HTTP $code — token missing or not accepted: the gateway redirected to a login page" +
+                    (redirectHost(url, location)?.let { " at $it" } ?: "") +
+                    ". Paste a current Authelia bearer token and try again.",
+            )
+            // Same-host 3xx is not an auth failure — but we did not follow it, so
+            // say exactly that rather than reporting an empty body.
+            code in 300..399 -> fail(
+                Kind.SERVER,
+                "HTTP $code — the endpoint redirected to $location. Redirects are not followed; " +
+                    "point ui.config_source at the final URL.",
+            )
             code == 401 -> fail(
                 Kind.UNAUTHORIZED,
                 "HTTP 401 — token rejected (bad or expired). Get a fresh Authelia token and paste it again.\n$snippet",
@@ -139,6 +166,24 @@ object ConfigSyncClient {
         val base = baseUrl.trimEnd('/')
         val path = pathTemplate.replace("{user}", user).let { if (it.startsWith("/")) it else "/$it" }
         return base + path
+    }
+
+    /** Host a `Location` header resolves to, relative URLs included. */
+    private fun redirectHost(requestUrl: String, location: String): String? {
+        if (location.isBlank()) return null
+        return runCatching { URL(URL(requestUrl), location).host }.getOrNull()?.takeIf { it.isNotBlank() }
+    }
+
+    /**
+     * True only when the redirect stays on the API host. A blank Location is
+     * treated as leaving — an unusable 3xx is closer to "not authenticated"
+     * than to "fine", and the Authelia gate is the only thing that redirects
+     * this route in practice.
+     */
+    private fun redirectStaysOnHost(requestUrl: String, location: String): Boolean {
+        val target = redirectHost(requestUrl, location) ?: return false
+        val origin = runCatching { URL(requestUrl).host }.getOrNull().orEmpty()
+        return target.equals(origin, ignoreCase = true)
     }
 
     /** Strip the bearer out of anything we are about to log or display. */
