@@ -137,7 +137,7 @@ jobs:
       - name: Login to GHCR
         if: steps.gate.outputs.skip != 'true'
         run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" \
+          echo "${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}" \
             | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
 
       - name: Publish fork APK to GHCR

@@ -174,7 +174,7 @@ jobs:
 
       - name: Login to GHCR
         if: ${{ steps.gate.outputs.skip != 'true' && (github.event_name != 'workflow_dispatch' || inputs.push_oras) }}
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
+        run: echo "${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
 
       - name: Push APK to GHCR via ORAS
         if: ${{ steps.gate.outputs.skip != 'true' && (github.event_name != 'workflow_dispatch' || inputs.push_oras) }}
@@ -344,7 +344,7 @@ jobs:
 
       - name: Login to GHCR
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.push_oras }}
-        run: echo "${{ secrets.GITHUB_TOKEN }}" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
+        run: echo "${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
 
       - name: Push APK to GHCR via ORAS (arm64 + x86_64 tags)
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.push_oras }}
