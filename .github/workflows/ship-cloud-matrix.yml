@@ -9,13 +9,23 @@ on:
   push:
     branches: [main]
     paths:
-      - "ac_cloud-matrix/**"
-      - "1_cicd/src/scripts/cloud-matrix-fork-engine.sh"
+      # MANAGED by cloud-android-ship-repo-workflow-engine.sh: every dir
+      # ac_cloud-matrix/build.json::modules declares is added automatically, dead
+      # entries are dropped, and cloud-android-source-identity.sh hashes
+      # exactly this list — so nothing can trigger a build the publish
+      # gate does not weigh. Extra entries no module map can express
+      # (settings.gradle.kts references, scan roots) are kept: add them
+      # here and they stay.
       - "1_cicd/src/cicd/ship-cloud-matrix.yml"
-
+      - "1_cicd/src/scripts/cloud-matrix-fork-engine.sh"
+      - "ac_cloud-matrix/**"
 permissions:
   contents: write   # gh release create (RSS feed entries)
   packages: write   # ghcr push (oras)
+
+concurrency:
+  group: ship-cloud-matrix-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   WORK_DIR: ac_cloud-matrix
@@ -39,7 +49,23 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Publish-if-changed gate. Android builds are not byte-reproducible, so a
+      # rebuild of unchanged source published different bytes, a different
+      # sha256 sidecar and a different OCI digest — and the Constellation store
+      # compares exactly those, so every cascade rebuild showed up on every
+      # phone as an update with nothing in it. The gate hashes this app's build
+      # INPUTS (git tree shas of the app dir, the shared lib dirs its build.json
+      # module map declares, and this workflow) and compares that identity to
+      # the <asset>.source sidecar already on the release. Equal → the whole
+      # rest of this job is skipped and the release asset is left untouched.
+      - name: Publish gate (skip when source unchanged)
+        id: gate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: sh 1_cicd/dist/scripts/cloud-android-publish-gate.sh check "$WORK_DIR" "${{ matrix.combo.abi }}"
+
       - name: Set up JDK 17
+        if: steps.gate.outputs.skip != 'true'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -47,6 +73,7 @@ jobs:
           cache: gradle
 
       - name: Checkout vault (shared Android signing key)
+        if: steps.gate.outputs.skip != 'true'
         uses: actions/checkout@v4
         with:
           repository: diegonmarcos/cloud-vault
@@ -54,6 +81,7 @@ jobs:
           path: .vault
 
       - name: Install ORAS + sops + jq
+        if: steps.gate.outputs.skip != 'true'
         run: |
           sudo apt-get update -y && sudo apt-get install -y jq
           curl -fsSL https://github.com/oras-project/oras/releases/download/v1.2.0/oras_1.2.0_linux_amd64.tar.gz \
@@ -65,6 +93,7 @@ jobs:
           sops --version
 
       - name: Materialize fork (clone @ pin + patch series)
+        if: steps.gate.outputs.skip != 'true'
         working-directory: ${{ env.WORK_DIR }}
         env:
           BYPASS_NIX: "1"
@@ -73,10 +102,12 @@ jobs:
           ./build.sh materialize-fork "$FORK"
 
       - name: Generate build stamp (baked into APK BuildConfig AND release tag)
+        if: steps.gate.outputs.skip != 'true'
         run: |
           echo "COMMS_BUILD_TIMESTAMP=$(date -u '+%Y%m%d.%H%M%S')" >> "$GITHUB_ENV"
 
       - name: Build fork APK (fork's own gradle wrapper + constellation signing)
+        if: steps.gate.outputs.skip != 'true'
         working-directory: ${{ env.WORK_DIR }}
         env:
           BYPASS_NIX: "1"
@@ -88,6 +119,7 @@ jobs:
           ls -la dist/
 
       - name: Upload fork APK as workflow artifact
+        if: steps.gate.outputs.skip != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: cloud-comms-matrix-${{ matrix.combo.abi }}-${{ github.sha }}
@@ -96,11 +128,13 @@ jobs:
           retention-days: 30
 
       - name: Login to GHCR
+        if: steps.gate.outputs.skip != 'true'
         run: |
           echo "${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}" \
             | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
 
       - name: Publish fork APK to GHCR
+        if: steps.gate.outputs.skip != 'true'
         working-directory: ${{ env.WORK_DIR }}
         env:
           BYPASS_NIX: "1"
@@ -108,7 +142,7 @@ jobs:
         run: ./build.sh publish-fork "$FORK"
 
       - name: Create GitHub Release (RSS update notification)
-        if: ${{ success() && matrix.combo.abi == 'arm64-v8a' }}
+        if: ${{ steps.gate.outputs.skip != 'true' && (success() && matrix.combo.abi == 'arm64-v8a') }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -129,10 +163,16 @@ jobs:
       # so da_waydroid-container can pin an ABI that actually installs on x86_64 —
       # gating this to arm64-v8a only left that asset permanently stale/arm64-only.
       - name: Publish fork APK to rolling 'latest' release (stable install URL)
-        if: ${{ success() }}
+        if: ${{ steps.gate.outputs.skip != 'true' && success() }}
         working-directory: ${{ env.WORK_DIR }}
         env:
           BYPASS_NIX: "1"
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_SHA: ${{ github.sha }}
         run: ./build.sh gh-release-fork "$FORK"
+
+      - name: Stamp source identity on the published assets
+        if: steps.gate.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: sh 1_cicd/dist/scripts/cloud-android-publish-gate.sh stamp "$WORK_DIR" "${{ matrix.combo.abi }}"

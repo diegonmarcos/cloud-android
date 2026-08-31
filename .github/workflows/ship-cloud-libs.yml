@@ -30,29 +30,19 @@ on:
     tags:
       - "ab_cloud-libs-v*"
     paths:
-      - "ab_cloud-libs-shared/lib-apks/**"
-      # Every shared module, not an enumerated subset: the whole point of this
-      # repo is that it ships all of them, so any of them changing must rebuild.
-      # One line per build.json::lib_apks.scan root - GitHub does not expand
-      # globs from a file, so this list is the one place the roots repeat, and
-      # shared-modules.test.sh rule 11 fails the build if it drifts.
-      # The per-app libs/ trees these used to list were consolidated into
-      # ab_cloud-libs-shared/libs and no longer exist, so the filter watched
-      # five paths that can never match — a workflow watching nothing real
-      # never runs and reports no error.
-      - "ab_cloud-libs-shared/libs/**"
-      - "ab_cloud-libs-shared/build.json"
-      # ^ nine modules fall back to this file for their BuildConfig when the
-      #   consuming repo declares no block of their own, and lib-apks is exactly
-      #   such a repo. A change here changes every lib APK, so not watching it
-      #   meant the fix for a red build did not rebuild anything.
-      - "ab_cloud-libs-shared/libs/analytics/**"
-      # The gradle project that actually assembles the lib APKs. Not watching
-      # it meant a change to the very wrapper that builds every Cloud-Lib-*.apk
-      # shipped nothing, so the store kept serving the previous build.
-      - "ab_cloud-libs/**"
+      # MANAGED by cloud-android-ship-repo-workflow-engine.sh: every dir
+      # ab_cloud-libs-shared/lib-apks/build.json::modules declares is added automatically, dead
+      # entries are dropped, and cloud-android-source-identity.sh hashes
+      # exactly this list — so nothing can trigger a build the publish
+      # gate does not weigh. Extra entries no module map can express
+      # (settings.gradle.kts references, scan roots) are kept: add them
+      # here and they stay.
       - "1_cicd/src/cicd/ship-cloud-libs.yml"
-
+      - "ab_cloud-libs-shared/build.json"
+      - "ab_cloud-libs-shared/lib-apks/**"
+      - "ab_cloud-libs-shared/libs/**"
+      - "ab_cloud-libs-shared/libs/analytics/**"
+      - "ab_cloud-libs/**"
 permissions:
   contents: write
   packages: write

@@ -36,16 +36,22 @@ on:
     tags:
       - "ac_cloud-sheets-v*"
     paths:
-      - "ac_cloud-sheets/**"
+      # MANAGED by cloud-android-ship-repo-workflow-engine.sh: every dir
+      # ac_cloud-sheets/build.json::modules declares is added automatically, dead
+      # entries are dropped, and cloud-android-source-identity.sh hashes
+      # exactly this list — so nothing can trigger a build the publish
+      # gate does not weigh. Extra entries no module map can express
+      # (settings.gradle.kts references, scan roots) are kept: add them
+      # here and they stay.
       - "1_cicd/src/cicd/ship-cloud-sheets.yml"
-      # NOTE: the generated .github/workflows/ship-cloud-sheets.yml is
-      # deliberately NOT watched — it's regenerated (with all sibling
-      # workflows) by 9_others/build.sh, so watching it would self-trigger a
-      # mirror re-publish on every unrelated commit that ran the generator.
-
+      - "ac_cloud-sheets/**"
 permissions:
   contents: write   # for gh release create/upload
   packages: write   # for ghcr push (oras)
+
+concurrency:
+  group: ship-cloud-sheets-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   WORK_DIR: ac_cloud-sheets
@@ -60,7 +66,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Publish-if-changed gate. Android builds are not byte-reproducible, so a
+      # rebuild of unchanged source published different bytes, a different
+      # sha256 sidecar and a different OCI digest — and the Constellation store
+      # compares exactly those, so every cascade rebuild showed up on every
+      # phone as an update with nothing in it. The gate hashes this app's build
+      # INPUTS (git tree shas of the app dir, the shared lib dirs its build.json
+      # module map declares, and this workflow) and compares that identity to
+      # the <asset>.source sidecar already on the release. Equal → the whole
+      # rest of this job is skipped and the release asset is left untouched.
+      - name: Publish gate (skip when source unchanged)
+        id: gate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: sh 1_cicd/dist/scripts/cloud-android-publish-gate.sh check "$WORK_DIR" ""
+
       - name: Install ORAS
+        if: steps.gate.outputs.skip != 'true'
         run: |
           set -euo pipefail
           curl -fsSL https://github.com/oras-project/oras/releases/download/v1.2.0/oras_1.2.0_linux_amd64.tar.gz \
@@ -68,6 +90,7 @@ jobs:
           oras version
 
       - name: Read pin from build.json
+        if: steps.gate.outputs.skip != 'true'
         id: pin
         run: |
           set -euo pipefail
@@ -84,6 +107,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Download official Collabora Office APK
+        if: steps.gate.outputs.skip != 'true'
         run: |
           set -euo pipefail
           curl -fSL --retry 3 --retry-delay 5 \
@@ -91,6 +115,7 @@ jobs:
           ls -l "${{ steps.pin.outputs.asset }}"
 
       - name: Verify pinned sha256 (HARD FAIL on mismatch)
+        if: steps.gate.outputs.skip != 'true'
         run: |
           set -euo pipefail
           ASSET="${{ steps.pin.outputs.asset }}"
@@ -110,6 +135,7 @@ jobs:
           echo "pin verified — publishing upstream bytes unmodified"
 
       - name: Attach to rolling GH Release
+        if: steps.gate.outputs.skip != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -137,7 +163,7 @@ jobs:
             || { echo "::error::gh-release: $(basename "$ASSET") or its .sha256 sidecar missing/size-mismatched on $TAG after upload (remote=$remote_size local=$local_size)"; exit 1; }
 
       - name: Push to GHCR via ORAS
-        if: ${{ github.event_name != 'workflow_dispatch' || inputs.push_oras }}
+        if: ${{ steps.gate.outputs.skip != 'true' && (github.event_name != 'workflow_dispatch' || inputs.push_oras) }}
         run: |
           set -euo pipefail
           echo "${{ secrets.GITHUB_TOKEN }}" \
@@ -155,3 +181,9 @@ jobs:
             --annotation "org.opencontainers.image.version=${{ steps.pin.outputs.version }}" \
             --annotation "org.opencontainers.image.title=${{ steps.pin.outputs.asset }}"
           oras manifest fetch "$REF:latest" --descriptor
+
+      - name: Stamp source identity on the published assets
+        if: steps.gate.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: sh 1_cicd/dist/scripts/cloud-android-publish-gate.sh stamp "$WORK_DIR" ""

@@ -16,16 +16,20 @@ on:
   push:
     branches: [main]
     paths:
-      - "ac_cloud-nav/**"
+      # MANAGED by cloud-android-ship-repo-workflow-engine.sh: every dir
+      # ac_cloud-nav/build.json::modules declares is added automatically, dead
+      # entries are dropped, and cloud-android-source-identity.sh hashes
+      # exactly this list — so nothing can trigger a build the publish
+      # gate does not weigh. Extra entries no module map can express
+      # (settings.gradle.kts references, scan roots) are kept: add them
+      # here and they stay.
+      - "1_cicd/src/cicd/test-cloud-nav.yml"
       - "ab_cloud-libs-shared/libs/analytics/**"
       - "ab_cloud-libs-shared/libs/core/**"
-      - "ab_cloud-libs-shared/libs/maps/**"
       - "ab_cloud-libs-shared/libs/devtools/**"
+      - "ab_cloud-libs-shared/libs/maps/**"
       - "ab_cloud-libs-shared/libs/updater/**"
-      - "1_cicd/src/cicd/test-cloud-nav.yml"
-      # Generated .github/workflows/*.yml intentionally NOT watched (regenerated
-      # by 9_others/build.sh → would self-trigger rebuilds on unrelated commits).
-
+      - "ac_cloud-nav/**"
 permissions:
   contents: read
 

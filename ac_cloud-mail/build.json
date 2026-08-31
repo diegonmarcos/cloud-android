@@ -1,4 +1,6 @@
 {
+  "vendored_engine": "cloud-mail-engine.sh",
+  "_doc_vendored_engine": "CI does NOT run the engine source in 1_cicd/src/scripts — it runs the VENDORED COPY at ./build.sh, from this directory. This key DECLARES that copy relationship so the workflow generator can enforce byte-identity (cloud-android-ship-repo-workflow-engine.sh, step 'verify engine ↔ vendored build.sh parity') and go red on drift. Editing the engine alone used to change nothing at ship time, silently — which is how the ABI gate and the GHCR auto-delete gate came to exist only in the file nobody executes. Re-sync with: cp 1_cicd/src/scripts/<engine> ./build.sh",
   "modules": {
     "_doc": "The gradle module graph, as data. settings.gradle loops over this instead of carrying a hardcoded include list, so the graph lives in exactly one place (FIRE RULE #6). `dir` shares a module BY REFERENCE from the one canonical directory: libs:analytics lives in ab_cloud-libs-shared/libs/ with every other shared module, never as a per-app copy. colorpicker and openpgp-api are vendored FairEmail subprojects that belong to this app alone, so they resolve at the default path.",
     "app": {},

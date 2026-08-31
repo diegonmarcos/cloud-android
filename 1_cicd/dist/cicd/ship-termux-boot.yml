@@ -31,9 +31,15 @@ on:
     tags:
       - "cloud-infra-desktop-termux-boot-v*"
     paths:
-      - "a_solutions/ae-tool_termux-boot/**"
+      # MANAGED by cloud-android-ship-repo-workflow-engine.sh: every dir
+      # a_solutions/ae-tool_termux-boot/build.json::modules declares is added automatically, dead
+      # entries are dropped, and cloud-android-source-identity.sh hashes
+      # exactly this list — so nothing can trigger a build the publish
+      # gate does not weigh. Extra entries no module map can express
+      # (settings.gradle.kts references, scan roots) are kept: add them
+      # here and they stay.
       - "1_cicd/src/cicd/ship-termux-boot.yml"
-
+      - "a_solutions/ae-tool_termux-boot/**"
 permissions:
   contents: write
   packages: write
