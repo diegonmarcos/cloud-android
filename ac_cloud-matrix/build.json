@@ -38,7 +38,11 @@
         "_doc": "Module `app`, flavor `fdroid` (dimension `store`) - the Google-free flavor, matching the release asset upstream_apk used to pin. The Rust matrix-sdk is consumed as a PREBUILT maven artifact (org.matrix.rustcomponents:sdk-android, gradle/libs.versions.toml), so this is a plain gradle build with no Rust toolchain and no cargo/NDK cross-compilation step.",
         "gradle_task": ":app:assembleFdroidRelease",
         "apk_glob": "app/build/outputs/apk/fdroid/release/*.apk",
-        "gradle_props": {}
+        "gradle_props": {},
+        "_doc_signing": "app/build.gradle.kts's own 'release' buildType hardcodes signingConfig = signingConfigs.debug (never reads keystore.properties), and that debug signingConfig points at a repo-local ./signature/debug.keystore that *.keystore's repo-wide .gitignore keeps out of the vendored tree — so it never exists on a fresh checkout. signing=debug_keystore generates the STANDARD, well-known, non-secret Android debug keystore (androiddebugkey/android, matches signingConfigs.debug exactly) at keystore_dest so the fdroid-release build has something to sign with at all. Because the resulting APK is therefore only debug-signed, resign_unsigned strips that and re-signs with the ONE shared constellation key afterward — same as every other fork's real release artifact.",
+        "signing": "debug_keystore",
+        "keystore_dest": "app/signature/debug.keystore",
+        "resign_unsigned": true
       },
       "_doc_rebrand": "Rebranded in the vendored tree (patches/0001, historical record): BuildTimeConfig.APPLICATION_ID is now app_id and APPLICATION_NAME is 'Cloud Matrix', so the from-source build ships under our identity rather than upstream's. alt_id stays: Fleet.installedId checks app_id FIRST and falls back to alt_id, which is what still detects a previously installed resigned STOCK build so it can be replaced. Launcher artwork in appicon/element/ is NOT yet replaced - see NOTICE.md."
     }
