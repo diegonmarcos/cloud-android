@@ -16,6 +16,9 @@
         <menu>
             <group android:checkableBehavior="single">
                 <item
+                    android:id="@+id/menu_sort_on_target"
+                    android:title="@string/title_sort_on_target" />
+                <item
                     android:id="@+id/menu_sort_on_order"
                     android:title="@string/title_sort_on_order" />
                 <item

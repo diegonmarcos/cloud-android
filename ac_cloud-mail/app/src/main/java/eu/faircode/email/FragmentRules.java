@@ -73,7 +73,9 @@ import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 public class FragmentRules extends FragmentBase {
@@ -344,10 +346,24 @@ public class FragmentRules extends FragmentBase {
                     rules = new ArrayList<>();
 
                 SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-                String sort = prefs.getString("rule_sort", "order");
+                // comms: the global Rules page groups by the tag a rule files
+                // into; a per-folder list keeps the manual `order`, which is
+                // what decides which rule wins there.
+                String sort = prefs.getString("rule_sort", all ? "target" : "order");
 
-                adapter.set(protocol, type, sort, rules);
-                rvRule.invalidateItemDecorations();
+                // comms: resolve each rule's target tag before showing them.
+                // action is JSON in a column, so this cannot be a JOIN without
+                // json_extract -- which is not dependable across the API levels
+                // this app still supports. The list is tens of rows and only
+                // reloads when a rule changes, so a background pass is cheaper
+                // than the compatibility risk.
+                annotateTargets(context, rules, new RulesReady() {
+                    @Override
+                    public void onReady(List<TupleRuleEx> annotated) {
+                        adapter.set(protocol, type, sort, annotated);
+                        rvRule.invalidateItemDecorations();
+                    }
+                });
 
                 if (all)
                     tvDeviceRulesEmpty.setVisibility(rules.isEmpty() ? View.VISIBLE : View.GONE);
@@ -363,6 +379,65 @@ public class FragmentRules extends FragmentBase {
 
     // comms: expand/collapse the "About this engine" body, mirroring the
     // chevron-swap idiom AdapterNavAccountFolder uses for folder groups.
+    /** Callback for {@link #annotateTargets}: the list, with targetName filled. */
+    private interface RulesReady {
+        void onReady(List<TupleRuleEx> rules);
+    }
+
+    /**
+     * Fill {@link TupleRuleEx#targetName} — the tag each rule files into.
+     *
+     * A rule's destination lives in its `action` JSON as `target`, a folder id,
+     * so it cannot be joined in SQL the way folderName is. Resolving it here is
+     * what lets the list be grouped by TAG rather than by the folder the rules
+     * happen to live in (all of them, Inbox).
+     */
+    private void annotateTargets(Context context, List<TupleRuleEx> rules, RulesReady ready) {
+        Bundle args = new Bundle();
+
+        new SimpleTask<List<TupleRuleEx>>() {
+            @Override
+            protected List<TupleRuleEx> onExecute(Context context, Bundle args) {
+                DB db = DB.getInstance(context);
+                Map<Long, String> names = new HashMap<>();
+                for (TupleRuleEx rule : rules) {
+                    rule.targetName = null;
+                    if (TextUtils.isEmpty(rule.action))
+                        continue;
+                    try {
+                        JSONObject jaction = new JSONObject(rule.action);
+                        long target = jaction.optLong("target", -1);
+                        if (target < 0)
+                            continue;
+                        if (!names.containsKey(target)) {
+                            EntityFolder f = db.folder().getFolder(target);
+                            // Cached even when null: a deleted target should
+                            // cost one lookup, not one per rule pointing at it.
+                            names.put(target, f == null ? null : f.getDisplayName(context));
+                        }
+                        rule.targetName = names.get(target);
+                    } catch (Throwable ex) {
+                        Log.w(ex);
+                    }
+                }
+                return rules;
+            }
+
+            @Override
+            protected void onExecuted(Bundle args, List<TupleRuleEx> annotated) {
+                ready.onReady(annotated);
+            }
+
+            @Override
+            protected void onException(Bundle args, Throwable ex) {
+                // Grouping is presentation: show the rules ungrouped rather
+                // than showing nothing.
+                Log.w(ex);
+                ready.onReady(rules);
+            }
+        }.setLog(false).execute(this, args, "rules:targets");
+    }
+
     private void setAboutExpanded(boolean expanded) {
         aboutExpanded = expanded;
         tvAboutBody.setVisibility(expanded ? View.VISIBLE : View.GONE);
@@ -540,9 +615,13 @@ public class FragmentRules extends FragmentBase {
         menu.findItem(R.id.menu_apply_all).setVisible(all);
 
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getContext());
-        String sort = prefs.getString("rule_sort", "order");
+        // Must match the default the list itself uses, or the checkmark
+        // claims "order" while the rows are grouped by tag.
+        String sort = prefs.getString("rule_sort", all ? "target" : "order");
 
-        if ("last_applied".equals(sort))
+        if ("target".equals(sort))
+            menu.findItem(R.id.menu_sort_on_target).setChecked(true);
+        else if ("last_applied".equals(sort))
             menu.findItem(R.id.menu_sort_on_last_applied).setChecked(true);
         else if ("applied".equals(sort))
             menu.findItem(R.id.menu_sort_on_applied).setChecked(true);
@@ -555,7 +634,11 @@ public class FragmentRules extends FragmentBase {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int itemId = item.getItemId();
-        if (itemId == R.id.menu_sort_on_order) {
+        if (itemId == R.id.menu_sort_on_target) {
+            item.setChecked(true);
+            onMenuSort("target");
+            return true;
+        } else if (itemId == R.id.menu_sort_on_order) {
             item.setChecked(true);
             onMenuSort("order");
             return true;
