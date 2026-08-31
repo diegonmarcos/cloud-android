@@ -916,14 +916,26 @@ _verify_asset_abi_neutral() {
   case "$name" in
     *-x86_64.apk|*-x86.apk|*-armeabi-v7a.apk|*-arm64-v8a.apk|*-arm64.apk) return 0 ;;
   esac
-  if ! command -v unzip >/dev/null 2>&1; then
-    errlog "gh-release: unzip not on PATH — skipping ABI-neutrality check for $name (best-effort, not enforced this run)"
-    return 0
+  # ABI listing without unzip: GitHub runners do not reliably ship it, and the
+  # original "skip when unzip is missing" escape hatch is what let an
+  # x86_64-only media-center APK publish under the unsuffixed name on
+  # 2026-08-31 — the gate ran, found no unzip, warned, and returned success.
+  # A safety gate that disables itself on the machine it must run on is not a
+  # gate. python3 is present on every runner, so try it first and only fall
+  # back to unzip; if NEITHER exists, fail rather than wave the asset through.
+  local libs=""
+  if command -v python3 >/dev/null 2>&1; then
+    libs="$(python3 -c "import sys,zipfile
+print(chr(10).join(n for n in zipfile.ZipFile(sys.argv[1]).namelist() if n.startswith('lib/')))" "$f" 2>/dev/null)"
+  elif command -v unzip >/dev/null 2>&1; then
+    libs="$(unzip -l "$f" 2>/dev/null | awk '{print $NF}' | grep '^lib/' || true)"
+  else
+    errlog "gh-release: neither python3 nor unzip available — cannot verify ABI neutrality of $name, refusing to publish it unsuffixed"
+    exit 1
   fi
-  local libs
-  libs="$(unzip -l "$f" 2>/dev/null | awk '{print $NF}' | grep '^lib/' || true)"
-  if [ -n "$libs" ] && ! grep -q '^lib/arm64-v8a/' <<<"$libs"; then
+  if [ -n "$libs" ] && ! printf '%s\n' "$libs" | grep -q '^lib/arm64-v8a/'; then
     errlog "gh-release: $name carries native libs with none under lib/arm64-v8a/ — refusing to publish an ABI-specific APK under an unsuffixed/universal name (would break install on arm64 phones, INSTALL_FAILED_NO_MATCHING_ABIS)"
+    errlog "  ABIs present: $(printf '%s\n' "$libs" | cut -d/ -f2 | sort -u | tr '\n' ' ')"
     exit 1
   fi
 }
