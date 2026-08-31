@@ -1622,6 +1622,7 @@ class MainActivity : AppCompatActivity(),
             // the intent's DATA — an action+data pair no camera filter matches,
             // so it resolved to nothing and snacked "No app handles".
             actionType == "open_camera" -> openCamera()
+            actionType == "open_screenshots" -> openScreenshots()
             actionType == "open_notification_center" -> openNotificationCenter()
             actionType == "reapply_mail_rules" -> reapplyMailRules(anchor)
             // Configs → Keyboard now hands off to the standalone Cloud-Keyboard
@@ -1889,6 +1890,25 @@ class MainActivity : AppCompatActivity(),
      * Package visibility is fine on Android 11+ because the launcher already
      * holds QUERY_ALL_PACKAGES for app discovery.
      */
+    /** Open the DCIM/Screenshots folder directly. DocumentsUI tree URI is the
+     *  vendor-neutral way in (no root, no gallery-app bucket intents — those
+     *  are OEM-specific); ACTION_VIEW on the document URI lands the system
+     *  Files UI inside the folder. */
+    private fun openScreenshots() {
+        val uri = android.net.Uri.parse(
+            "content://com.android.externalstorage.documents/document/primary%3ADCIM%2FScreenshots")
+        val view = android.content.Intent(android.content.Intent.ACTION_VIEW)
+            .setDataAndType(uri, "vnd.android.document/directory")
+            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (runCatching { startActivity(view); true }.getOrDefault(false)) return
+        // Some OEM Files apps only answer the generic browse action.
+        val browse = android.content.Intent("android.provider.action.BROWSE")
+            .setData(uri)
+            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (runCatching { startActivity(browse); true }.getOrDefault(false)) return
+        findViewById<View>(R.id.fragment_container)?.snack("No file browser handles Screenshots")
+    }
+
     private fun openCamera() {
         val still = android.content.Intent(android.provider.MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA)
             .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)

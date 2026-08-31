@@ -375,12 +375,13 @@
           "target": "intent://resolve?domain=Cloud_agent_hermes_bot#Intent;scheme=tg;package=org.telegram.messenger;S.browser_fallback_url=https%3A%2F%2Ft.me%2FCloud_agent_hermes_bot;end"
         },
         {
-          "label": "Camera",
+          "label": "Take a Pic",
           "target": "action:open_camera"
         },
         {
-          "label": "Gallery",
-          "target": "extapp:cloud-media-center"
+          "_doc": "Opens the DCIM/Screenshots folder directly (DocumentsUI tree URI — vendor-neutral, no root). Was 'Gallery'→media-center; the full gallery keeps its own Data Apps tile.",
+          "label": "Screenshots",
+          "target": "action:open_screenshots"
         }
       ],
       "_doc_nodes": "Outer ring of the ALL-APPS (Sirius) star: the LEAF pages, not the five parent sections. No \"section\" key on any of them, so CircularMenu leaves childKey null and a tap navigates straight to the target instead of descending a level. Configs is deliberately absent - it has its own star (Canopus/arc_menu).",
