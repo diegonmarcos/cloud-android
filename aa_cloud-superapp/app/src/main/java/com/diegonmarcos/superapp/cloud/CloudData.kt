@@ -79,7 +79,14 @@ object CloudData {
         val text = try {
             fetchRaw(NTFY_TOPICS_URL).also { cacheFile.writeText(it) }
         } catch (t: Throwable) {
-            if (cacheFile.exists()) cacheFile.readText() else throw t
+            // The registry moved to cloud-data's y_old/ and NTFY_TOPICS_URL now
+            // answers 404, so on a cold cache this threw and the page showed an
+            // error instead of a channel list. Fall back to the vendored copy in
+            // build.json::ui.ntfy.channels — declared data, not a silent stub,
+            // and it keeps working offline.
+            if (cacheFile.exists()) cacheFile.readText()
+            else return@withContext com.diegonmarcos.superapp.rss.NtfyScopes.fallbackChannels()
+                .also { memNtfy = it }
         }
         val arr = JSONObject(text).optJSONArray("topics") ?: org.json.JSONArray()
         val out = mutableListOf<String>()

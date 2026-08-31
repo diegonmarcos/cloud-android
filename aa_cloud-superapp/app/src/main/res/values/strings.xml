@@ -17,8 +17,8 @@
 
     <!-- Section labels (bottom nav + drawer top-level) -->
     <string name="section_home">Home</string>
-    <string name="section_communication">Comms</string>
-    <string name="section_infos">Infos</string>
+    <string name="section_communication">Inboxes</string>
+    <string name="section_infos">Projects</string>
     <string name="section_suite">Suite</string>
     <string name="section_tools">Labs</string>
     <string name="mode_apps">Apps</string>

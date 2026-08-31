@@ -142,6 +142,11 @@ def uiPhoneSmartFoldersB64  = uiPhoneSmartFoldersJson.bytes.encodeBase64().toStr
 def uiSuitePhoneGroupsList = buildJson.ui.sections.find { it.id == "suite" }?.phone_app_groups ?: []
 def uiSuitePhoneGroupsJson = groovy.json.JsonOutput.toJson(uiSuitePhoneGroupsList)
 def uiSuitePhoneGroupsB64  = uiSuitePhoneGroupsJson.bytes.encodeBase64().toString()
+// ntfy USER vs INFRA scopes + the vendored channel fallback. The live
+// registry (cloud-data/ntfy-api/src/topics.json) 404s since it moved to that
+// repo's y_old/, so without the fallback the page lists nothing at all.
+def uiNtfyJson = groovy.json.JsonOutput.toJson(buildJson.ui.ntfy ?: [:])
+def uiNtfyB64  = uiNtfyJson.bytes.encodeBase64().toString()
 // Suite/Phone "Active Apps" section — recently-used apps rendered below
 // the last curated group. Scalar knobs from
 // build.json::sections[id=suite].active_apps.
@@ -538,6 +543,7 @@ android {
         buildConfigField "String", "UI_CAMERA_APPS_B64",     "\"${uiCameraAppsB64}\""
         buildConfigField "String", "UI_PHONE_SMART_FOLDERS_B64", "\"${uiPhoneSmartFoldersB64}\""
         buildConfigField "String", "UI_SUITE_PHONE_GROUPS_B64", "\"${uiSuitePhoneGroupsB64}\""
+        buildConfigField "String", "UI_NTFY_B64", "\"${uiNtfyB64}\""
         buildConfigField "boolean","UI_SUITE_ACTIVE_APPS_ENABLED", "${activeAppsEnabled}"
         buildConfigField "String", "UI_SUITE_ACTIVE_APPS_TITLE",   "\"${activeAppsTitle}\""
         buildConfigField "int",    "UI_SUITE_ACTIVE_APPS_LIMIT",   "${activeAppsLimit}"

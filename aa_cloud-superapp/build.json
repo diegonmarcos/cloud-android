@@ -392,24 +392,34 @@
       "_doc_nodes": "Outer ring of the ALL-APPS (Sirius) star: the LEAF pages, not the five parent sections. No \"section\" key on any of them, so CircularMenu leaves childKey null and a tap navigates straight to the target instead of descending a level. Configs is deliberately absent - it has its own star (Canopus/arc_menu).",
       "nodes": [
         {
-          "label": "Inboxes Apps",
+          "label": "Inboxes Msgs",
           "icon": "ic_chat",
-          "target": "page:communication/apps"
+          "target": "page:communication/msgs"
         },
         {
-          "label": "Inboxes Admin",
-          "icon": "ic_p_c3_workflows",
-          "target": "page:communication/admin"
+          "label": "Inboxes My-RSS",
+          "icon": "ic_p_sol_personal",
+          "target": "page:communication/my-rss"
         },
         {
-          "label": "Infos Apps",
-          "icon": "ic_p_logs",
-          "target": "page:infos/apps"
+          "label": "Inboxes Cloud-RSS",
+          "icon": "ic_p_sol_cloud",
+          "target": "page:communication/cloud-rss"
         },
         {
-          "label": "Infos Admin",
-          "icon": "ic_p_c3_workflows",
-          "target": "page:infos/admin"
+          "label": "Projects My-PM",
+          "icon": "ic_p_sol_personal",
+          "target": "page:infos/my-pm"
+        },
+        {
+          "label": "Projects Work-PM",
+          "icon": "ic_pm_boards",
+          "target": "page:infos/work-pm"
+        },
+        {
+          "label": "Projects Cloud",
+          "icon": "ic_p_sol_cloud",
+          "target": "page:infos/cloud"
         },
         {
           "label": "Suite Cloud",
@@ -1041,7 +1051,7 @@
       {
         "id": "communication",
         "label": "Inboxes",
-        "icon": "ic_chat",
+        "icon": "ic_p_inbox",
         "icon_apps": "ic_chat",
         "icon_admin": "ic_p_c3_workflows",
         "module": null,
@@ -1049,47 +1059,27 @@
         "is_aggregator": true,
         "pages": [
           {
-            "id": "apps",
-            "label": "Apps",
+            "id": "msgs",
+            "label": "Msgs",
             "icon": "ic_chat",
             "facet": true
           },
           {
-            "id": "admin",
-            "label": "Admin",
-            "icon": "ic_p_c3_workflows",
+            "id": "my-rss",
+            "label": "My-RSS",
+            "icon": "ic_p_sol_personal",
+            "facet": true
+          },
+          {
+            "id": "cloud-rss",
+            "label": "Cloud-RSS",
+            "icon": "ic_p_sol_cloud",
             "facet": true
           }
         ],
-        "tiles_admin": [
-          {
-            "id": "pmboards",
-            "label": "Product Management Boards",
-            "icon": "ic_pm_boards",
-            "target": "https://paca.diegonmarcos.com"
-          }
-        ],
-        "tiles_apps": [
-          {
-            "id": "mail",
-            "label": "Mail",
-            "icon": "ic_mail",
-            "target": "extapp:cloud-mail"
-          },
-          {
-            "id": "chat-matrix",
-            "label": "Chat-Matrix",
-            "icon": "ic_p_chat_matrix",
-            "target": "extapp:cloud-matrix"
-          },
-          {
-            "id": "chat-mm",
-            "label": "Chat-Mattermost",
-            "icon": "ic_p_chat_mattermost",
-            "target": "extapp:cloud-chat"
-          }
-        ],
-        "stack_apps": [
+        "tabs": true,
+        "_doc_pages": "Inboxes = what ARRIVES. Msgs is conversation, My-RSS is this phone's own notifications, Cloud-RSS is the infrastructure's. Each page owns a stack_<page id> list below — the page id IS the data key, so the three tabs are three independent pages rather than one list shown three times.",
+        "stack_msgs": [
           {
             "kind": "mail_accounts",
             "title": "Mail · accounts"
@@ -1149,67 +1139,70 @@
             ]
           }
         ],
-        "tabs": true
-      },
-      {
-        "_doc_icons": "Per-mode icons: in Apps mode shows the everyday logs glyph; in Admin mode swaps to the C3-workflows glyph so the ops view reads as the workflows dashboard. Both the bottom-nav item AND the home_groups tile resolve via Section.iconForMode(mode) — single source of truth.",
-        "id": "infos",
-        "label": "Infos",
-        "icon": "ic_p_logs",
-        "icon_apps": "ic_p_logs",
-        "icon_admin": "ic_p_c3_workflows",
-        "module": null,
-        "bottom_nav": true,
-        "is_aggregator": true,
-        "pages": [
+        "tiles_msgs": [
           {
-            "id": "apps",
-            "label": "Apps",
-            "icon": "ic_p_logs",
-            "facet": true
+            "id": "mail",
+            "label": "Mail",
+            "icon": "ic_mail",
+            "target": "extapp:cloud-mail"
           },
           {
-            "id": "admin",
-            "label": "Admin",
-            "icon": "ic_p_c3_workflows",
-            "facet": true
+            "id": "chat-matrix",
+            "label": "Chat-Matrix",
+            "icon": "ic_p_chat_matrix",
+            "target": "extapp:cloud-matrix"
+          },
+          {
+            "id": "chat-mm",
+            "label": "Chat-Mattermost",
+            "icon": "ic_p_chat_mattermost",
+            "target": "extapp:cloud-chat"
           }
         ],
-        "tiles_apps": [
+        "stack_my-rss": [
           {
-            "id": "calendar",
-            "label": "Calendar",
-            "icon": "ic_calendar",
-            "target": "section:cal"
+            "kind": "notifications",
+            "title": "Cloud-SuperApp Notifications",
+            "subtitle": "In-app feed (Updater + Crash producers)"
           },
           {
-            "id": "rss-feeds",
-            "label": "RSS feeds",
-            "icon": "ic_rss",
-            "target": "page:feed/all"
+            "kind": "phone_notifications",
+            "title": "Phone Notifications",
+            "subtitle": "Live system notifications (last 50, dedupe by key — requires Notification Access)"
+          },
+          {
+            "kind": "news_feeds",
+            "title": "News & RSS",
+            "subtitle": "Curated open channels (not ntfy)"
           }
         ],
-        "tiles_admin": [
+        "stack_cloud-rss": [
           {
-            "id": "cal-workflows",
-            "label": "Workflows cal",
-            "icon": "ic_calendar",
-            "target": "page:c3/workflows"
+            "kind": "c3_public",
+            "title": "C3 Health · Public",
+            "subtitle": "Services reachable via Caddy edge"
           },
           {
-            "id": "gha-events",
-            "label": "GHA events",
-            "icon": "ic_p_c3_workflows",
-            "target": "page:c3/gha"
+            "kind": "c3_private",
+            "title": "C3 Health · Private",
+            "subtitle": "Internal compose-network containers"
           },
           {
-            "id": "dagu",
-            "label": "Dagu events",
-            "icon": "ic_p_c3_workflows",
-            "target": "page:c3/dagu",
-            "dagu_default_server": "https://workflows.diegonmarcos.com",
-            "_doc": "Native DaguFragment — REST API GET /api/v1/dags listing with per-DAG last-run status (success / error / running / unknown). Mirrors GitHub Actions workflow-list style: 1 row per DAG, coloured dot + relative timestamp. Auth via Authelia bearer token pasted into the login form on first open (same pattern as Mattermost section). Default server URL baked into BuildConfig via this dagu_default_server field so login form pre-fills correctly."
+            "kind": "wg_mesh",
+            "title": "WG Mesh",
+            "subtitle": "wg0 UDP direct + wg0-tcp wstunnel"
           },
+          {
+            "kind": "rss",
+            "title": "RSS · ntfy channels"
+          },
+          {
+            "kind": "drive_connections",
+            "title": "Drive · Connections",
+            "subtitle": "Storage backends declared in build.json"
+          }
+        ],
+        "tiles_cloud-rss": [
           {
             "id": "rss-c3",
             "label": "C3 ntfy",
@@ -1228,97 +1221,41 @@
             "icon": "ic_wg",
             "target": "page:wg/status"
           }
-        ],
-        "stack_admin": [
+        ]
+      },
+      {
+        "_doc_icons": "Per-mode icons: in Apps mode shows the everyday logs glyph; in Admin mode swaps to the C3-workflows glyph so the ops view reads as the workflows dashboard. Both the bottom-nav item AND the home_groups tile resolve via Section.iconForMode(mode) — single source of truth.",
+        "id": "infos",
+        "label": "Projects",
+        "icon": "ic_pm_boards",
+        "icon_apps": "ic_p_logs",
+        "icon_admin": "ic_p_c3_workflows",
+        "module": null,
+        "bottom_nav": true,
+        "is_aggregator": true,
+        "pages": [
           {
-            "kind": "notifications",
-            "title": "Cloud-SuperApp Notifications",
-            "subtitle": "In-app feed (Updater + Crash producers)"
+            "id": "my-pm",
+            "label": "My-PM",
+            "icon": "ic_p_sol_personal",
+            "facet": true
           },
           {
-            "kind": "phone_notifications",
-            "title": "Phone Notifications",
-            "subtitle": "Live system notifications (last 50, dedupe by key — requires Notification Access)"
+            "id": "work-pm",
+            "label": "Work-PM",
+            "icon": "ic_pm_boards",
+            "facet": true
           },
           {
-            "kind": "c3_public",
-            "title": "C3 Health · Public",
-            "subtitle": "Services reachable via Caddy edge"
-          },
-          {
-            "kind": "c3_private",
-            "title": "C3 Health · Private",
-            "subtitle": "Internal compose-network containers"
-          },
-          {
-            "kind": "wg_mesh",
-            "title": "WG Mesh",
-            "subtitle": "wg0 UDP direct + wg0-tcp wstunnel"
-          },
-          {
-            "kind": "drive_connections",
-            "title": "Drive · Connections",
-            "subtitle": "Storage backends declared in build.json"
-          },
-          {
-            "kind": "rss",
-            "title": "RSS · ntfy channels"
-          },
-          {
-            "_doc": "Live GHA workflow runs across the watched repos. Fetches api.github.com/repos/{owner}/{repo}/actions/runs unauthenticated (60 req/h limit shared across panels, 60s cache).",
-            "kind": "gha_runs",
-            "title": "GHA · Workflow runs",
-            "subtitle": "Latest 3 runs per repo",
-            "repos": [
-              {
-                "owner": "diegonmarcos",
-                "repo": "cloud-u-android",
-                "label": "android"
-              },
-              {
-                "owner": "diegonmarcos",
-                "repo": "cloud-infra",
-                "label": "cloud"
-              },
-              {
-                "owner": "diegonmarcos",
-                "repo": "diegonmarcos.github.io",
-                "label": "front"
-              }
-            ]
-          },
-          {
-            "_doc": "Recent commits from the watched repos — separate from GHA so workflows news and code news don't conflate. Same cache.",
-            "kind": "repos",
-            "title": "Repos · Commits",
-            "subtitle": "Latest 3 commits per repo",
-            "repos": [
-              {
-                "owner": "diegonmarcos",
-                "repo": "cloud-u-android",
-                "label": "android"
-              },
-              {
-                "owner": "diegonmarcos",
-                "repo": "cloud-infra",
-                "label": "cloud"
-              },
-              {
-                "owner": "diegonmarcos",
-                "repo": "diegonmarcos.github.io",
-                "label": "front"
-              }
-            ]
-          },
-          {
-            "kind": "open_link",
-            "title": "Dagu · Workflow runs",
-            "url": "page:c3/dagu",
-            "icon": "ic_p_c3_workflows",
-            "_doc": "Was the bare URL — opening the WebView at the live Dagu page bypassed our native DaguFragment entirely. AggregatorStackFragment.openUrlOrTarget handles both URLs AND page:* targets, so the in-app deeplink routes through MainActivity.onTileClicked → SectionPages → OpsPages.fragmentForDagu() to render the native list view instead."
+            "id": "cloud",
+            "label": "Cloud",
+            "icon": "ic_p_sol_cloud",
+            "facet": true
           }
         ],
-        "stack_apps": [
+        "tabs": true,
+        "_doc_pages": "Projects = what you WORK ON, the counterpart to Inboxes' what ARRIVES. My-PM is personal planning, Work-PM the work boards, Cloud the cloud's own build/run activity. Same rule as Inboxes: one stack_<page id> per page.",
+        "stack_my-pm": [
           {
             "kind": "calendar_month",
             "title": "Calendar",
@@ -1329,11 +1266,6 @@
             "kind": "tasks",
             "title": "Tasks",
             "subtitle": "Agenda · Day · ToDo"
-          },
-          {
-            "kind": "news_feeds",
-            "title": "News & RSS",
-            "subtitle": "Curated open channels (not ntfy)"
           },
           {
             "kind": "stats",
@@ -1405,7 +1337,106 @@
             ]
           }
         ],
-        "tabs": true
+        "tiles_my-pm": [
+          {
+            "id": "calendar",
+            "label": "Calendar",
+            "icon": "ic_calendar",
+            "target": "section:cal"
+          }
+        ],
+        "tiles_work-pm": [
+          {
+            "id": "pmboards",
+            "label": "Product Management Boards",
+            "icon": "ic_pm_boards",
+            "target": "https://paca.diegonmarcos.com"
+          }
+        ],
+        "stack_work-pm": [
+          {
+            "kind": "stats",
+            "title": "Product Management Boards",
+            "subtitle": "paca.diegonmarcos.com"
+          }
+        ],
+        "stack_cloud": [
+          {
+            "_doc": "Live GHA workflow runs across the watched repos. Fetches api.github.com/repos/{owner}/{repo}/actions/runs unauthenticated (60 req/h limit shared across panels, 60s cache).",
+            "kind": "gha_runs",
+            "title": "GHA · Workflow runs",
+            "subtitle": "Latest 3 runs per repo",
+            "repos": [
+              {
+                "owner": "diegonmarcos",
+                "repo": "cloud-u-android",
+                "label": "android"
+              },
+              {
+                "owner": "diegonmarcos",
+                "repo": "cloud-infra",
+                "label": "cloud"
+              },
+              {
+                "owner": "diegonmarcos",
+                "repo": "diegonmarcos.github.io",
+                "label": "front"
+              }
+            ]
+          },
+          {
+            "_doc": "Recent commits from the watched repos — separate from GHA so workflows news and code news don't conflate. Same cache.",
+            "kind": "repos",
+            "title": "Repos · Commits",
+            "subtitle": "Latest 3 commits per repo",
+            "repos": [
+              {
+                "owner": "diegonmarcos",
+                "repo": "cloud-u-android",
+                "label": "android"
+              },
+              {
+                "owner": "diegonmarcos",
+                "repo": "cloud-infra",
+                "label": "cloud"
+              },
+              {
+                "owner": "diegonmarcos",
+                "repo": "diegonmarcos.github.io",
+                "label": "front"
+              }
+            ]
+          },
+          {
+            "kind": "open_link",
+            "title": "Dagu · Workflow runs",
+            "url": "page:c3/dagu",
+            "icon": "ic_p_c3_workflows",
+            "_doc": "Was the bare URL — opening the WebView at the live Dagu page bypassed our native DaguFragment entirely. AggregatorStackFragment.openUrlOrTarget handles both URLs AND page:* targets, so the in-app deeplink routes through MainActivity.onTileClicked → SectionPages → OpsPages.fragmentForDagu() to render the native list view instead."
+          }
+        ],
+        "tiles_cloud": [
+          {
+            "id": "cal-workflows",
+            "label": "Workflows cal",
+            "icon": "ic_calendar",
+            "target": "page:c3/workflows"
+          },
+          {
+            "id": "gha-events",
+            "label": "GHA events",
+            "icon": "ic_p_c3_workflows",
+            "target": "page:c3/gha"
+          },
+          {
+            "id": "dagu",
+            "label": "Dagu events",
+            "icon": "ic_p_c3_workflows",
+            "target": "page:c3/dagu",
+            "dagu_default_server": "https://workflows.diegonmarcos.com",
+            "_doc": "Native DaguFragment — REST API GET /api/v1/dags listing with per-DAG last-run status (success / error / running / unknown). Mirrors GitHub Actions workflow-list style: 1 row per DAG, coloured dot + relative timestamp. Auth via Authelia bearer token pasted into the login form on first open (same pattern as Mattermost section). Default server URL baked into BuildConfig via this dagu_default_server field so login form pre-fills correctly."
+          }
+        ]
       },
       {
         "id": "suite",
@@ -6469,7 +6500,58 @@
         "target": "action:check_updates"
       }
     ],
-    "tile_columns": 6
+    "tile_columns": 6,
+    "_doc_ntfy": "USER vs INFRA channel split for the ntfy registry. The channels are one flat list of snake_case topics upstream, so 'my notifications' and 'the cloud's notifications' arrived indistinguishable in one alphabetical wall. Scope is decided by the topic PREFIX, declared here rather than hardcoded in the fragment (FIRE RULE #6): a new prefix is a build.json edit. Anything unmatched counts as INFRA, so a channel can never silently vanish from the list — it lands in the cloud bucket and is visible enough to classify.\n\n`channels` is the fallback registry. The live URL (cloud-data/ntfy-api/src/topics.json) moved to that repo's y_old/ and now answers 404, so the page could not list anything at all; these are the 17 topics it served, vendored so the split works offline and on a cold cache.",
+    "ntfy": {
+      "scopes": [
+        {
+          "id": "user",
+          "label": "My channels",
+          "subtitle": "This phone and its apps",
+          "prefixes": [
+            "me",
+            "my",
+            "user",
+            "phone",
+            "app",
+            "superapp"
+          ]
+        },
+        {
+          "id": "infra",
+          "label": "Cloud channels",
+          "subtitle": "Infrastructure, builds and security",
+          "prefixes": [
+            "dev",
+            "deploy",
+            "health",
+            "ops",
+            "sec",
+            "all"
+          ]
+        }
+      ],
+      "default_scope": "infra",
+      "channels": [
+        "all",
+        "dev_commits",
+        "dev_pull-requests",
+        "dev_releases",
+        "deploy_ship",
+        "deploy_containers",
+        "health_mesh",
+        "health_endpoints",
+        "health_dns",
+        "health_resources",
+        "health_containers",
+        "ops_backups",
+        "ops_reports",
+        "sec_audit",
+        "sec_tls",
+        "sec_connections",
+        "sec_yara"
+      ]
+    }
   },
   "deploy": {
     "host": "local",

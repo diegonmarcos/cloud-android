@@ -69,6 +69,13 @@ object Sections {
         val tilesShared: List<AggTile> = emptyList(),
         val tilesApps:   List<AggTile> = emptyList(),
         val tilesAdmin:  List<AggTile> = emptyList(),
+        /** EVERY `tiles_<page>` list, keyed by the suffix — so a facet page
+         *  carries its own tiles whatever it is called. `apps` and `admin`
+         *  were hardcoded here, which quietly capped an aggregator at those
+         *  two children: a third facet had nowhere to declare content and
+         *  fell through to the `apps` list, rendering a duplicate of its
+         *  sibling instead of a page of its own. */
+        val tilesByPage: Map<String, List<AggTile>> = emptyMap(),
         /** Optional sub-grouping for sections like Suite / Labs that
          *  organise their tiles by theme. When non-empty:
          *   • [aggregatorTilesFor] flattens them so the bottom-nav grid
@@ -88,6 +95,8 @@ object Sections {
         val stackShared: List<StackPanel> = emptyList(),
         val stackApps:   List<StackPanel> = emptyList(),
         val stackAdmin:  List<StackPanel> = emptyList(),
+        /** EVERY `stack_<page>` list, keyed by the suffix. See [tilesByPage]. */
+        val stackByPage: Map<String, List<StackPanel>> = emptyMap(),
         // long_press is gone: the fan menu now renders [pages] directly, so a
         // section declares its children ONCE. See LauncherToolbarFx.
     ) {
@@ -480,6 +489,25 @@ object Sections {
                 return out
             }
 
+            /** Every key with [prefix], keyed by what follows it — so
+             *  `tiles_cloud-rss` becomes tilesByPage["cloud-rss"] without a
+             *  Kotlin change. The page id in build.json IS the data key; that
+             *  is the whole contract, and it means adding a facet page is a
+             *  build.json edit rather than a new field here. */
+            fun <T> parseByPage(prefix: String, read: (String) -> List<T>): Map<String, List<T>> {
+                val out = LinkedHashMap<String, List<T>>()
+                val it = o.keys()
+                while (it.hasNext()) {
+                    val key = it.next()
+                    if (!key.startsWith(prefix)) continue
+                    val page = key.removePrefix(prefix)
+                    if (page.isBlank()) continue
+                    val v = read(key)
+                    if (v.isNotEmpty()) out[page] = v
+                }
+                return out
+            }
+
             fun parseTiles(arrName: String): List<AggTile> =
                 parseTilesInline(o.optJSONArray(arrName))
 
@@ -600,10 +628,12 @@ object Sections {
                     tilesShared     = parseTiles("tiles_shared"),
                     tilesApps       = parseTiles("tiles_apps"),
                     tilesAdmin      = parseTiles("tiles_admin"),
+                    tilesByPage     = parseByPage("tiles_") { parseTiles(it) },
                     tileGroups      = parseTileGroups("tile_groups"),
                     stackShared     = parseStack("stack_shared"),
                     stackApps       = parseStack("stack_apps"),
                     stackAdmin      = parseStack("stack_admin"),
+                    stackByPage     = parseByPage("stack_") { parseStack(it) },
                 )
             )
         }
@@ -661,11 +691,14 @@ object Sections {
 
     /** Aggregator's tiles for the given mode. tile_groups wins (flattened
      *  into a single list); then tiles_shared; then per-mode lists. */
-    fun aggregatorTilesFor(sec: Section, mode: String): List<AggTile> = when {
+    fun aggregatorTilesFor(sec: Section, page: String): List<AggTile> = when {
         sec.tileGroups.isNotEmpty()  -> sec.tileGroups.flatMap { it.tiles }
         sec.tilesShared.isNotEmpty() -> sec.tilesShared
-        mode == "admin"              -> sec.tilesAdmin
-        else                         -> sec.tilesApps
+        // The page's OWN list, by id. The old code read `admin` for admin and
+        // `apps` for everything else, so every facet that was not literally
+        // called "admin" rendered the apps list — three tabs, two of them the
+        // same page.
+        else -> sec.tilesByPage[page].orEmpty()
     }
 
     /** Aggregator's stack panels for the given mode. `stack_shared` wins
@@ -676,8 +709,14 @@ object Sections {
     fun aggregatorStackFor(sec: Section, mode: String): List<StackPanel> {
         val raw = when {
             sec.stackShared.isNotEmpty() -> sec.stackShared
-            mode == "admin"              -> sec.stackAdmin
-            else                         -> sec.stackApps
+            // The BODY asks by page id; the DRAWER (SectionMenuFragment) asks
+            // by ModePrefs mode, which is still literally "apps"/"admin". A
+            // section that renames its pages therefore has no key for the mode
+            // — fall back to its first declared page so the drawer keeps
+            // mirroring the body instead of going blank.
+            else -> sec.stackByPage[mode]
+                ?: sec.pages.firstNotNullOfOrNull { sec.stackByPage[it.id] }
+                ?: emptyList()
         }
         return raw.flatMap { panel ->
             if (panel.kind == "linktree_slide" && panel.flattenColumns) {

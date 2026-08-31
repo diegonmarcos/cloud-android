@@ -62,7 +62,43 @@ class RssFeedFragment : Fragment(R.layout.fragment_rss_feed) {
         status.text = getString(R.string.rss_status, topics.size)
 
         val inflater = LayoutInflater.from(requireContext())
-        // Group by snake_case prefix for hierarchy.
+        // ── USER above INFRA, before anything is grouped by prefix ────────
+        //
+        // These are two different inboxes that happened to share one list: a
+        // notification about THIS PHONE and one about a container restarting
+        // read identically when sorted alphabetically together. Scope comes
+        // from the topic prefix, declared in build.json::ui.ntfy.scopes, and
+        // an unrecognised prefix falls to the LAST scope rather than being
+        // dropped — a new channel shows up in the wrong bucket, never in none.
+        val scopes = NtfyScopes.load()
+        val byScope = LinkedHashMap<NtfyScopes.Scope, MutableList<String>>()
+        for (sc in scopes) byScope[sc] = mutableListOf()
+        for (t in topics) byScope.getValue(NtfyScopes.scopeOf(t, scopes)).add(t)
+
+        for ((scope, scopeTopics) in byScope) {
+            if (scopeTopics.isEmpty()) continue
+            container.addView(TextView(requireContext()).apply {
+                text = scope.label
+                setTextAppearance(android.R.style.TextAppearance_Material_Title)
+                setTextColor(resources.getColor(R.color.cloud_primary, requireContext().theme))
+                setPadding(
+                    (10 * resources.displayMetrics.density).toInt(),
+                    (18 * resources.displayMetrics.density).toInt(),
+                    0, 0,
+                )
+            })
+            if (scope.subtitle.isNotBlank()) container.addView(TextView(requireContext()).apply {
+                text = scope.subtitle
+                setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+                alpha = 0.7f
+                setPadding((10 * resources.displayMetrics.density).toInt(), 0, 0, 0)
+            })
+            renderScope(container, inflater, scopeTopics)
+        }
+    }
+
+    /** One scope's topics, still grouped by snake_case prefix beneath it. */
+    private fun renderScope(container: LinearLayout, inflater: LayoutInflater, topics: List<String>) {
         val groups = topics.groupBy { it.substringBefore('_', it).let { p -> if (p == it) "_" else p } }
             .toSortedMap()
 
