@@ -54,6 +54,16 @@ android {
 
 dependencies {
     implementation project(':libs:watchdog')
+    // How every other app in the constellation keeps itself current. This one
+    // shipped without it, so the only way to update the watchdog was to pull
+    // the APK by hand — on the app whose entire job is telling you when
+    // something is out of date.
+    implementation project(':libs:updater')
     implementation 'androidx.core:core-ktx:1.13.1'
     implementation 'androidx.appcompat:appcompat:1.7.0'
+    // Declared here, not inherited: :libs:updater takes fragment-ktx as an
+    // `implementation` dependency, which is deliberately not exposed to
+    // consumers — so `androidx.fragment.app.commit` is unresolved in this
+    // module without our own line. Same version every other app pins.
+    implementation 'androidx.fragment:fragment-ktx:1.8.5'
 }

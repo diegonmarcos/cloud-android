@@ -6,6 +6,10 @@ import android.view.ViewGroup
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.appcompat.app.AppCompatActivity
+import androidx.fragment.app.commit
+import com.diegonmarcos.superapp.updater.UpdateOverlayFragment
+import com.diegonmarcos.superapp.updater.UpdateProgress
+import com.diegonmarcos.superapp.updater.Updater
 import com.diegonmarcos.superapp.watchdog.WatchdogBridge
 import com.diegonmarcos.superapp.watchdog.WatchdogSsh
 
@@ -86,6 +90,15 @@ class MainActivity : AppCompatActivity() {
             }
         }
         web.loadUrl("file:///android_asset/watchdog-app.html")
+
+        // SELF-UPDATE, the same wiring every other constellation app has.
+        // This app shipped without it, which is its own joke: the one that
+        // tells you when a machine is out of date could only be updated by
+        // fetching its APK by hand.
+        Updater.start(this)
+        UpdateProgress.setListener { state ->
+            runOnUiThread { handleUpdateState(state) }
+        }
     }
 
     /**
@@ -107,7 +120,36 @@ class MainActivity : AppCompatActivity() {
      * otherwise every launch strands a `tui --serve` on the phone and they
      * accumulate until something notices the fan.
      */
+    /**
+     * The updater's progress, as an overlay over whatever is on screen.
+     *
+     * android.R.id.content rather than a container of our own: this activity
+     * sets the WebView as its whole content view, and the overlay has to sit
+     * ABOVE the dashboard rather than replace it — an update that hides the
+     * machine you were watching is the wrong trade.
+     */
+    private fun handleUpdateState(state: UpdateProgress.State) {
+        val tag = "update_overlay"
+        val frag = supportFragmentManager.findFragmentByTag(tag)
+        when (state) {
+            is UpdateProgress.State.Idle ->
+                frag?.let { supportFragmentManager.commit { remove(it) } }
+            else -> {
+                if (frag == null) {
+                    supportFragmentManager.commit {
+                        add(android.R.id.content, UpdateOverlayFragment.newInstance(), tag)
+                    }
+                } else {
+                    (frag as? UpdateOverlayFragment)?.applyState(state)
+                }
+            }
+        }
+    }
+
     override fun onDestroy() {
+        // Dropped with the rest: the listener holds this activity, and a
+        // rotation would otherwise leave the old one reachable from a static.
+        UpdateProgress.setListener(null)
         bridge.stop()
         ssh.close()
         super.onDestroy()

@@ -73,7 +73,14 @@
     "libs:watchdog": {
       "type": "library",
       "dir": "../ab_cloud-libs-shared/libs/watchdog"
-    }
+    },
+    "libs:core": {
+      "dir": "../ab_cloud-libs-shared/libs/core"
+    },
+    "libs:updater": {
+      "dir": "../ab_cloud-libs-shared/libs/updater"
+    },
+    "_doc_updater": "libs:updater is how every other app in the constellation keeps itself current, and this one shipped without it \u2014 the only way to update the watchdog was to pull the APK by hand. Shared BY REFERENCE (dir), like everywhere else, so the fix lands in all of them at build time and copies cannot drift. libs:core comes with it: the updater depends on it."
   },
   "toolchain": {
     "_doc": "Pinned for reproducibility \u2014 all derived in flake.nix. Mirrors aa_cloud-superapp / ea_cloud-comms pins so all the Android projects share one toolchain story. Node is added for the Acode (Cordova) fork's JS/plugin build.",
