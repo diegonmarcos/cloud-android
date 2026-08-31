@@ -79,36 +79,51 @@ class GroupedTilesFragment : Fragment() {
         }
 
         if (sectionId == "suite") {
-            // ── All Apps — the same grouped-by-purpose rendering the real
-            //    Home tab (HomeGroupedFragment) uses, embedded inline
-            //    instead of navigating to a separate "more" screen.
-            col.addView(sectionDivider(ctx))
-            col.addView(groupHeader(ctx, "All Apps"))
-            HomeGroupedFragment.buildInto(ctx, inflater, col)
+            // ── Below the fold: built AFTER the first frame ──────────────
+            //
+            // Everything above is the Quickmarks + Actions the user opens this
+            // page for, and it is ~30 tiles. What follows is the whole All Apps
+            // grid plus the Smart Folders block, each tile a separate
+            // inflate(R.layout.item_tile) — inline, that work sat between the
+            // tap and the first frame, so the tab stayed on the previous page
+            // until all of it existed.
+            //
+            // Deferring it costs nothing visually: it is appended below the
+            // fold, so it lands off-screen while the user is still reading
+            // Quickmarks.
+            col.post {
+                if (!isAdded) return@post
+                // ── All Apps — the same grouped-by-purpose rendering the real
+                //    Home tab (HomeGroupedFragment) uses, embedded inline
+                //    instead of navigating to a separate "more" screen.
+                col.addView(sectionDivider(ctx))
+                col.addView(groupHeader(ctx, "All Apps"))
+                HomeGroupedFragment.buildInto(ctx, inflater, col)
 
-            // ── Smart Folders → Recently Used. Cloud tiles have no
-            //    existing pin/favorite/most-used signal the way Phone
-            //    apps do — this is the one real per-tile signal
-            //    available (RecentCloudTiles, recorded centrally from
-            //    MainActivity.onTileClicked), so it's the sole Smart
-            //    Folders subsection for now. Always shown (with an
-            //    empty-state line) so the section doesn't disappear
-            //    entirely before the user has opened any Cloud tiles.
-            col.addView(sectionDivider(ctx))
-            val allTiles = Sections.all().flatMap { it.tileGroups }.flatMap { it.tiles }
-                .associateBy { it.target }
-            val recent = RecentCloudTiles.recent(ctx).mapNotNull { allTiles[it] }
-            col.addView(groupHeader(ctx, "Smart Folders"))
-            col.addView(groupHeader(ctx, "Recently Used"))
-            if (recent.isNotEmpty()) {
-                col.addView(tileRow(ctx, recent))
-            } else {
-                col.addView(TextView(ctx).apply {
-                    text = "Open a few Cloud tiles and they'll show up here"
-                    setTextColor(0x99FFFFFF.toInt())
-                    setTextAppearance(android.R.style.TextAppearance_Material_Caption)
-                    setPadding(dp(4), 0, dp(4), dp(8))
-                })
+                // ── Smart Folders → Recently Used. Cloud tiles have no
+                //    existing pin/favorite/most-used signal the way Phone
+                //    apps do — this is the one real per-tile signal
+                //    available (RecentCloudTiles, recorded centrally from
+                //    MainActivity.onTileClicked), so it's the sole Smart
+                //    Folders subsection for now. Always shown (with an
+                //    empty-state line) so the section doesn't disappear
+                //    entirely before the user has opened any Cloud tiles.
+                col.addView(sectionDivider(ctx))
+                val allTiles = Sections.all().flatMap { it.tileGroups }.flatMap { it.tiles }
+                    .associateBy { it.target }
+                val recent = RecentCloudTiles.recent(ctx).mapNotNull { allTiles[it] }
+                col.addView(groupHeader(ctx, "Smart Folders"))
+                col.addView(groupHeader(ctx, "Recently Used"))
+                if (recent.isNotEmpty()) {
+                    col.addView(tileRow(ctx, recent))
+                } else {
+                    col.addView(TextView(ctx).apply {
+                        text = "Open a few Cloud tiles and they'll show up here"
+                        setTextColor(0x99FFFFFF.toInt())
+                        setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+                        setPadding(dp(4), 0, dp(4), dp(8))
+                    })
+                }
             }
         }
         return scroll

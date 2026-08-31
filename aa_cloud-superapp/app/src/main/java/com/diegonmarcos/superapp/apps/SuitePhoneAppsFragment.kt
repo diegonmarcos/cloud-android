@@ -10,7 +10,6 @@ import android.content.Context
 import android.content.pm.LauncherApps
 import android.graphics.drawable.Drawable
 import android.os.Bundle
-import android.os.Process
 import android.util.Base64
 import android.view.Gravity
 import android.view.LayoutInflater
@@ -77,19 +76,43 @@ class SuitePhoneAppsFragment : Fragment() {
         root.addView(subhead(ctx, "Quickmarks"))
 
         val groups = parseGroups()
-        val launcher = ctx.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
-        val me = Process.myUserHandle()
-        val byPkg = launcher.getActivityList(null, me)
-            .groupBy { it.applicationInfo.packageName }
+        // READ THE WARM CACHE, DO NOT RE-ENUMERATE.
+        //
+        // This used to call LauncherApps.getActivityList(null, me) itself and
+        // then info.getIcon(densityDpi) once per Quickmark — a full launcher
+        // enumeration plus one icon DECODE per package, on the main thread, in
+        // onCreateView. PhoneAppsFragment.warmUp already did exactly that work
+        // on a background thread at launch (MainActivity.onCreate) and holds the
+        // result, icons included, so every millisecond of it was being paid
+        // twice: once early where nobody was waiting, and again here where the
+        // user is staring at a frozen tab.
+        //
+        // snapshot() returns that cache, or enumerates once if the user somehow
+        // beat the warm-up thread here — the same fall-through renderAllApps
+        // below already relies on.
+        val byPkg = PhoneAppsFragment.snapshot(ctx).associateBy { it.packageName }
         val columns = BuildConfig.UI_PHONE_GRID_COLUMNS
 
         fun resolve(pkg: String): AppInfo? {
-            val info = byPkg[pkg]?.firstOrNull() ?: return null
-            return AppInfo(
-                pkg   = pkg,
-                label = info.label.toString(),
-                icon  = info.getIcon(ctx.resources.displayMetrics.densityDpi),
-            )
+            byPkg[pkg]?.let { app ->
+                // icon is nullable on PhoneApp (getBadgedIcon can throw).
+                val icon = app.icon
+                    ?: runCatching { ctx.packageManager.getApplicationIcon(pkg) }.getOrNull()
+                if (icon != null) return AppInfo(pkg = pkg, label = app.label, icon = icon)
+            }
+            // The cache is a LOOKUP TABLE here, not the guest list. snapshot()
+            // drops this app's own package and applies the launcher-profile
+            // whitelist, and a Quickmark legitimately names both — one of the
+            // declared groups points at com.diegonmarcos.superapp itself. The
+            // old code enumerated raw LauncherApps and so showed them; falling
+            // back to a direct PackageManager resolve keeps that behaviour
+            // exactly, and costs one lookup for the handful of packages the
+            // cache filters out instead of a full enumeration for all of them.
+            val pm = ctx.packageManager
+            return runCatching {
+                val ai = pm.getApplicationInfo(pkg, 0)
+                AppInfo(pkg = pkg, label = pm.getApplicationLabel(ai).toString(), icon = pm.getApplicationIcon(ai))
+            }.getOrNull()
         }
 
         var anyRendered = false
@@ -180,13 +203,38 @@ class SuitePhoneAppsFragment : Fragment() {
         //    of the swipe-up app drawer); embedded inline here instead
         //    of navigating to a separate "more" screen.
         root.addView(sectionDivider(ctx))
-        root.addView(subhead(ctx, "All Apps"))
-        PhoneAppsFragment.renderAllApps(ctx, root)
+        // ── Below the fold: built AFTER the first frame ──────────────────
+        //
+        // All Apps renders a tile per app across ~31 folders and Smart Folders
+        // renders several more — hundreds of ImageView+TextView pairs, none of
+        // them recycled (this is a ScrollView, not a RecyclerView). Doing that
+        // inline meant onCreateView did not return until every one existed, so
+        // the tab stayed frozen on the PREVIOUS page for the whole build and
+        // the page appeared already-scrolled-to-top and complete — the "opens
+        // extremely slowly" symptom.
+        //
+        // Quickmarks is what the user actually looks at first and it is small,
+        // so it stays inline: the page now appears as soon as it is built. The
+        // two heavy sections are appended on later frames, one section per
+        // frame so neither one blocks the other, and the scroll position does
+        // not move because they are added BELOW the visible content.
+        //
+        // ponytail: one section per frame, not one row per frame. If All Apps
+        // alone still drops frames on the slowest device, chunk its rows the
+        // same way rather than reaching for a RecyclerView rewrite.
+        root.post {
+            if (!isAdded) return@post
+            root.addView(subhead(ctx, "All Apps"))
+            PhoneAppsFragment.renderAllApps(ctx, root)
 
-        // ── Smart Folders — dynamic folders (Samsung, Google, Recent 7,
-        //    …), same shared renderer as PhoneAppsFragment. Self-headed.
-        root.addView(sectionDivider(ctx))
-        PhoneAppsFragment.renderSmartFolders(ctx, root)
+            // ── Smart Folders — dynamic folders (Samsung, Google, Recent 7,
+            //    …), same shared renderer as PhoneAppsFragment. Self-headed.
+            root.post {
+                if (!isAdded) return@post
+                root.addView(sectionDivider(ctx))
+                PhoneAppsFragment.renderSmartFolders(ctx, root)
+            }
+        }
 
         return scroll
     }
