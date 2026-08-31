@@ -2843,6 +2843,7 @@
         "_doc_pages_order": "Order here is the single source of truth — drives both the Configs section page-grid AND (via home_groups tiles_from_section: 'config') the Home Apps Configs row. WireGuard appears in the row via an explicit `tiles` entry on the home_groups row with insert_after_id, since WG lives in its own section.",
         "pages": [
           {
+            "_doc": "Profile now owns config import. The old `import` page entry (action:import_configs) was REMOVED from this list and its two entries live inside ProfileFragment instead: 'Import · file · paste' (re-fires action:import_configs through MainActivity, so the launcher shortcut in res/xml/shortcuts.xml and the radial menu still reach ImportConfigsFragment unchanged) and 'OWebAuth Authelia · Auto Import Configs' (paste a bearer, fetch ui.config_source, apply via ConfigAutoImport).",
             "id": "profile",
             "label": "Profile",
             "icon": "ic_settings"
@@ -2870,13 +2871,7 @@
             "icon": "ic_home"
           },
           {
-            "id": "import",
-            "label": "Import",
-            "icon": "ic_p_import",
-            "action": "action:import_configs"
-          },
-          {
-            "_doc": "Keyboard — hands off to the standalone Cloud-Keyboard app (ac_cloud-keyboard, com.diegonmarcos.cloudkeyboard). The vendored HeliBoard was extracted from the SuperApp into that standalone APK, so this entry no longer opens an in-APK SettingsActivity. target=extapp:cloud-keyboard → MainActivity.launchExternalApp opens Cloud-Keyboard's SettingsActivity if installed, else downloads + installs ui.external_apps[id=cloud-keyboard].install_apk_url. Placed after Import, before About per UI spec.",
+            "_doc": "Keyboard — hands off to the standalone Cloud-Keyboard app (ac_cloud-keyboard, com.diegonmarcos.cloudkeyboard). The vendored HeliBoard was extracted from the SuperApp into that standalone APK, so this entry no longer opens an in-APK SettingsActivity. target=extapp:cloud-keyboard → MainActivity.launchExternalApp opens Cloud-Keyboard's SettingsActivity if installed, else downloads + installs ui.external_apps[id=cloud-keyboard].install_apk_url. Placed before About per UI spec (it used to follow the Import entry, which moved into Configs → Profile).",
             "id": "keyboard",
             "label": "Keyboard",
             "icon": "ic_keyboard",
@@ -4716,6 +4711,15 @@
         "action_type": "open_home_apps"
       }
     ],
+    "_doc_config_source": "Where Configs → Profile → 'OWebAuth Authelia · Auto Import Configs' pulls the whole config from. DATA-DRIVEN ON PURPOSE: nothing here appears as a Kotlin literal — app/build.gradle bakes these into BuildConfig.UI_CONFIG_SOURCE_* and ConfigSyncClient/ProfileFragment read only those, so repointing the endpoint or changing the user slug is a JSON edit + rebuild, never a code change. AUTH: the user pastes an Authelia token which is sent verbatim as `Authorization: Bearer <token>`; it is validated server-side by the existing introspect-proxy / @bearer gate in front of the route. There is deliberately NO in-app OAuth dance and no client secret to keep in sync. The token is never persisted, logged, or exported. FORMAT_VERSION is the artifact contract version: ConfigAutoImport refuses the whole artifact (applying nothing) unless _meta.format_version matches this major version. base_url + path_template are joined with {user} substituted. ROUTE: this is one more member of c3-infra-api's /cloud-data/* family (siblings: /cloud-data/configs, /cloud-data/caddy-routes, /cloud-data/cloudflare-dns, /cloud-data/authelia-acl). If the cloud side lands on a different final spelling, edit path_template here — no Kotlin changes.",
+    "config_source": {
+      "base_url": "https://api.diegonmarcos.com",
+      "path_template": "/c3-infra-api/cloud-data/superapp-config/{user}",
+      "user": "diego",
+      "format_version": 1,
+      "connect_timeout_ms": 8000,
+      "read_timeout_ms": 20000
+    },
     "_doc_import_schema": "Schema shown in ImportConfigsFragment as the placeholder text. Users paste a JSON conforming to this shape; ConfigsPrefs persists the whole blob into EncryptedSharedPreferences (AES-256-GCM, key in Android Keystore). Per-field consumers (JmapPrefs, WireGuard libs:net, ssh-agent for vault clone) pull what they need lazily.",
     "import_schema": {
       "wg": {

@@ -126,6 +126,38 @@ class WireGuardPrefs(context: Context) {
         return cfg.build()
     }
 
+    /**
+     * Write an upstream [Config] into these prefs — the ONE import path.
+     *
+     * Every importer funnels through here after producing a [Config] with
+     * `com.wireguard.config.Config.parse` (the official upstream parser):
+     * the .conf file picker in WireGuardFragment, and the Authelia auto-
+     * import in [com.diegonmarcos.superapp.profile.ConfigAutoImport]. There
+     * is deliberately no second parser, so an auto-imported tunnel behaves
+     * byte-for-byte like a manually imported one.
+     */
+    fun hydrateFromConfig(cfg: Config) {
+        val iface = cfg.getInterface()
+        interfacePrivateKey = iface.keyPair.privateKey.toBase64()
+        interfaceAddress    = iface.addresses.joinToString(", ")
+        interfaceDns        = iface.dnsServers.joinToString(", ") { it.hostAddress ?: "" }
+        interfaceListenPort = iface.listenPort.map { it.toString() }.orElse("")
+        interfaceMtu        = iface.mtu.map { it.toString() }.orElse("")
+
+        savePeers(
+            cfg.peers.mapIndexed { i, p ->
+                PeerData(
+                    name                = "peer-${i + 1}",
+                    publicKey           = p.publicKey.toBase64(),
+                    presharedKey        = p.preSharedKey.map { it.toBase64() }.orElse(""),
+                    endpoint            = p.endpoint.map { it.toString() }.orElse(""),
+                    allowedIps          = p.allowedIps.joinToString(", "),
+                    persistentKeepalive = p.persistentKeepalive.map { it.toString() }.orElse(""),
+                )
+            }
+        )
+    }
+
     private fun defaultPeersJson(): String {
         val b64 = BuildConfig.UI_WG_PEERS_JSON_B64
         if (b64.isBlank()) return "[]"

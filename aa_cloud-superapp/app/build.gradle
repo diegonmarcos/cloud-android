@@ -196,6 +196,17 @@ try {
 def constellationFleetFile = file("../data/constellation-fleet.json")
 def constellationFleetJson = constellationFleetFile.exists() ? constellationFleetFile.text : "{\"version\":1,\"apps\":[]}"
 def constellationFleetB64  = constellationFleetJson.bytes.encodeBase64().toString()
+// Config auto-import source — Configs → Profile → "OWebAuth Authelia".
+// Baked so the endpoint, the user slug and the artifact contract version
+// are a build.json edit, never a Kotlin literal. See
+// build.json::_doc_config_source.
+def configSource       = buildJson.ui.config_source ?: [:]
+def configSrcBaseUrl   = (configSource.base_url ?: '').toString()
+def configSrcPath      = (configSource.path_template ?: '/pub/superapp/config/{user}').toString()
+def configSrcUser      = (configSource.user ?: '').toString()
+def configSrcVersion   = ((configSource.format_version ?: 1) as Number).intValue()
+def configSrcConnectMs = ((configSource.connect_timeout_ms ?: 8000) as Number).intValue()
+def configSrcReadMs    = ((configSource.read_timeout_ms ?: 20000) as Number).intValue()
 def importSchemaJson = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(buildJson.ui.import_schema ?: [:]))
 def importSchemaB64  = importSchemaJson.bytes.encodeBase64().toString()
 def driveConnsJson   = groovy.json.JsonOutput.toJson(buildJson.ui.drive_connections ?: [])
@@ -554,6 +565,12 @@ android {
         buildConfigField "String", "SERVICES_PRIVATE_B64",  "\"${svcPrivB64}\""
         buildConfigField "String", "CLOUD_SERVICES_B64",    "\"${cloudSvcB64}\""
         buildConfigField "String", "UI_IMPORT_SCHEMA_B64",  "\"${importSchemaB64}\""
+        buildConfigField "String", "UI_CONFIG_SOURCE_BASE_URL", "\"${configSrcBaseUrl}\""
+        buildConfigField "String", "UI_CONFIG_SOURCE_PATH",     "\"${configSrcPath}\""
+        buildConfigField "String", "UI_CONFIG_SOURCE_USER",     "\"${configSrcUser}\""
+        buildConfigField "int",    "UI_CONFIG_SOURCE_FORMAT_VERSION", "${configSrcVersion}"
+        buildConfigField "int",    "UI_CONFIG_SOURCE_CONNECT_MS",     "${configSrcConnectMs}"
+        buildConfigField "int",    "UI_CONFIG_SOURCE_READ_MS",        "${configSrcReadMs}"
         buildConfigField "String", "DRIVE_CONNECTIONS_B64", "\"${driveConnsB64}\""
         buildConfigField "String", "LINKTREE_JSON_B64",     "\"${linktreeB64}\""
         buildConfigField "String", "NEWS_FEEDS_B64",        "\"${newsFeedsB64}\""

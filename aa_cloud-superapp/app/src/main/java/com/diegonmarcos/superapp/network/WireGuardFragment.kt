@@ -343,26 +343,9 @@ class WireGuardFragment : Fragment() {
         toast("Generated keypair")
     }
 
-    private fun hydrateFromConfig(cfg: Config) {
-        val iface = cfg.getInterface()
-        prefs.interfacePrivateKey = iface.keyPair.privateKey.toBase64()
-        prefs.interfaceAddress    = iface.addresses.joinToString(", ")
-        prefs.interfaceDns        = iface.dnsServers.joinToString(", ") { it.hostAddress ?: "" }
-        prefs.interfaceListenPort = iface.listenPort.map { it.toString() }.orElse("")
-        prefs.interfaceMtu        = iface.mtu.map { it.toString() }.orElse("")
-
-        val newPeers = cfg.peers.mapIndexed { i, p ->
-            WireGuardPrefs.PeerData(
-                name                = "peer-${i + 1}",
-                publicKey           = p.publicKey.toBase64(),
-                presharedKey        = p.preSharedKey.map { it.toBase64() }.orElse(""),
-                endpoint            = p.endpoint.map { it.toString() }.orElse(""),
-                allowedIps          = p.allowedIps.joinToString(", "),
-                persistentKeepalive = p.persistentKeepalive.map { it.toString() }.orElse(""),
-            )
-        }
-        prefs.savePeers(newPeers)
-    }
+    /** Delegates to [WireGuardPrefs.hydrateFromConfig] — the single import
+     *  path shared with the Authelia auto-import in Configs → Profile. */
+    private fun hydrateFromConfig(cfg: Config) = prefs.hydrateFromConfig(cfg)
 
     private fun requestConnect() {
         val backend = goBackend
