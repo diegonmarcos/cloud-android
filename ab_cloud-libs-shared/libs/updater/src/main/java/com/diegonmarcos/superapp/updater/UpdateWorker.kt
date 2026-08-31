@@ -90,7 +90,22 @@ class UpdateWorker(
         val fleet = Fleet.parse(BuildConfig.CONSTELLATION_FLEET_B64)
         if (fleet.isEmpty()) return
         runCatching {
-            val n = Fleet.installAll(applicationContext, fleet, Fleet.Mode.UPDATES)
+            // CAP IT. This pass is unattended, and installAll's own contract
+            // says so: every install it starts can leave a tap-to-confirm
+            // notification holding a PackageInstaller session until the user
+            // answers, and Android refuses new sessions past 50 per UID. This
+            // call passed no limit at all, so it defaulted to Int.MAX_VALUE —
+            // a whole 50-entry fleet from one unattended wake-up.
+            //
+            // It also made the fleet pass non-deterministic once the batch
+            // became single-flight: ConstellationWorker runs the SAME pass
+            // capped at AU_MAX_PER_PASS, so whichever worker won the race
+            // decided whether 3 apps or all of them installed. Same cap, same
+            // behaviour, whoever gets there first.
+            val n = Fleet.installAll(
+                applicationContext, fleet, Fleet.Mode.UPDATES,
+                limit = BuildConfig.AU_MAX_PER_PASS,
+            )
             if (n > 0) Log.i("Updater/Worker", "fleet auto-update: acted on $n app(s)")
         }.onFailure { Log.w("Updater/Worker", "fleet auto-update failed: ${it.message}", it) }
     }

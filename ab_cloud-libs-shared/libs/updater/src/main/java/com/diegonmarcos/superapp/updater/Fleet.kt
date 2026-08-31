@@ -325,11 +325,49 @@ object Fleet {
      * (PackageInstaller sessions mustn't collide); per-app failures don't abort
      * the rest. Returns how many were acted on.
      */
+    /** One batch at a time, process-wide. FIVE callers reach this — the
+     *  Update-All action, two Constellation buttons, and TWO periodic
+     *  auto-update workers (UpdateWorker and ConstellationWorker) — and none
+     *  of them knew about the others. Two overlapping batches were measured on
+     *  2026-08-31: one thread installing cloud-ide → cloud-wallet at ~35s an
+     *  app while a second re-downloaded mail, news and wallet underneath it.
+     *
+     *  Duplicated downloads were the cheap half of that. UpdateProgress is a
+     *  single global, so the second batch's beginBatch() relabelled the
+     *  overlay mid-install and its endBatch() CLEARED it while the first was
+     *  still running — the update list emptying with nothing visibly
+     *  installed, which is exactly what a silent failure looks like from the
+     *  outside even though every install was succeeding.
+     *
+     *  A losing caller returns 0 rather than queuing: every trigger asks for
+     *  the same thing ("bring the fleet up to date"), so the batch already in
+     *  flight IS that request being served. Auto-update and Update-All stop
+     *  being two functions here and become one machine with two triggers. */
+    private val batchRunning = java.util.concurrent.atomic.AtomicBoolean(false)
+
     fun installAll(
         ctx: Context,
         apps: List<App>,
         mode: Mode = Mode.ALL,
         limit: Int = Int.MAX_VALUE,
+    ): Int {
+        if (!batchRunning.compareAndSet(false, true)) {
+            Log.i(TAG, "installAll($mode): a batch is already running — this trigger " +
+                       "is already being served, skipping")
+            return 0
+        }
+        return try {
+            installAllLocked(ctx, apps, mode, limit)
+        } finally {
+            batchRunning.set(false)
+        }
+    }
+
+    private fun installAllLocked(
+        ctx: Context,
+        apps: List<App>,
+        mode: Mode,
+        limit: Int,
     ): Int {
         // Decide the work-list FIRST (status checks, no overlay yet) so the
         // batch header can show a correct "N/total" — otherwise the overlay's
