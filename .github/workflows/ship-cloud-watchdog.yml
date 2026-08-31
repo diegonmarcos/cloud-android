@@ -58,6 +58,9 @@ on:
       # (settings.gradle.kts references, scan roots) are kept: add them
       # here and they stay.
       - "1_cicd/src/cicd/ship-cloud-watchdog.yml"
+      - "ab_cloud-libs-shared/libs/core/**"
+      - "ab_cloud-libs-shared/libs/devtools/**"
+      - "ab_cloud-libs-shared/libs/updater/**"
       - "ab_cloud-libs-shared/libs/watchdog/**"
       - "ac_cloud-watchdog/**"
 permissions:
