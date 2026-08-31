@@ -116,7 +116,7 @@ class OneHandFragment : Fragment() {
             nodes.map { it.label },
             cm.actions.map { it.label })
 
-        starCard(ctx, root, "✦ Centauri — active apps",
+        starCard(ctx, root, "✦ Centauri — recent apps",
             "midway to the island · shares Canopus's half-moon fan",
             "The last 9 Android apps you opened, newest first, with their real " +
                 "launcher icons — a live list from the system, not build.json. " +

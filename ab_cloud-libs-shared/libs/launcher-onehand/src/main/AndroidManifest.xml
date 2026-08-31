@@ -3,6 +3,11 @@
 
     <!-- Draw the edge handles over other apps. -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+    <!-- Centauri star inner ring: kill background processes of non-foreground
+         apps (CentaurusStar.recentsAction "close_all" / "kill_bg"). Normal-level
+         permission, no runtime prompt — the module-local declaration was
+         missing, so the manifest merger only had the app's own copy to lean on. -->
+    <uses-permission android:name="android.permission.KILL_BACKGROUND_PROCESSES" />
 
     <application>
         <!-- Hosts BOTH the edge-handle overlay AND the global-action dispatch.

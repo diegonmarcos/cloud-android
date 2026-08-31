@@ -544,7 +544,7 @@
       "section": "config",
       "radius_dp": 200
     },
-    "_doc_recents_menu": "Inner ring of the ACTIVE-APPS (Centauri) star: what you do TO the recent apps, as opposed to the outer ring which launches them. Dispatched by CentaurusStar.recentsAction. Android gives a non-system launcher no way to clear another app's Overview card, so close_all/kill_bg kill BACKGROUND processes (the cards remain) and cards opens the system Overview so the user can swipe them away.",
+    "_doc_recents_menu": "Inner ring of the Centauri star (outer ring = RECENT APPS, last-9-opened): what you do TO the recent apps, as opposed to the outer ring which launches them. Dispatched by CentaurusStar.recentsAction. Android gives a non-system launcher no way to clear another app's Overview card, so close_all/kill_bg kill BACKGROUND processes (only cached ones die; the cards remain either way — both toast an attempt count so the action is never a silent no-op) and 'Active Apps' opens the system Overview so the user can swipe the cards away themselves.",
     "recents_menu": {
       "actions": [
         {
@@ -558,7 +558,7 @@
           "target": "recents:kill_bg"
         },
         {
-          "label": "Cards",
+          "label": "Active Apps",
           "icon": "ic_mode_apps",
           "target": "recents:cards"
         }

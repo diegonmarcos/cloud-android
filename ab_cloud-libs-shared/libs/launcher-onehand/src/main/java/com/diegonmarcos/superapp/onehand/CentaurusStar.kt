@@ -105,30 +105,50 @@ class CentaurusStar(
      * ponytail: that IS the ceiling of a non-system launcher; clearing the
      * cards needs an accessibility script per OEM Overview UI, so the card
      * view is offered instead and the user swipes.
+     *
+     * killBackgroundProcesses only touches CACHED processes — an app you just
+     * switched away from is often still in a warm/visible-adjacent state, not
+     * cached yet, so calling it right after using the app can be a genuine
+     * no-op at the OS level. The API also returns nothing, so there is no way
+     * to confirm a kill actually happened; the toast below reports the
+     * ATTEMPT count (how many packages were asked to die), not a confirmed
+     * kill count — that is the honest ceiling here, never a silent no-op.
      */
     private fun recentsAction(what: String) {
         val am = activity.getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager
         when (what) {
             // GLOBAL_ACTION_RECENTS needs the accessibility service; without
-            // it granted there is nothing to fall back to, so stay silent.
-            "cards" -> OneHandAccessibilityService.instance
-                ?.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS)
-            "close_all" -> RecentAppsSource.last9(activity).forEach { (pkg, _) ->
-                runCatching { am?.killBackgroundProcesses(pkg) }
+            // it granted there is nothing to fall back to, so say so.
+            "cards" -> {
+                val fired = OneHandAccessibilityService.instance
+                    ?.performGlobalAction(android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_RECENTS)
+                    ?: false
+                if (!fired) toast("Enable Accessibility (Configs › Permissions) to open Overview")
+            }
+            "close_all" -> {
+                val pkgs = RecentAppsSource.last9(activity).map { it.first }
+                pkgs.forEach { pkg -> runCatching { am?.killBackgroundProcesses(pkg) } }
+                toast("Freed background state: ${pkgs.size} app(s) — cards remain, swipe to dismiss")
             }
             // Wider sweep: every launchable app, not just the nine on the ring.
             "kill_bg" -> {
                 val self = activity.packageName
-                runCatching {
+                val count = runCatching {
                     val la = activity.getSystemService(Context.LAUNCHER_APPS_SERVICE) as LauncherApps
-                    la.getActivityList(null, Process.myUserHandle())
+                    val pkgs = la.getActivityList(null, Process.myUserHandle())
                         .map { it.applicationInfo.packageName }
                         .distinct()
                         .filter { it != self }
-                        .forEach { p -> runCatching { am?.killBackgroundProcesses(p) } }
-                }
+                    pkgs.forEach { p -> runCatching { am?.killBackgroundProcesses(p) } }
+                    pkgs.size
+                }.getOrDefault(0)
+                toast("Killed background processes: $count app(s) (cached only)")
             }
         }
+    }
+
+    private fun toast(msg: String) {
+        android.widget.Toast.makeText(activity, msg, android.widget.Toast.LENGTH_SHORT).show()
     }
 
     /** Wire glyph/size/position/tap once; call [update] after for initial state. */
