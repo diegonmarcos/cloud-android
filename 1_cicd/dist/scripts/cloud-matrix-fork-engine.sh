@@ -438,6 +438,20 @@ step_materialize_fork() {
   # (ac_cloud-<fork>/patches/). SCRIPT_DIR resolves to the invocation dir.
   local patch_dir="$SCRIPT_DIR/patches"
 
+  # Vendored fork: tracker_dir IS the app's own root (dest resolves back to
+  # SCRIPT_DIR itself) — the full upstream source was flattened + committed
+  # in-repo, patches already applied, patches/ kept only as historical
+  # record (see build.json::_doc_vendored). That tree has no .git, which
+  # used to make the check below fall through to `git clone` into an
+  # already-populated, non-git directory -- "fatal: destination path ...
+  # already exists and is not an empty directory." Detect the vendored
+  # source directly (settings.gradle[.kts] present) and skip clone/reset/
+  # patch entirely; there is nothing left to materialize.
+  if [ -f "$dest/settings.gradle.kts" ] || [ -f "$dest/settings.gradle" ]; then
+    log "materialize-fork[$key]: $tracker is vendored (source committed in-repo, no .git) — nothing to clone/patch"
+    return 0
+  fi
+
   if [ ! -d "$dest/.git" ]; then
     log "materialize-fork[$key]: cloning $repo → $tracker (tag $tag)"
     # tracker_dir may be nested (ac_upstreams-sources/<name> — the canonical

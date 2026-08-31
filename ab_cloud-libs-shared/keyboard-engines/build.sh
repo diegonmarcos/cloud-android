@@ -81,7 +81,7 @@ in_nix() {
   fi
 }
 
-_gradle() { in_nix gradle --no-daemon --stacktrace -p "$SCRIPT_DIR" "$@"; }
+_gradle() { in_nix gradle --no-daemon -p "$SCRIPT_DIR" "$@"; }
 
 _resolve_gif_keys() {
   [ -n "${GIPHY_API_KEY:-}" ] && { log "media: pre-set GIPHY_API_KEY from env"; return 0; }

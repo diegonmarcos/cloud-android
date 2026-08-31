@@ -18,11 +18,16 @@ android {
         applicationId 'com.diegonmarcos.cloudkeyboardlibs'
         minSdk 26
         targetSdk 35
-        // See lib-apks/app/build.gradle: a literal 1 can never be updated.
-        versionCode (int) (3000000L + java.time.Duration.between(
-                java.time.LocalDateTime.of(2026, 1, 1, 0, 0),
-                java.time.LocalDateTime.now(java.time.ZoneOffset.UTC)).toMinutes())
-        versionName '1.0'
+        // build.json::android.version_code/version_name are the source of
+        // truth (see the _doc_version note in build.json) -- mirrors
+        // ac_cloud-keyboard/app/build.gradle. The previous inline
+        // Duration-cast expression here threw Gradle's opaque
+        // "IllegalArgumentException: Value is null" during ':app' evaluation
+        // (BeanDynamicObject rejecting a cast-in-argument-position DSL call);
+        // reading straight from build.json sidesteps that AND stops ignoring
+        // the version_code/version_name build.json already declares.
+        versionCode buildJson.android.version_code
+        versionName buildJson.android.version_name
         // Native-library ABI filter — declared in build.json::android.abi_filters
         // so the choice stays data-driven (mirrors superapp + vault). Vosk/JNA
         // ship ~25MB of .so per ABI; unfiltered AGP bundled all 7 the deps carry
