@@ -261,7 +261,8 @@ object ConfigAutoImport {
 
     /**
      * `mesh` and `services` are BAKED at build time (app/build.gradle reads
-     * data/*.json into BuildConfig.MESH_JSON_B64 / SERVICES_*_B64, and
+     * the data/ snapshots into BuildConfig.MESH_JSON_B64 and the
+     * SERVICES_PUBLIC/PRIVATE_B64 fields, and
      * Sections caches the parsed result process-wide). There is no runtime
      * store to write, so we say that rather than pretending to apply it.
      */
