@@ -61,7 +61,14 @@ class FirewallVpnService : VpnService() {
             .keys
     }
 
-    private fun onConditionsChanged() = rebuild(applicationContext, effectiveBlocked(applicationContext))
+    private fun onConditionsChanged() {
+        val blocked = effectiveBlocked(applicationContext)
+        // Count activations BEFORE rebuilding: recordPass diffs against the
+        // previous pass, so it must see every conditions change exactly once,
+        // including the ones where the tun is torn down and put back identical.
+        FirewallStats.recordPass(applicationContext, blocked)
+        rebuild(applicationContext, blocked)
+    }
 
     /** (Re)establish the tun. Established whenever enabled, even if [blocked]
      *  is empty (VPN on, blocks no one) — so the toggle visibly turns on. */

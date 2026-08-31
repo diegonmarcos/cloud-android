@@ -91,6 +91,22 @@ class FirewallDialog : DialogFragment() {
             setPadding(0, dp(6), 0, dp(12))
         })
 
+        // Totals, so the Fires column has a scale to read against.
+        root.addView(TextView(ctx).apply {
+            val total = FirewallStats.totalFires(ctx)
+            val configured = FirewallRules.configured(ctx).size
+            text = "$configured app(s) with a rule · $total activation(s) total"
+            setTextColor(0x99FFFFFF.toInt())
+            textSize = 11f
+            setPadding(0, 0, 0, dp(6))
+        })
+
+        // Column header. Every axis is shown for every app, including the ones
+        // that are ON: the old one-line summary listed only what was switched
+        // OFF, so a rule that blocked nothing and a rule that had never been
+        // configured rendered identically.
+        root.addView(tableHeader(ctx, ::dp))
+
         // Per-app block list (launchable apps only, alphabetical).
         val list = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
         val pm = ctx.packageManager
@@ -116,49 +132,104 @@ class FirewallDialog : DialogFragment() {
         )
     }
 
-    /** One app row: label + current-rule summary; tap opens the axis editor. */
-    private fun appRow(ctx: Context, app: ApplicationInfo, dp: (Int) -> Int): View {
-        val pm = ctx.packageManager
-        val summary = TextView(ctx).apply {
-            setTextColor(0x88FFFFFF.toInt())
-            textSize = 11f
-        }
-        fun renderSummary() { summary.text = summarize(FirewallRules.rule(ctx, app.packageName)) }
-        renderSummary()
-        return LinearLayout(ctx).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(0, dp(8), 0, dp(8))
-            isClickable = true
-            setOnClickListener { editApp(ctx, app, dp) { renderSummary() } }
-            addView(TextView(ctx).apply {
-                text = pm.getApplicationLabel(app).toString()
-                setTextColor(0xFFFFFFFF.toInt())
-                textSize = 14f
-            })
-            addView(summary)
-        }
+    /** Column weights, shared by the header and every row so they line up.
+     *  App gets the slack because names are the only variable-width column. */
+    private val COL_APP = 3.2f
+    private val COL_AXIS = 1.0f
+    private val COL_VPN = 1.4f
+    private val COL_DIR = 1.2f
+    private val COL_FIRES = 1.0f
+
+    private fun cell(
+        ctx: Context,
+        text: String,
+        weight: Float,
+        colour: Int,
+        dp: (Int) -> Int,
+        bold: Boolean = false,
+    ) = TextView(ctx).apply {
+        this.text = text
+        setTextColor(colour)
+        textSize = 11f
+        if (bold) setTypeface(typeface, android.graphics.Typeface.BOLD)
+        setPadding(0, 0, dp(4), 0)
+        layoutParams = LinearLayout.LayoutParams(
+            0, LinearLayout.LayoutParams.WRAP_CONTENT, weight,
+        )
     }
 
-    /** Compact human summary of an [AppRule] for the list row. */
-    private fun summarize(r: AppRule): String {
-        if (r.isDefault) return "Allowed"
-        val parts = mutableListOf<String>()
-        when (r.vpnMode) {
-            VpnMode.WG0_ONLY -> parts += "wg0 VPN only"
-            VpnMode.WG_PUBLIC_ONLY -> parts += "wg-public VPN only"
-            VpnMode.NONE -> { // transport toggles only matter without the override
-                if (!r.wifi) parts += "No Wi-Fi"
-                if (!r.cellular) parts += "No cellular"
-            }
+    /** The table's column header. */
+    private fun tableHeader(ctx: Context, dp: (Int) -> Int): View =
+        LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, dp(6), 0, dp(6))
+            val c = 0xAAB794F4.toInt()
+            addView(cell(ctx, "App", COL_APP, c, dp, bold = true))
+            addView(cell(ctx, "Wi-Fi", COL_AXIS, c, dp, bold = true))
+            addView(cell(ctx, "Cell", COL_AXIS, c, dp, bold = true))
+            addView(cell(ctx, "Bg", COL_AXIS, c, dp, bold = true))
+            addView(cell(ctx, "VPN", COL_VPN, c, dp, bold = true))
+            addView(cell(ctx, "Dir", COL_DIR, c, dp, bold = true))
+            addView(cell(ctx, "Fires", COL_FIRES, c, dp, bold = true))
         }
-        if (!r.background) parts += "No background"
-        when (r.direction) {
-            Direction.ALL -> parts += "Block all"
-            Direction.IN -> parts += "Block incoming"
-            Direction.OUT -> parts += "Block outgoing"
-            Direction.NONE -> {}
+
+    /**
+     * One app row, as a table line; tap opens the axis editor.
+     *
+     * Reads every axis rather than summarising, because the summary it replaces
+     * only mentioned axes that were OFF — so "allowed everywhere" and "no rule
+     * set" looked the same, and there was no way to see that Wi-Fi was
+     * deliberately left ON.
+     */
+    private fun appRow(ctx: Context, app: ApplicationInfo, dp: (Int) -> Int): View {
+        val pm = ctx.packageManager
+        val cells = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
+
+        fun render() {
+            cells.removeAllViews()
+            val r = FirewallRules.rule(ctx, app.packageName)
+            val fires = FirewallStats.fires(ctx, app.packageName)
+            // A blocking axis is the thing worth spotting, so it is the one
+            // that gets colour; everything permissive stays muted.
+            val off = 0xFFF6AD55.toInt()
+            val on = 0x88FFFFFF.toInt()
+            val dim = 0x55FFFFFF.toInt()
+
+            cells.addView(cell(ctx, pm.getApplicationLabel(app).toString(),
+                COL_APP, if (r.isDefault) dim else 0xFFFFFFFF.toInt(), dp))
+            // The transport toggles are inert under a VPN-only override — the
+            // decider ignores them — so they are dimmed rather than shown as
+            // if they still applied.
+            val axisMuted = r.vpnOnly
+            cells.addView(cell(ctx, if (r.wifi) "on" else "OFF",
+                COL_AXIS, if (axisMuted) dim else if (r.wifi) on else off, dp))
+            cells.addView(cell(ctx, if (r.cellular) "on" else "OFF",
+                COL_AXIS, if (axisMuted) dim else if (r.cellular) on else off, dp))
+            cells.addView(cell(ctx, if (r.background) "on" else "OFF",
+                COL_AXIS, if (r.background) on else off, dp))
+            cells.addView(cell(ctx, when (r.vpnMode) {
+                VpnMode.WG0_ONLY -> "wg0"
+                VpnMode.WG_PUBLIC_ONLY -> "wg-pub"
+                VpnMode.NONE -> "—"
+            }, COL_VPN, if (r.vpnOnly) off else dim, dp))
+            cells.addView(cell(ctx, when (r.direction) {
+                Direction.ALL -> "ALL"
+                Direction.IN -> "IN"
+                Direction.OUT -> "OUT"
+                Direction.NONE -> "—"
+            }, COL_DIR, if (r.direction == Direction.NONE) dim else off, dp))
+            cells.addView(cell(ctx, if (fires == 0) "—" else fires.toString(),
+                COL_FIRES, if (fires == 0) dim else off, dp))
         }
-        return parts.joinToString(" · ")
+        render()
+
+        return LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, dp(6), 0, dp(6))
+            isClickable = true
+            setOnClickListener { editApp(ctx, app, dp) { render() } }
+            addView(cells)
+        }
     }
 
     /**
