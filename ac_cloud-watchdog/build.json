@@ -4,7 +4,25 @@
   "category": "android",
   "build": {
     "type": "gradle",
-    "entry": "build.sh"
+    "entry": "build.sh",
+    "external_inputs": [
+      {
+        "repo": "diegonmarcos/cloud-u-linux",
+        "tag": "my-watchdog-latest",
+        "asset": "my-watchdog-aarch64"
+      },
+      {
+        "repo": "diegonmarcos/cloud-u-linux",
+        "tag": "my-watchdog-latest",
+        "asset": "my-watchdog-tui-aarch64"
+      },
+      {
+        "repo": "diegonmarcos/cloud-u-linux",
+        "tag": "my-watchdog-latest",
+        "asset": "watchdog-app.html"
+      }
+    ],
+    "external_inputs_doc": "Artifacts this APK bakes in from ANOTHER repo, so the publish gate can see them. The gate hashes git objects and none of these are in this repo: the panel binary was rebuilt with fixes, this app's own source had not moved, and the gate skipped publishing forever while every rebuild agreed the APK was current."
   },
   "_doc": "The app owns no layout. It asks the terminal for a screen at the grid this device actually has and injects what comes back. Every previous attempt to re-draw that dashboard outside the panel diverged on frames, alignment and colour, so nothing here reproduces any of it.",
   "watchdog": {

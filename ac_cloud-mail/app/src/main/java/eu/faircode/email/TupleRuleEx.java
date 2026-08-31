@@ -25,12 +25,20 @@ public class TupleRuleEx extends EntityRule {
     public long account;
     public String folderName;
     public String accountName;
+    // comms: the folder/tag this rule FILES INTO, resolved from action.target.
+    // folderName above is the folder the rule LIVES IN (almost always Inbox),
+    // which is why sorting by it grouped every rule under one heading and told
+    // you nothing about which tag a rule feeds. Null when the action does not
+    // move (flag, keyword, snooze, ...). Not a column: it comes from JSON in
+    // `action`, annotated off the main thread in FragmentRules.
+    public String targetName;
 
     @Override
     public boolean equals(Object obj) {
         if (obj instanceof TupleRuleEx) {
             TupleRuleEx other = (TupleRuleEx) obj;
             return (super.equals(obj) &&
+                    Objects.equals(this.targetName, other.targetName) &&
                     this.account == other.account &&
                     Objects.equals(this.folderName, other.folderName) &&
                     Objects.equals(this.accountName, other.accountName));

@@ -64,6 +64,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 
 import javax.mail.MessagingException;
 
@@ -97,6 +98,7 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> {
         private TextView tvAction;
         private TextView tvLastApplied;
         private TextView tvApplied;
+        private TextView tvTagHeader;
 
         private TwoStateOwner powner = new TwoStateOwner(owner, "RulePopup");
 
@@ -114,6 +116,28 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> {
             tvAction = itemView.findViewById(R.id.tvAction);
             tvLastApplied = itemView.findViewById(R.id.tvLastApplied);
             tvApplied = itemView.findViewById(R.id.tvApplied);
+            tvTagHeader = itemView.findViewById(R.id.tvTagHeader);
+        }
+
+        /**
+         * Show the tag heading when this row opens a new group.
+         *
+         * The header lives inside the row rather than in a second view type:
+         * that keeps the adapter a flat list of rules and leaves DiffUtil
+         * alone. Views are recycled, so the GONE branch is not optional.
+         */
+        private void bindTagHeader(TupleRuleEx rule, int position) {
+            String tag = (rule == null ? null : rule.targetName);
+            boolean show = "target".equals(sort) && position < selected.size();
+            if (show) {
+                String prev = (position == 0
+                        ? null : selected.get(position - 1).targetName);
+                show = (position == 0 || !Objects.equals(tag, prev));
+            }
+            if (show)
+                tvTagHeader.setText(tag == null
+                        ? context.getString(R.string.title_rule_no_tag) : tag);
+            tvTagHeader.setVisibility(show ? View.VISIBLE : View.GONE);
         }
 
         private void wire() {
@@ -704,7 +728,20 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> {
             @Override
             public int compare(TupleRuleEx r1, TupleRuleEx r2) {
                 int order;
-                if ("last_applied".equals(sort))
+                if ("target".equals(sort)) {
+                    // comms: group by the tag the rule files into. Rules with
+                    // no target (flag, keyword, snooze) sort last as one block
+                    // rather than being scattered through the tagged groups.
+                    String t1 = (r1.targetName == null ? "" : r1.targetName);
+                    String t2 = (r2.targetName == null ? "" : r2.targetName);
+                    order = Boolean.compare(t1.isEmpty(), t2.isEmpty());
+                    if (order == 0)
+                        order = collator.compare(t1, t2);
+                    // Within a tag, the manual order is what decides which
+                    // rule wins, so it stays the tiebreak.
+                    if (order == 0)
+                        order = Integer.compare(r1.order, r2.order);
+                } else if ("last_applied".equals(sort))
                     order = -Long.compare(
                             r1.last_applied == null ? 0 : r1.last_applied,
                             r2.last_applied == null ? 0 : r2.last_applied);
@@ -851,6 +888,11 @@ public class AdapterRule extends RecyclerView.Adapter<AdapterRule.ViewHolder> {
 
         holder.unwire();
         holder.bindTo(rule);
+        // comms: section heading for the tag this run of rules files into.
+        // Only in "target" sort -- in any other order the rows for a tag are
+        // not contiguous, so a per-row header would repeat the same tag over
+        // and over instead of heading a group.
+        holder.bindTagHeader(rule, position);
         holder.wire();
     }
 }

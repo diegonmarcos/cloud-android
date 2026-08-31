@@ -1,6 +1,6 @@
 {
   "vendored_engine": "cloud-termux-fork-engine.sh",
-  "_doc_vendored_engine": "CI does NOT run the engine source in 1_cicd/src/scripts — it runs the VENDORED COPY at ./build.sh, from this directory. This key DECLARES that copy relationship so the workflow generator can enforce byte-identity (cloud-android-ship-repo-workflow-engine.sh, step 'verify engine ↔ vendored build.sh parity') and go red on drift. Editing the engine alone used to change nothing at ship time, silently — which is how the ABI gate and the GHCR auto-delete gate came to exist only in the file nobody executes. Re-sync with: cp 1_cicd/src/scripts/<engine> ./build.sh",
+  "_doc_vendored_engine": "CI does NOT run the engine source in 1_cicd/src/scripts \u2014 it runs the VENDORED COPY at ./build.sh, from this directory. This key DECLARES that copy relationship so the workflow generator can enforce byte-identity (cloud-android-ship-repo-workflow-engine.sh, step 'verify engine \u2194 vendored build.sh parity') and go red on drift. Editing the engine alone used to change nothing at ship time, silently \u2014 which is how the ABI gate and the GHCR auto-delete gate came to exist only in the file nobody executes. Re-sync with: cp 1_cicd/src/scripts/<engine> ./build.sh",
   "forks": {
     "termux": {
       "app_id": "cld.termux",
@@ -28,7 +28,30 @@
           "TERMUX_KEYSTORE_PASSWORD": "store_password",
           "TERMUX_KEY_PASSWORD": "key_password",
           "TERMUX_KEY_ALIAS": "key_alias"
-        }
+        },
+        "external_inputs": [
+          {
+            "repo": "diegonmarcos/cloud-u-linux",
+            "tag": "my-watchdog-latest",
+            "asset": "my-watchdog-aarch64"
+          },
+          {
+            "repo": "diegonmarcos/cloud-u-linux",
+            "tag": "my-watchdog-latest",
+            "asset": "my-watchdog-tui-aarch64"
+          },
+          {
+            "repo": "diegonmarcos/cloud-u-linux",
+            "tag": "my-watchdog-latest",
+            "asset": "my-watchdog-x86_64"
+          },
+          {
+            "repo": "diegonmarcos/cloud-u-linux",
+            "tag": "my-watchdog-latest",
+            "asset": "my-watchdog-tui-x86_64"
+          }
+        ],
+        "external_inputs_doc": "Artifacts this APK bakes in from ANOTHER repo, so the publish gate can see them. The gate hashes git objects and none of these are in this repo: the panel binary was rebuilt with fixes, this app's own source had not moved, and the gate skipped publishing forever while every rebuild agreed the APK was current."
       },
       "comment": "Cloud Terminal (Termux) fork."
     }
