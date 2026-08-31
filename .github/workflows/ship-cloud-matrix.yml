@@ -64,12 +64,19 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: sh 1_cicd/dist/scripts/cloud-android-publish-gate.sh check "$WORK_DIR" "${{ matrix.combo.abi }}"
 
-      - name: Set up JDK 17
+      # element-x-android's own gradle project (plugins/build.gradle.kts) pulls
+      # in dev.zacsweers.metro:gradle-plugin, which requires JVM 21+ at
+      # configuration time ("Dependency requires at least JVM runtime version
+      # 21") -- 17 fails ':plugins:generateExternalPluginSpecBuilders' before a
+      # single app module is even compiled. This fork builds with its OWN
+      # gradle wrapper (never our devShell/repo-wide JDK), so bumping this is
+      # scoped to this workflow only.
+      - name: Set up JDK 21
         if: steps.gate.outputs.skip != 'true'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: "21"
           cache: gradle
 
       - name: Checkout vault (shared Android signing key)
