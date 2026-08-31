@@ -382,6 +382,11 @@
           "_doc": "Opens the DCIM/Screenshots folder directly (DocumentsUI tree URI — vendor-neutral, no root). Was 'Gallery'→media-center; the full gallery keeps its own Data Apps tile.",
           "label": "Screenshots",
           "target": "action:open_screenshots"
+        },
+        {
+          "_doc": "App Tabs — the last-6 LRU shelf, MOVED here from Tools Primary (user request 2026-08-31). target=page:apptabs/grid lands STRAIGHT on AppTabsFragment with no page-menu intermediate, and it is opened via pushContent, so the Back arrow returns directly to the screen it was invoked from — never a nested submenu.",
+          "label": "Tabs",
+          "target": "page:apptabs/grid"
         }
       ],
       "_doc_nodes": "Outer ring of the ALL-APPS (Sirius) star: the LEAF pages, not the five parent sections. No \"section\" key on any of them, so CircularMenu leaves childKey null and a tap navigates straight to the target instead of descending a level. Configs is deliberately absent - it has its own star (Canopus/arc_menu).",
@@ -1675,13 +1680,6 @@
                 "label": "Browser",
                 "icon": "ic_world",
                 "target": "extapp:cloud-browser"
-              },
-              {
-                "_doc": "App Tabs — surfaces the last 6 opened SuperApp sections / pages / external apps. Labeled 'Tabs' (the namespace freed by the Tabs→Browser rename). target=page:apptabs/grid so a tap goes STRAIGHT to AppTabsFragment; without this the section's single 'grid' page would still get wrapped in a page-menu intermediate.",
-                "id": "apptabs",
-                "label": "Tabs",
-                "icon": "ic_mode_apps",
-                "target": "page:apptabs/grid"
               },
               {
                 "_doc": "Cloud-Wallet — the dedicated cards/passes/tickets app (ac_cloud-wallet). libs:wallet (Compose deck) was MOVED out of the SuperApp into Cloud-Wallet, so this tile no longer routes to an in-app section. target=extapp:cloud-wallet → MainActivity.launchExternalApp opens com.diegonmarcos.cloudwallet if installed, else downloads + installs ui.external_apps[id=cloud-wallet].install_apk_url. For the system Google Wallet launcher use action:app://com.google.android.apps.walletnfcrel from anywhere else.",
