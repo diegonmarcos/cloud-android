@@ -11,8 +11,13 @@ import java.net.URL
  * POST a log dump to c3-infra-api's public ingest, so a broken phone can hand
  * over its own evidence instead of the user copy-pasting a stack trace.
  *
+ * (Written `/public/…` and not with a star: Kotlin block comments NEST, so a
+ *  literal /*-sequence inside this KDoc opens an inner comment, the closing
+ *  */ shuts only that one, and the outer comment then swallows the rest of
+ *  the file — the compiler reports it as an unclosed comment at EOF.)
+ *
  * WHY UNAUTHENTICATED IS RIGHT HERE
- * `/public/*` is on the API's isPublicPath() allowlist deliberately: the
+ * `/public/…` is on the API's isPublicPath() allowlist deliberately: the
  * moments you most need a log are the ones where auth is what broke. Requiring
  * a bearer would make the reporting path fail for exactly the class of bug it
  * exists to report — the same trap that hid today's outages behind silent
