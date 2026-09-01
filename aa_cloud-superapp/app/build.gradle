@@ -197,6 +197,14 @@ def constellationFleetFile = file("../data/constellation-fleet.json")
 def constellationFleetJson = constellationFleetFile.exists() ? constellationFleetFile.text : "{\"version\":1,\"apps\":[]}"
 def constellationFleetB64  = constellationFleetJson.bytes.encodeBase64().toString()
 // Config auto-import source — Configs → Profile → "OWebAuth Authelia".
+// DevControl → "Send to cloud" posts a raw logcat dump to c3-infra-api. The
+// button, the fragment's BuildConfig.LOG_INGEST_URL reference and libs:core's
+// LogUpload all landed without this field, so :app stopped compiling with
+// "Unresolved reference 'LOG_INGEST_URL'". Empty by default — see
+// build.json::diagnostics._doc_log_ingest for why there is no URL to put here
+// yet.
+def logIngestUrl       = (buildJson.diagnostics?.log_ingest_url ?: '').toString()
+
 // Baked so the endpoint, the user slug and the artifact contract version
 // are a build.json edit, never a Kotlin literal. See
 // build.json::_doc_config_source.
@@ -584,6 +592,7 @@ android {
         buildConfigField "int",    "UI_CONFIG_SOURCE_FORMAT_VERSION", "${configSrcVersion}"
         buildConfigField "int",    "UI_CONFIG_SOURCE_CONNECT_MS",     "${configSrcConnectMs}"
         buildConfigField "int",    "UI_CONFIG_SOURCE_READ_MS",        "${configSrcReadMs}"
+        buildConfigField "String", "LOG_INGEST_URL",  "\"${logIngestUrl}\""
         buildConfigField "String", "UI_CONFIG_GIT_REPO",      "\"${configGitRepo}\""
         buildConfigField "String", "UI_CONFIG_GIT_PATH",      "\"${configGitPath}\""
         buildConfigField "String", "UI_CONFIG_GIT_REF",       "\"${configGitRef}\""
