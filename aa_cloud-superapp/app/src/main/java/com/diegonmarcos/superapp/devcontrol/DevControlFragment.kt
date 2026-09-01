@@ -204,6 +204,28 @@ class DevControlFragment : Fragment() {
                         android.content.ClipData.newPlainText("logcat", logView.text))
                     android.widget.Toast.makeText(ctx, "Copied", android.widget.Toast.LENGTH_SHORT).show()
                 })
+                // Same buffer as "Copy all", posted instead of pasted: hands the
+                // dump straight to c3-infra-api so a broken phone reports its own
+                // evidence. Secrets are stripped in LogUpload.redact before it
+                // leaves the device.
+                addView(btn("Send to cloud") {
+                    val text = logView.text.toString()
+                    val endpoint = BuildConfig.LOG_INGEST_URL
+                    android.widget.Toast.makeText(ctx, "Sending…", android.widget.Toast.LENGTH_SHORT).show()
+                    kotlin.concurrent.thread(name = "logcat-upload") {
+                        val r = com.diegonmarcos.superapp.core.LogUpload.post(
+                            endpoint, "cloud-superapp", text)
+                        val msg = when (r) {
+                            is com.diegonmarcos.superapp.core.LogUpload.Result.Ok ->
+                                "Sent → ${r.file}"
+                            is com.diegonmarcos.superapp.core.LogUpload.Result.Failed ->
+                                "Send failed: ${r.reason}"
+                        }
+                        logView.post {
+                            android.widget.Toast.makeText(ctx, msg, android.widget.Toast.LENGTH_LONG).show()
+                        }
+                    }
+                })
             }
             box.addView(filters)
             box.addView(actions)
