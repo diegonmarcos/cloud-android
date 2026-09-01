@@ -41,7 +41,29 @@ def buildTimestamp = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss 'UTC'")
 // Bake build.json::ui.sections into BuildConfig as base64-JSON so Kotlin
 // reads a single source of truth at runtime — no parallel hardcoded list.
 // Base64 sidesteps Java-string-literal escaping for the embedded JSON.
-def uiSectionsJson  = groovy.json.JsonOutput.toJson(buildJson.ui.sections)
+// Strip the `_doc*` keys before baking. They are documentation for whoever
+// opens build.json, and Sections.kt has never read one — but they were being
+// base64'd into the APK all the same, and they are roughly HALF the payload.
+//
+// That stopped being merely wasteful and became a build failure:
+//
+//   BuildConfig.java:35: error: constant string too long
+//
+// A Java string constant cannot exceed 65535 bytes in the class file, and
+// ui.sections had grown to ~63.2 KB of base64 — close enough that one ordinary
+// day of editing section prose pushed it over. Stripping docs takes it to
+// ~33.8 KB, so there is real headroom again rather than a cliff two paragraphs
+// away. The blob the app decodes is otherwise identical.
+def stripDocs
+stripDocs = { obj ->
+    if (obj instanceof Map) {
+        return obj.findAll { k, v -> !k.toString().startsWith('_doc') }
+                  .collectEntries { k, v -> [(k): stripDocs(v)] }
+    }
+    if (obj instanceof List) return obj.collect { stripDocs(it) }
+    return obj
+}
+def uiSectionsJson  = groovy.json.JsonOutput.toJson(stripDocs(buildJson.ui.sections))
 def uiSectionsB64   = uiSectionsJson.bytes.encodeBase64().toString()
 // Permissions master list — DevControlFragment's Permissions section
 // reads UI_PERMISSIONS_RUNTIME_B64 to render its row list (replaces
