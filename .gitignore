@@ -171,6 +171,8 @@ ac_cloud-nav/**/*.jks
 ## question will look for.
 ac_cloud-wallet/**/*.keystore
 ac_cloud-wallet/**/*.jks
+ac_cloud-me/**/*.keystore
+ac_cloud-me/**/*.jks
 ac_cloud-browser/**/*.keystore
 ac_cloud-browser/**/*.jks
 ac_cloud-vault/**/*.keystore

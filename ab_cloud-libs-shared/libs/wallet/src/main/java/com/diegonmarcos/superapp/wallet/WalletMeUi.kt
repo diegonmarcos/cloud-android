@@ -43,7 +43,7 @@ import org.json.JSONArray
  * mirroring the pages of front-diegonmarcos/b-Media/mySocials. Tapping one
  * opens that page, which stays the canonical profile; this is its wallet face.
  */
-internal data class Social(
+data class Social(
     val id: String,
     val label: String,
     val handle: String,
@@ -52,7 +52,7 @@ internal data class Social(
     val url: String,
 )
 
-internal object Socials {
+object Socials {
     /** Parsed once per process — the list is baked into BuildConfig, so it
      *  cannot change under a running app. */
     private val cached: List<Social> by lazy { parse() }
@@ -79,8 +79,14 @@ internal object Socials {
     }.getOrDefault(emptyList())
 }
 
+/**
+ * Public, not internal: Cloud Me hosts this exact composable as its Me
+ * section. Cloud Wallet and Cloud Me show the same deck from the same
+ * `ui.socials` list, so the tab is shared code rather than a second
+ * implementation that would drift the moment one of them gained a profile.
+ */
 @Composable
-internal fun WalletMeTab(socials: List<Social> = remember { Socials.all() }) {
+fun WalletMeTab(socials: List<Social> = remember { Socials.all() }) {
     val ctx = LocalContext.current
     if (socials.isEmpty()) {
         Column(
