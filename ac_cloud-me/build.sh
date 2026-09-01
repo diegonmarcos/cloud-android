@@ -420,6 +420,26 @@ step_oras_push() {
   rev="${GITHUB_SHA:-$(prefer_host git -C "$SCRIPT_DIR" rev-parse HEAD 2>/dev/null || echo unknown)}"
   rev="${rev:0:8}"
 
+  # CREATE WITH GITHUB_TOKEN, UPDATE WITH THE AMBIENT PAT LOGIN. A GHCR
+  # package's visibility is decided by the token that CREATES it and can never
+  # be changed afterwards — there is no visibility API (PATCH/PUT/POST on
+  # /user/packages/container/{pkg}[/visibility] all 404). A repo-scoped
+  # GITHUB_TOKEN creates the package linked to this repo and inheriting its
+  # PUBLIC visibility; the user-scoped PAT creates it unlinked and PRIVATE
+  # forever. But GITHUB_TOKEN cannot UPDATE a package that is not linked to
+  # this repo, so the token is chosen per PACKAGE, not per repo.
+  #
+  # This app is why the block is here: cloud-me was the first NEW package since
+  # the fix, every other app's package already existed public, and its first
+  # push created it private — the gate below then deleted the mirror. Grandfathered
+  # packages hid the gap; a first build is the only moment it is visible.
+  local creds=()
+  if [ -n "${GHCR_CREATE_TOKEN:-}" ] && command -v gh >/dev/null 2>&1 \
+     && ! gh api "/user/packages/container/${image}" >/dev/null 2>&1; then
+    log "ghcr: ${image} does not exist — creating it with GITHUB_TOKEN so it inherits the repo"
+    creds=(--username "${GITHUB_ACTOR:-diegonmarcos}" --password "${GHCR_CREATE_TOKEN}")
+  fi
+
   local tags
   tags="$(prefer_host jq -r '.release.ghcr.tags[]' "$SCRIPT_DIR/build.json")"
   local suffix; suffix="$(_variant_tag_suffix)"
@@ -429,7 +449,7 @@ step_oras_push() {
     tag="$(_resolve_template "$tmpl")${suffix}"
     ref="$registry/$namespace/$image:$tag"
     log "oras push $ref ← $artifact_name (rev $rev)"
-    ( cd "$artifact_dir" && in_nix oras push "$ref" "$artifact_name:$media_type" \
+    ( cd "$artifact_dir" && in_nix oras push "${creds[@]}" "$ref" "$artifact_name:$media_type" \
         --artifact-type "$media_type" \
         --annotation "org.opencontainers.image.revision=$rev" \
         --annotation "org.opencontainers.image.source=$(_ghcr_source)" )
