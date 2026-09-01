@@ -320,13 +320,27 @@ public class JmapService {
                             .properties(EMAIL_HEADER_PROPERTIES)
                             .build());
             multiCall.execute();
-            Email[] list = getCall.getMethodResponses().get()
-                    .getMain(GetEmailMethodResponse.class).getList();
+            // Say WHICH link of the chain came back empty. When the host is
+            // unreachable (2026-08-31: imap/jmap.diegonmarcos.com resolve to
+            // fd0c:1d00::1 and the phone's mesh IPv6 was a black hole), the
+            // response object is null and the old code dereferenced it — the
+            // user saw a bare NullPointerException on getClass(), which names
+            // neither the server nor the network. A dead connection must read
+            // as a dead connection.
+            GetEmailMethodResponse got = getCall.getMethodResponses().get()
+                    .getMain(GetEmailMethodResponse.class);
+            if (got == null)
+                throw new MessagingException(
+                        "Email/query+get: no response from the JMAP server " +
+                        "(is the host reachable? both A and AAAA are published)");
+            Email[] list = got.getList();
             List<Email> result = new ArrayList<>();
             if (list != null)
                 for (Email e : list)
                     result.add(e);
             return result;
+        } catch (MessagingException ex) {
+            throw ex;              // already named — do not re-wrap
         } catch (Exception ex) {
             throw wrap("Email/query+get", ex);
         }
