@@ -1188,7 +1188,15 @@ public class ApplicationEx extends Application
             editor.putBoolean("comms_unread_uses_theme", true);
         }
 
-        if (version < 3620) {
+        // comms: a `version <` guard CANNOT be used for anything landed after
+        // a7c4dc496. versionCode is derived from COMMS_BUILD_TIMESTAMP now
+        // (~3,349,252 and climbing), so `version < 3620` is false on every
+        // device that has ever launched a timestamp build -- the block below
+        // was dead from the day it was written, which is why cloud-mail-dark
+        // never actually became the theme on an existing install. One-shot
+        // marker, like comms_unread_uses_theme above.
+        if (!prefs.contains("comms_theme_migrated")) {
+            editor.putBoolean("comms_theme_migrated", true);
             // comms: cloud-mail-dark is now THE app theme, but a new default
             // only reaches fresh installs -- every existing device already has
             // "theme" written in prefs, so it would keep whatever upstream
@@ -1198,7 +1206,8 @@ public class ApplicationEx extends Application
             editor.putString("theme", FragmentDialogTheme.DEFAULT_THEME);
         }
 
-        if (version < 3569) {
+        if (!prefs.contains("comms_sync_window_widened")) {
+            editor.putBoolean("comms_sync_window_widened", true);
             // ponytail: EntityFolder.DEFAULT_SYNC/KEEP went 7/30 days ->
             // unlimited, but that only applies to folders created afterwards.
             // Existing rows keep the old window, which is why `24 House` showed

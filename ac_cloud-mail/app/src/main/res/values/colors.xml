@@ -6,7 +6,10 @@
 
     <color name="colorDebug">#bc3f3f</color>
 
-    <color name="colorReadLight">#b3000000</color>
+    <!-- comms: was #b3000000 (70% black) -- against #ff000000 unread that is a
+         contrast difference of nothing on a white ground, so on any light theme
+         read and unread looked identical. Real grey, mirroring colorReadDark. -->
+    <color name="colorReadLight">#ff757575</color>
     <color name="colorUnreadLight">#ff000000</color>
 
     <!-- comms: a dimmed white (#b3ffffff) is not a strong enough read/unread
