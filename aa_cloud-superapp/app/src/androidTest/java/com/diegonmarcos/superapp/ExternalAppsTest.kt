@@ -55,12 +55,12 @@ class ExternalAppsTest {
 
     /** No dangling `extapp:` target anywhere in the section taxonomy. */
     @Test fun everyExtappTargetResolves() {
-        // All tile targets across every aggregator surface: flat tiles_*,
-        // and the themed tile_groups (Suite/Labs).
+        // All tile targets across every aggregator surface: EVERY `tiles_<x>`
+        // list (tilesByPage keys on the suffix, so tiles_shared / tiles_labs /
+        // tiles_c3 are all in there — naming a fixed three missed any list a
+        // renamed page introduced), plus the themed tile_groups.
         val targets = Sections.all().flatMap { sec ->
-            sec.tilesShared.map { it.target } +
-                sec.tilesApps.map { it.target } +
-                sec.tilesAdmin.map { it.target } +
+            sec.tilesByPage.values.flatten().map { it.target } +
                 sec.tileGroups.flatMap { g -> g.tiles.map { it.target } }
         }
         val extapps = targets.filter { it.startsWith("extapp:") }

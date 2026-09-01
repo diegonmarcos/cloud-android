@@ -63,7 +63,7 @@ object Sections {
          *  build.json::sections[*].tabs. */
         val tabs: Boolean = false,
         /** Aggregator sections live ONLY in the bottom nav (Communication,
-         *  Infos, Suite, Tools today). Their `tiles*` lists are deep-link
+         *  Infos, Cloud, Phone today). Their `tiles*` lists are deep-link
          *  pointers into real content sections, not pages of their own. */
         val isAggregator: Boolean = false,
         val tilesShared: List<AggTile> = emptyList(),
@@ -226,14 +226,22 @@ object Sections {
          *  the section's own `tiles_<id>` / `stack_<id>` / `tile_groups` data
          *  ([LauncherNavController.aggregatorPage]) instead of a
          *  [SectionPages] factory. Declared in build.json so no page id is
-         *  hardcoded in Kotlin — Tools' `apps`/`admin` are facets while its
-         *  `c3`, `quant`, … siblings are ordinary content pages. */
+         *  hardcoded in Kotlin — Cloud's `cloud`/`labs`/`c3` are facets while
+         *  its `quant`, `circus`, … siblings are ordinary content pages. */
         val facet: Boolean = false,
 
-        /** true = routable but NOT listed as a child of its section. Labs'
-         *  six subject pages (c3, quant, …) already render inside the Apps
-         *  facet via tiles_shared; listing them again made Labs eight
-         *  top-level children instead of Apps | Admin. `page:tools/c3`
+        /** Apps/Admin mode this page SELECTS when opened, declared in
+         *  build.json as `mode`. Used to be inferred from the page id — the
+         *  id had to stay literally "apps"/"admin" or nothing ever switched
+         *  mode again, which is why Labs' C3 page was still called `admin`
+         *  long after its label moved. Declaring it frees the id to say what
+         *  the page IS. Blank ⇒ opening the page leaves the mode alone. */
+        val mode: String = "",
+
+        /** true = routable but NOT listed as a child of its section. Cloud's
+         *  five subject Labs (quant, circus, …) already render inside the Labs
+         *  facet via tiles_labs; listing them again made Cloud eight
+         *  top-level children instead of Cloud | Labs | C3. `page:cloud/quant`
          *  still resolves — see [Section.allPages]. */
         val hidden: Boolean = false,
         /** true = this entry DOES something and returns (Update All, ...)
@@ -456,6 +464,7 @@ object Sections {
                         subPages = subs,
                         action   = po.optString("action", ""),
                         facet    = po.optBoolean("facet", false),
+                        mode     = po.optString("mode", ""),
                         hidden   = po.optBoolean("hidden", false),
                         isAction = po.optBoolean("is_action", false),
                     ))
@@ -689,6 +698,13 @@ object Sections {
     /** Apps/Admin global toggle default — overridden by ModePrefs at runtime. */
     fun defaultMode(): String = BuildConfig.UI_DEFAULT_MODE
 
+    /** The Apps/Admin mode a page declares (`mode` in build.json), or null.
+     *  Scans every section because the only caller ([LauncherNavController
+     *  .syncModeForPage]) is handed a bare page id by the tab strip. */
+    fun modeForPageId(pageId: String): String? = all().firstNotNullOfOrNull { sec ->
+        sec.allPages.firstOrNull { it.id == pageId && it.mode.isNotBlank() }?.mode
+    }
+
     /** Aggregator's tiles for the given mode. tile_groups wins (flattened
      *  into a single list); then tiles_shared; then per-mode lists. */
     fun aggregatorTilesFor(sec: Section, page: String): List<AggTile> = when {
@@ -714,7 +730,12 @@ object Sections {
             // section that renames its pages therefore has no key for the mode
             // — fall back to its first declared page so the drawer keeps
             // mirroring the body instead of going blank.
+            // …then the page that DECLARES this mode (Page.mode), which is
+            // what a section whose pages are no longer called apps/admin
+            // answers with. Only then the blind first-page fallback, which
+            // silently served Labs' stack for admin mode.
             else -> sec.stackByPage[mode]
+                ?: sec.pages.firstOrNull { it.mode == mode }?.let { sec.stackByPage[it.id] }
                 ?: sec.pages.firstNotNullOfOrNull { sec.stackByPage[it.id] }
                 ?: emptyList()
         }
@@ -872,9 +893,14 @@ object Sections {
             //   • flat tiles_shared                 → single HomeGroup,
             //     tiles PREPENDED to whatever explicit `tiles` the entry
             //     declares.
+            //   • "<section>/<page>"                → that page's own
+            //     `tiles_<page>` list. Needed once a section spends its
+            //     plain tiles_shared on one card (Cloud's category index)
+            //     but a second card needs another of its lists (Labs).
             val groupExplode = o.optBoolean("group_explode", false)
             val fromSection  = o.optString("tiles_from_section", "").takeIf { it.isNotBlank() }
-            val referenced   = fromSection?.let { byId(it) }
+            val fromPage     = fromSection?.substringAfter('/', "")?.takeIf { it.isNotBlank() }
+            val referenced   = fromSection?.substringBefore('/')?.let { byId(it) }
 
             if (referenced != null && referenced.tileGroups.isNotEmpty() && groupExplode) {
                 // Each TileGroup becomes its own HomeGroup card. Title
@@ -906,6 +932,18 @@ object Sections {
             val derivedTiles = mutableListOf<HomeTile>()
             if (referenced != null) {
                 when {
+                    // "<section>/<page>" — the page's own tiles_<page> list.
+                    // Checked FIRST: it was named explicitly, so it beats
+                    // whatever default the section would otherwise offer.
+                    fromPage != null -> {
+                        referenced.tilesByPage[fromPage].orEmpty().forEach { agg ->
+                            derivedTiles += HomeTile(
+                                id       = agg.target,
+                                label    = agg.label,
+                                iconName = agg.iconName,
+                            )
+                        }
+                    }
                     // tiles_shared = an explicit "home index" (one icon per
                     // category). Checked BEFORE tile_groups so a section that
                     // declares both (Suite) shows its category icons on the

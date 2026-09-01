@@ -19,8 +19,8 @@
     <string name="section_home">Home</string>
     <string name="section_communication">Inboxes</string>
     <string name="section_infos">Projects</string>
-    <string name="section_suite">Suite</string>
-    <string name="section_tools">Labs</string>
+    <string name="section_cloud">Cloud</string>
+    <string name="section_phone">Phone</string>
     <string name="mode_apps">Apps</string>
     <string name="mode_admin">Admin</string>
     <string name="mode_toggled">Mode: %1$s</string>

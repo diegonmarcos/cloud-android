@@ -51,7 +51,7 @@ class GroupedTilesFragment : Fragment() {
         // Apps" grid + a "Recently Used" smart folder below its Quickmarks
         // — other GroupedTilesFragment users (Home, Labs, Configs, …) keep
         // their plain grouped-tiles rendering unchanged.
-        if (sectionId == "suite") col.addView(groupHeader(ctx, "Quickmarks"))
+        if (sectionId == "cloud") col.addView(groupHeader(ctx, "Quickmarks"))
 
         for (group in groups) {
             col.addView(groupHeader(ctx, group.title))
@@ -69,7 +69,7 @@ class GroupedTilesFragment : Fragment() {
         // Suite only, like the Quickmarks header above: these are the global
         // actions, so repeating them in Home, Labs and Configs would be the
         // same five tiles four times over.
-        if (sectionId == "suite") {
+        if (sectionId == "cloud") {
             val starActions = com.diegonmarcos.superapp.onehand.CircularMenu.config().actions
                 .map { Sections.AggTile(it.target, it.label, it.iconName, it.target) }
             if (starActions.isNotEmpty()) {
@@ -78,7 +78,7 @@ class GroupedTilesFragment : Fragment() {
             }
         }
 
-        if (sectionId == "suite") {
+        if (sectionId == "cloud") {
             // ── Below the fold: built AFTER the first frame ──────────────
             //
             // Everything above is the Quickmarks + Actions the user opens this

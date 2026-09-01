@@ -111,7 +111,7 @@ class AppDrawerSheetFragment : Fragment() {
         // Browser-tab chip strip removed — tabs live in Cloud-Browser (ac_cloud-browser).
 
         // ── Body tabs (Cloud | Phone) — data-driven from build.json::ui.home_apps_tabs.
-        // Cloud = GroupedTilesFragment("suite") and Phone =
+        // Cloud = GroupedTilesFragment("cloud") and Phone =
         // SuitePhoneAppsFragment — the same merged Quickmarks + All Apps +
         // Smart Folders pages the Suite section uses, so the swipe-up
         // drawer and Suite tab show identical content instead of the
@@ -155,7 +155,7 @@ class AppDrawerSheetFragment : Fragment() {
         fun showTab(id: String) {
             val frag: androidx.fragment.app.Fragment = when (id) {
                 "phone" -> SuitePhoneAppsFragment.newInstance()
-                else    -> GroupedTilesFragment.newInstance("suite")  // "cloud" + default
+                else    -> GroupedTilesFragment.newInstance("cloud")  // "cloud" + default
             }
             childFragmentManager.beginTransaction()
                 .replace(host.id, frag)

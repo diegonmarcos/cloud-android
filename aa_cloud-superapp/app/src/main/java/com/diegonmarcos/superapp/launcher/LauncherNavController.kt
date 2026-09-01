@@ -248,15 +248,19 @@ class LauncherNavController(private val host: NavHost) {
     }
 
     /**
-     * A page named for a ModePrefs mode also SETS it, so the Home grid, drawer
-     * and bottom-nav icon variants follow the page the user just landed on —
-     * what the retired `mode:` target used to do. Separate from [pageFragment]
-     * so the tab strip can fire it on SELECTION only: with every pane rendered
-     * at once, doing it at render time would fire once per pane and the last
-     * one would win.
+     * A page that DECLARES a ModePrefs mode also SETS it, so the Home grid,
+     * drawer and bottom-nav icon variants follow the page the user just landed
+     * on — what the retired `mode:` target used to do. Separate from
+     * [pageFragment] so the tab strip can fire it on SELECTION only: with every
+     * pane rendered at once, doing it at render time would fire once per pane
+     * and the last one would win.
+     *
+     * Reads `build.json::pages[].mode` rather than matching the page id against
+     * "apps"/"admin". The old id test made the mode a hostage of the naming:
+     * Cloud's C3 page had to keep the id `admin` purely so this line would fire.
      */
     fun syncModeForPage(pageId: String) {
-        if (pageId == "apps" || pageId == "admin") host.applyMode(pageId)
+        Sections.modeForPageId(pageId)?.let { host.applyMode(it) }
     }
 
     /**

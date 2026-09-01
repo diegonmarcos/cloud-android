@@ -61,11 +61,11 @@ class FloatingNavConfigTest {
         val c = cfg.contextFor("com.whatsapp")!!
         assertEquals("default", c.id)
         val byLabel = c.children.associateBy { it.label }
-        assertEquals(listOf("Comms", "Infos", "Home-Apps", "Suite", "Labs", "Configs"),
+        assertEquals(listOf("Comms", "Infos", "Home-Apps", "Cloud", "Labs", "Configs"),
             c.children.map { it.label })
         // SuperApp pages route through the shortcut_action dispatch, not app launch.
         assertEquals("section:communication", byLabel["Comms"]?.target)
-        assertEquals("section:suite", byLabel["Suite"]?.target)
+        assertEquals("section:cloud", byLabel["Cloud"]?.target)
         assertEquals("section:config", byLabel["Configs"]?.target)
         assertEquals("action:open_home_apps", byLabel["Home-Apps"]?.target)
     }

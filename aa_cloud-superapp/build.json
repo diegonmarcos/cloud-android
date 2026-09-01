@@ -325,7 +325,7 @@
       "depends_on": [
         "libs:core"
       ],
-      "comment": "The 'data-manager' — pure per-app DATA providers, no UI. AppUsageProvider (UsageStatsManager: recency / active-window / launch-count) + AppNetworkProvider (NetworkStatsManager: per-app bytes), both gated on the PACKAGE_USAGE_STATS special-access already granted for the Battery & Usage screen. Sibling to libs:battery (the 'battery-manager', per-app energy). Providers return ranked package-name lists; app/apps maps them onto the launchable-app set for the Phone smart folders (Recent / Active 48h / Most Opened / Most Network) and the Suite/Phone 'Active Apps' section. Every query runCatching→empty so a missing grant just hides the folder."
+      "comment": "The 'data-manager' — pure per-app DATA providers, no UI. AppUsageProvider (UsageStatsManager: recency / active-window / launch-count) + AppNetworkProvider (NetworkStatsManager: per-app bytes), both gated on the PACKAGE_USAGE_STATS special-access already granted for the Battery & Usage screen. Sibling to libs:battery (the 'battery-manager', per-app energy). Providers return ranked package-name lists; app/apps maps them onto the launchable-app set for the Phone smart folders (Recent / Active 48h / Most Opened / Most Network) and the Phone 'Active Apps' section. Every query runCatching→empty so a missing grant just hides the folder."
     },
     "libs:launcher-onehand": {
       "dir": "../ab_cloud-libs-shared/libs/launcher-onehand",
@@ -422,24 +422,24 @@
           "target": "page:infos/cloud"
         },
         {
-          "label": "Suite Cloud",
+          "label": "Cloud",
           "icon": "ic_suite",
-          "target": "page:suite/cloud"
+          "target": "page:cloud/cloud"
         },
         {
-          "label": "Suite Phone",
+          "label": "Phone",
           "icon": "ic_p_dialer",
-          "target": "page:suite/phone"
+          "target": "page:phone/phone"
         },
         {
-          "label": "Labs Apps",
+          "label": "Labs",
           "icon": "ic_p_sol_tools",
-          "target": "page:tools/apps"
+          "target": "page:cloud/labs"
         },
         {
-          "label": "Labs C3",
+          "label": "C3",
           "icon": "ic_p_c3_stack",
-          "target": "page:tools/admin"
+          "target": "page:cloud/c3"
         }
       ]
     },
@@ -580,12 +580,12 @@
         }
       ]
     },
-    "_doc_home_swipes": "Configurable home-screen swipe actions. swipe_up fires when the user flings upward while on the Home section (default opens the Home Apps drawer). swipe_left/swipe_right replace the circular walk-list step. Values: open_home_apps (Suite·Cloud tab) | open_home_apps_phone (Suite·Phone tab) | open_last_superapp_page | open_last_android_app | walk_step_next | walk_step_prev.",
+    "_doc_home_swipes": "Configurable home-screen swipe actions. swipe_up fires when the user flings upward while on the Home section (default opens the Home Apps drawer). swipe_left/swipe_right replace the circular walk-list step. Values: open_home_apps (Cloud tab) | open_home_apps_phone (Phone tab) | open_last_superapp_page | open_last_android_app | walk_step_next | walk_step_prev.",
     "home_swipes": {
       "swipe_up": "action:open_home_apps_phone",
       "swipe_left": "open_last_superapp_page",
       "swipe_right": "open_last_android_app",
-      "swipe_down": "page:suite/phone"
+      "swipe_down": "page:phone/phone"
     }
   },
   "shizuku_diagnostics": {
@@ -1435,51 +1435,19 @@
         ]
       },
       {
-        "id": "suite",
-        "label": "Suite",
+        "_doc_icons": "Per-mode icons: Apps mode = multi-tools glyph (mymovies / mymusic / etc.); Admin mode = C3-stack glyph (infra dashboard read). Both the bottom-nav item AND the home_groups tile resolve via Section.iconForMode(mode).",
+        "_doc_label": "Bottom-nav slot 4. Absorbed the old Suite section's Cloud half (its tile_groups + tiles_shared index) and kept Labs' own payload, so one section now answers for Cloud / Labs / C3. id == label == 'cloud'.",
+        "_doc_tiles_shared": "Home-Apps CLOUD index - one icon per Cloud category. Read by home_groups[title=Cloud] via tiles_from_section='cloud'. tiles_shared wins over tile_groups in homeGroups(), so the Home strip shows these 5 category icons while the 18 grouped apps stay on the section page.",
+        "id": "cloud",
+        "label": "Cloud",
+        "tabs": true,
         "icon": "ic_suite",
+        "icon_apps": "ic_suite",
+        "icon_admin": "ic_p_c3_stack",
         "module": null,
         "bottom_nav": true,
+        "_doc_hidden_pages": "Cloud's listed children are Cloud | Labs | C3. The six subject Labs (Data & ML, Engineering, Quant, Aero & Space, Circus) render INSIDE the Labs page via tiles_labs; `hidden` keeps them routable as page:cloud/<id> without listing them as top-level children.",
         "is_aggregator": true,
-        "_doc_tiles_shared": "Home-Apps Suite index — ONE icon per Suite category (mirrors the Labs master index). homeGroups renders tiles_shared in preference to tile_groups, so the Home-Apps Suite strip shows these 5 category icons instead of flattening every app. The grouped apps still live on the bottom-nav Suite SECTION page (SuiteCloudPhoneTabsFragment, driven by tile_groups). All five open the full Suite section (target section:suite) per the user's choice; switch a target to page:suite/<cat> later to drill per-category.",
-        "tiles_shared": [
-          {
-            "id": "suite-ai",
-            "label": "AI",
-            "icon": "ic_ai_sparkle",
-            "target": "section:suite"
-          },
-          {
-            "id": "suite-comms",
-            "label": "Comms",
-            "icon": "ic_chat",
-            "target": "section:suite"
-          },
-          {
-            "id": "suite-data",
-            "label": "Data Apps",
-            "icon": "ic_database",
-            "target": "section:suite"
-          },
-          {
-            "id": "suite-tools",
-            "label": "Tools Primary",
-            "icon": "ic_p_sol_tools",
-            "target": "section:suite"
-          },
-          {
-            "id": "suite-dash",
-            "label": "Tools Dashboard",
-            "icon": "ic_p_c3_workflows",
-            "target": "section:suite"
-          }
-        ],
-        "_doc_active_apps": "Suite/Phone-only 'Active Apps' section rendered BELOW the last curated group (Configs) and ABOVE the All Apps / Smart Folders sections (SuitePhoneAppsFragment renders all three inline on one scrollable page now — no separate 'more' screen). Lists the `limit` most-recently-used apps (libs:datamanager AppUsageProvider.recentUsed → same UsageStatsManager data as the Phone 'Recent 7' smart folder). Empty (section hidden) when usage-access is not granted. Baked to scalar BuildConfig fields UI_SUITE_ACTIVE_APPS_{ENABLED,TITLE,LIMIT}.",
-        "active_apps": {
-          "enabled": true,
-          "title": "Active Apps",
-          "limit": 8
-        },
         "pages": [
           {
             "id": "cloud",
@@ -1488,100 +1456,268 @@
             "facet": true
           },
           {
-            "id": "phone",
-            "label": "Phone",
-            "icon": "ic_p_dialer"
+            "id": "labs",
+            "label": "Labs",
+            "icon": "ic_p_sol_tools",
+            "facet": true,
+            "mode": "apps",
+            "_doc": "The Labs facet. Page id renamed apps->labs so the id matches the label; the Apps/Admin MODE it selects is now declared explicitly in `mode` instead of being inferred from the page id (see sibling c3)."
+          },
+          {
+            "id": "c3",
+            "label": "C3",
+            "icon": "ic_p_c3_stack",
+            "facet": true,
+            "_doc": "Cloud Control Center. The page id used to be `admin` ONLY because LauncherNavController.syncModeForPage inferred ModePrefs from it - rename the id and nothing ever selected admin mode again. That coupling is gone: `mode` below declares it, so the id is free to say what the page is. Data keys followed the id: tiles_admin/stack_admin -> tiles_c3/stack_c3.",
+            "mode": "admin"
+          },
+          {
+            "id": "data-ml",
+            "label": "Data & ML",
+            "icon": "ic_database",
+            "hidden": true
+          },
+          {
+            "id": "engineering",
+            "label": "Engineering",
+            "icon": "ic_wg",
+            "hidden": true
+          },
+          {
+            "id": "quant",
+            "label": "Quant & Markets",
+            "icon": "ic_fin",
+            "hidden": true
+          },
+          {
+            "id": "aero-space",
+            "label": "Aero & Space",
+            "icon": "ic_world",
+            "hidden": true
+          },
+          {
+            "id": "circus",
+            "label": "Circus",
+            "icon": "ic_solutions",
+            "hidden": true
           }
         ],
-        "_doc_phone_app_groups": "Curated phone apps surfaced in Suite/Phone, grouped under the same titled sections used by Suite/Cloud (AI · Data Primary · Data Apps · Tools Primary · Tools Dashboards · Configs). Group order = render order. Each group renders as a subhead + UI_PHONE_GRID_COLUMNS-col grid (6 by default). Missing packages silently hidden — editing this list never breaks the render. Add a new group = add an object here; add an app to an existing group = append to its packages array.",
-        "phone_app_groups": [
+        "tiles_apps": [
           {
-            "title": "AI",
-            "packages": [
-              "com.anthropic.claude",
-              "com.google.android.apps.bard",
-              "com.termux.nix",
-              "cld.termux.nix",
-              "cld.termux"
-            ],
-            "_doc_folders": "Nested folders inside a phone_app_group — render as One-UI-style folder tiles in the same grid as plain packages (2×2 mini-icon preview, tap → modal dialog with the contents at 5 cols). Empty folders silently skipped. SuitePhoneAppsFragment is the renderer.",
-            "folders": [
-              {
-                "label": "Files Editor (IDE)",
-                "packages": [
-                  "com.lonelycatgames.Xplore",
-                  "com.sec.android.app.myfiles",
-                  "com.google.android.apps.docs",
-                  "com.viscouspot.gitsync",
-                  "com.foxdebug.acode",
-                  "com.rhmsoft.edit"
-                ]
-              }
-            ]
+            "id": "linktree",
+            "label": "Linktree",
+            "icon": "ic_solutions",
+            "target": "page:solutions/personal"
           },
           {
-            "title": "Communications",
-            "packages": [
-              "eu.faircode.email",
-              "rs.ltt.android",
-              "com.mattermost.rn",
-              "com.beeper.android",
-              "com.diegonmarcos.comms.dialer",
-              "org.fossify.phone"
-            ],
-            "folders": [
-              {
-                "label": "Others",
-                "packages": [
-                  "com.samsung.android.email.provider",
-                  "com.whatsapp.w4b",
-                  "com.google.android.gm",
-                  "org.telegram.messenger",
-                  "com.instagram.android",
-                  "com.linkedin.android"
-                ]
-              }
-            ]
+            "id": "mymovies",
+            "label": "Movies",
+            "icon": "ic_p_sol_personal",
+            "target": "page:solutions/personal"
           },
           {
-            "title": "Data Apps",
-            "packages": [
-              "md.obsidian",
-              "com.sec.android.gallery3d",
-              "com.diegonmarcos.cloudcalendar",
-              "com.samsung.android.app.contacts",
-              "com.aspiro.tidal",
-              "com.x8bit.bitwarden"
-            ]
+            "id": "mymusic",
+            "label": "Music",
+            "icon": "ic_p_sol_personal",
+            "target": "page:solutions/personal"
           },
           {
-            "title": "Tools Primary",
-            "packages": [
-              "com.brave.browser",
-              "com.diegonmarcos.cloudnews",
-              "com.google.android.apps.maps",
-              "com.google.android.apps.walletnfcrel",
-              "com.google.android.apps.translate",
-              "com.sec.android.app.clockpackage",
-              "com.sec.android.app.popupcalculator"
-            ]
+            "id": "mymaps",
+            "label": "Maps",
+            "icon": "ic_p_sol_personal",
+            "target": "page:solutions/personal"
           },
           {
-            "title": "Tools Dashboards",
-            "packages": [
-              "com.diegonmarcos.superapp"
-            ]
+            "id": "myphotos",
+            "label": "Photos",
+            "icon": "ic_p_sol_personal",
+            "target": "page:solutions/personal"
           },
           {
-            "title": "Configs",
-            "packages": [
-              "com.android.vending",
-              "org.fdroid.fdroid",
-              "com.android.settings"
+            "id": "myanalytics",
+            "label": "Analytics",
+            "icon": "ic_p_sol_cloud",
+            "target": "page:solutions/cloud"
+          }
+        ],
+        "_doc_stack_apps": "Labs/Apps tab — themed placeholder panels (Data & ML, Engineering, Quant & Markets, Aero & Space, Circus). kind=link_grid with empty links renders the title as a collapsable header until per-section content lands. Suite was removed (the Suite slide now lives only on the bottom-nav Suite section, not here).",
+        "tiles_labs": [
+          {
+            "id": "c3",
+            "label": "C3",
+            "icon": "ic_p_c3_stack",
+            "target": "page:cloud/c3"
+          },
+          {
+            "id": "data-ml",
+            "label": "Data & ML",
+            "icon": "ic_database",
+            "target": "page:cloud/data-ml"
+          },
+          {
+            "id": "engineering",
+            "label": "Engineering",
+            "icon": "ic_wg",
+            "target": "page:cloud/engineering"
+          },
+          {
+            "id": "quant",
+            "label": "Quant & Markets",
+            "icon": "ic_fin",
+            "target": "page:cloud/quant"
+          },
+          {
+            "id": "aero-space",
+            "label": "Aero & Space",
+            "icon": "ic_world",
+            "target": "page:cloud/aero-space"
+          },
+          {
+            "id": "circus",
+            "label": "Circus",
+            "icon": "ic_solutions",
+            "target": "page:cloud/circus"
+          }
+        ],
+        "stack_labs": [
+          {
+            "kind": "link_grid",
+            "title": "Data & ML",
+            "subtitle": "Datasets · ML pipelines · model registry"
+          },
+          {
+            "kind": "link_grid",
+            "title": "Engineering",
+            "subtitle": "Build systems · ops tooling · infra notes"
+          },
+          {
+            "kind": "link_grid",
+            "title": "Quant & Markets",
+            "subtitle": "Market data · strategies · backtests"
+          },
+          {
+            "kind": "link_grid",
+            "title": "Aero & Space",
+            "subtitle": "Mission tracking · orbital data · launches"
+          },
+          {
+            "kind": "link_grid",
+            "title": "Circus",
+            "subtitle": "Misc experiments and side quests"
+          }
+        ],
+        "tiles_c3": [
+          {
+            "id": "c3-health",
+            "label": "C3 health",
+            "icon": "ic_p_c3_health",
+            "target": "page:c3/health"
+          },
+          {
+            "id": "c3-stack",
+            "label": "C3 stack",
+            "icon": "ic_p_c3_stack",
+            "target": "page:c3/stack"
+          },
+          {
+            "id": "wg-mesh",
+            "label": "WG mesh",
+            "icon": "ic_wg",
+            "target": "page:wg/status"
+          },
+          {
+            "id": "vms",
+            "label": "VMs",
+            "icon": "ic_p_c3_vms",
+            "target": "page:c3/vms"
+          },
+          {
+            "id": "workflows",
+            "label": "Workflows",
+            "icon": "ic_p_c3_workflows",
+            "target": "page:c3/workflows"
+          },
+          {
+            "id": "logs",
+            "label": "Logs",
+            "icon": "ic_p_logs",
+            "target": "page:c3/logs"
+          },
+          {
+            "id": "reports",
+            "label": "Reports",
+            "icon": "ic_p_c3_reports",
+            "target": "page:c3/reports"
+          },
+          {
+            "id": "drive-conn",
+            "label": "Drive · Connections",
+            "icon": "ic_p_sol_cloud",
+            "target": "page:drive/connections"
+          }
+        ],
+        "stack_c3": [
+          {
+            "_doc": "Cloud dashboard — section_title dividers + 3 collapsible cloud_dashboard CARDS. 'Containers' heading → Infra Apps + User Apps (every container exactly once). 'Stack' heading → the Stack card (free cross-cut lists: Providers/VMs · DBs · MCP & API). Grouping + inventory DATA-DRIVEN from data/cloud_services.json (BuildConfig.CLOUD_SERVICES_B64), generated by data/gen_cloud_services.js from cloud/a_solutions. renderCloudDashboard draws an icon grid (ui.tile_columns/line) with a STATUS LIGHT under each icon (TCP-ping over WireGuard) + opens the URL in the in-app browser on tap. `group`/`groups` selects which cloud_services.json group(s) a card renders.",
+            "kind": "section_title",
+            "title": "Containers"
+          },
+          {
+            "kind": "cloud_dashboard",
+            "title": "Infra Apps",
+            "group": "infra"
+          },
+          {
+            "kind": "cloud_dashboard",
+            "title": "User Apps",
+            "group": "user"
+          },
+          {
+            "kind": "section_title",
+            "title": "Stack"
+          },
+          {
+            "kind": "cloud_dashboard",
+            "title": "Stack",
+            "groups": [
+              "providers",
+              "dbs",
+              "mcpapi"
             ]
           }
         ],
-        "_doc_tile_groups": "Themed sub-groups for the Suite. tile_groups is the canonical schema, read by three surfaces: (1) bottom-nav Suite SECTION page → GroupedTilesFragment renders one titled row per group; (2) Home Apps Suite card → flattens all groups into a single horizontal scroll strip (home_groups entry has no group_explode); (3) aggregatorTilesFor flat fallback if anything else asks. Single source of truth — edit here, all surfaces update.",
+        "tiles_shared": [
+          {
+            "id": "suite-ai",
+            "label": "AI",
+            "icon": "ic_ai_sparkle",
+            "target": "section:cloud"
+          },
+          {
+            "id": "suite-comms",
+            "label": "Comms",
+            "icon": "ic_chat",
+            "target": "section:cloud"
+          },
+          {
+            "id": "suite-data",
+            "label": "Data Apps",
+            "icon": "ic_database",
+            "target": "section:cloud"
+          },
+          {
+            "id": "suite-tools",
+            "label": "Tools Primary",
+            "icon": "ic_p_sol_tools",
+            "target": "section:cloud"
+          },
+          {
+            "id": "suite-dash",
+            "label": "Tools Dashboard",
+            "icon": "ic_p_c3_workflows",
+            "target": "section:cloud"
+          }
+        ],
         "tile_groups": [
           {
             "title": "AI",
@@ -1770,252 +1906,121 @@
             ]
           }
         ],
-        "tabs": true
+        "_doc_tiles_labs": "Master Lab index - 6 icon tiles, one per Lab. Read by home_groups[title=Labs] via tiles_from_section='cloud/labs' (the section/page form, because this section's plain tiles_shared is the Cloud index). The Labs PAGE itself renders stack_labs - stack wins over tiles in aggregatorPage - so this list is the Home face only.",
+        "_doc_tiles_apps": "Legacy flat roster (Linktree/Movies/Music/Maps/Photos/Analytics). No page `apps` exists any more, so tilesByPage['apps'] is never rendered - kept because SuperappSearchIndex still indexes tiles_apps and these are the only entries for those targets.",
+        "_doc_pages": "Cloud = the cloud-side surface. Cloud (the 18 grouped Cloud apps), Labs (the 6 subject Labs), C3 (Cloud Control Center)."
       },
       {
-        "_doc_icons": "Per-mode icons: Apps mode = multi-tools glyph (mymovies / mymusic / etc.); Admin mode = C3-stack glyph (infra dashboard read). Both the bottom-nav item AND the home_groups tile resolve via Section.iconForMode(mode).",
-        "_doc_label": "Bottom-nav button displays 'Labs'. Section id stays 'tools' so deep-link grammar (page:tools/* / section:tools) and historical wiring don't break — this is a pure display rename.",
-        "_doc_tiles_shared": "Master Lab index — 6 icon tiles, one per Lab. Read by the Home Apps Labs card (single flat strip via tiles_from_section) AND by aggregatorTilesFor as the canonical Labs roster. Each tile's target opens the Lab's stack page (page:tools/<lab-id>) — placeholder content until per-Lab stack is populated. Bottom-nav Labs still renders the linktree stack (stack_apps wins) so this list is the Home Apps face only.",
-        "_doc_pages": "Per-Lab stack pages. Initially empty content (PageContentFragment fallback renders a stub) — wire each one to its dedicated content fragment as Labs come online.",
-        "id": "tools",
-        "label": "Labs",
-        "tabs": true,
-        "icon": "ic_p_sol_tools",
-        "icon_apps": "ic_p_sol_tools",
-        "icon_admin": "ic_p_c3_stack",
+        "id": "phone",
+        "label": "Phone",
+        "icon": "ic_p_dialer",
         "module": null,
         "bottom_nav": true,
-        "_doc_hidden_pages": "Labs' first children are the two facets only — Apps | Admin. The six subject Labs (C3, Data & ML, Engineering, Quant, Aero & Space, Circus) already render INSIDE the Apps facet via tiles_shared; listing them as pages too gave Labs eight top-level children. hidden keeps them routable as page:tools/<id> without listing them.",
         "is_aggregator": true,
+        "_doc_active_apps": "Phone-only 'Active Apps' section rendered BELOW the last curated group (Configs) and ABOVE the All Apps / Smart Folders sections (SuitePhoneAppsFragment renders all three inline on one scrollable page now — no separate 'more' screen). Lists the `limit` most-recently-used apps (libs:datamanager AppUsageProvider.recentUsed → same UsageStatsManager data as the Phone 'Recent 7' smart folder). Empty (section hidden) when usage-access is not granted. Baked to scalar BuildConfig fields UI_SUITE_ACTIVE_APPS_{ENABLED,TITLE,LIMIT}.",
+        "active_apps": {
+          "enabled": true,
+          "title": "Active Apps",
+          "limit": 8
+        },
         "pages": [
           {
-            "id": "apps",
-            "label": "Apps",
-            "icon": "ic_p_sol_tools",
-            "facet": true
-          },
-          {
-            "id": "admin",
-            "label": "C3",
-            "icon": "ic_p_c3_stack",
-            "facet": true,
-            "_doc": "Cloud Control Center. The page id stays `admin` on purpose: it is the tiles_admin/stack_admin data key, the target of page:tools/admin, and the only page left in the app whose id still drives ModePrefs (LauncherNavController.syncModeForPage applies Apps/Admin mode from the page id). Renaming the id would quietly mean nothing ever selects admin mode again — so the LABEL moved and the key stayed."
-          },
-          {
-            "id": "data-ml",
-            "label": "Data & ML",
-            "icon": "ic_database",
-            "hidden": true
-          },
-          {
-            "id": "engineering",
-            "label": "Engineering",
-            "icon": "ic_wg",
-            "hidden": true
-          },
-          {
-            "id": "quant",
-            "label": "Quant & Markets",
-            "icon": "ic_fin",
-            "hidden": true
-          },
-          {
-            "id": "aero-space",
-            "label": "Aero & Space",
-            "icon": "ic_world",
-            "hidden": true
-          },
-          {
-            "id": "circus",
-            "label": "Circus",
-            "icon": "ic_solutions",
-            "hidden": true
+            "id": "phone",
+            "label": "Phone",
+            "icon": "ic_p_dialer"
           }
         ],
-        "tiles_shared": [
+        "_doc_phone_app_groups": "Curated phone apps surfaced in Phone, grouped under the same titled sections used by Cloud (AI · Data Primary · Data Apps · Tools Primary · Tools Dashboards · Configs). Group order = render order. Each group renders as a subhead + UI_PHONE_GRID_COLUMNS-col grid (6 by default). Missing packages silently hidden — editing this list never breaks the render. Add a new group = add an object here; add an app to an existing group = append to its packages array.",
+        "phone_app_groups": [
           {
-            "id": "c3",
-            "label": "C3",
-            "icon": "ic_p_c3_stack",
-            "target": "page:tools/admin"
+            "title": "AI",
+            "packages": [
+              "com.anthropic.claude",
+              "com.google.android.apps.bard",
+              "com.termux.nix",
+              "cld.termux.nix",
+              "cld.termux"
+            ],
+            "_doc_folders": "Nested folders inside a phone_app_group — render as One-UI-style folder tiles in the same grid as plain packages (2×2 mini-icon preview, tap → modal dialog with the contents at 5 cols). Empty folders silently skipped. SuitePhoneAppsFragment is the renderer.",
+            "folders": [
+              {
+                "label": "Files Editor (IDE)",
+                "packages": [
+                  "com.lonelycatgames.Xplore",
+                  "com.sec.android.app.myfiles",
+                  "com.google.android.apps.docs",
+                  "com.viscouspot.gitsync",
+                  "com.foxdebug.acode",
+                  "com.rhmsoft.edit"
+                ]
+              }
+            ]
           },
           {
-            "id": "data-ml",
-            "label": "Data & ML",
-            "icon": "ic_database",
-            "target": "page:tools/data-ml"
+            "title": "Communications",
+            "packages": [
+              "eu.faircode.email",
+              "rs.ltt.android",
+              "com.mattermost.rn",
+              "com.beeper.android",
+              "com.diegonmarcos.comms.dialer",
+              "org.fossify.phone"
+            ],
+            "folders": [
+              {
+                "label": "Others",
+                "packages": [
+                  "com.samsung.android.email.provider",
+                  "com.whatsapp.w4b",
+                  "com.google.android.gm",
+                  "org.telegram.messenger",
+                  "com.instagram.android",
+                  "com.linkedin.android"
+                ]
+              }
+            ]
           },
           {
-            "id": "engineering",
-            "label": "Engineering",
-            "icon": "ic_wg",
-            "target": "page:tools/engineering"
+            "title": "Data Apps",
+            "packages": [
+              "md.obsidian",
+              "com.sec.android.gallery3d",
+              "com.diegonmarcos.cloudcalendar",
+              "com.samsung.android.app.contacts",
+              "com.aspiro.tidal",
+              "com.x8bit.bitwarden"
+            ]
           },
           {
-            "id": "quant",
-            "label": "Quant & Markets",
-            "icon": "ic_fin",
-            "target": "page:tools/quant"
+            "title": "Tools Primary",
+            "packages": [
+              "com.brave.browser",
+              "com.diegonmarcos.cloudnews",
+              "com.google.android.apps.maps",
+              "com.google.android.apps.walletnfcrel",
+              "com.google.android.apps.translate",
+              "com.sec.android.app.clockpackage",
+              "com.sec.android.app.popupcalculator"
+            ]
           },
           {
-            "id": "aero-space",
-            "label": "Aero & Space",
-            "icon": "ic_world",
-            "target": "page:tools/aero-space"
+            "title": "Tools Dashboards",
+            "packages": [
+              "com.diegonmarcos.superapp"
+            ]
           },
           {
-            "id": "circus",
-            "label": "Circus",
-            "icon": "ic_solutions",
-            "target": "page:tools/circus"
-          }
-        ],
-        "tiles_apps": [
-          {
-            "id": "linktree",
-            "label": "Linktree",
-            "icon": "ic_solutions",
-            "target": "page:solutions/personal"
-          },
-          {
-            "id": "mymovies",
-            "label": "Movies",
-            "icon": "ic_p_sol_personal",
-            "target": "page:solutions/personal"
-          },
-          {
-            "id": "mymusic",
-            "label": "Music",
-            "icon": "ic_p_sol_personal",
-            "target": "page:solutions/personal"
-          },
-          {
-            "id": "mymaps",
-            "label": "Maps",
-            "icon": "ic_p_sol_personal",
-            "target": "page:solutions/personal"
-          },
-          {
-            "id": "myphotos",
-            "label": "Photos",
-            "icon": "ic_p_sol_personal",
-            "target": "page:solutions/personal"
-          },
-          {
-            "id": "myanalytics",
-            "label": "Analytics",
-            "icon": "ic_p_sol_cloud",
-            "target": "page:solutions/cloud"
-          }
-        ],
-        "tiles_admin": [
-          {
-            "id": "c3-health",
-            "label": "C3 health",
-            "icon": "ic_p_c3_health",
-            "target": "page:c3/health"
-          },
-          {
-            "id": "c3-stack",
-            "label": "C3 stack",
-            "icon": "ic_p_c3_stack",
-            "target": "page:c3/stack"
-          },
-          {
-            "id": "wg-mesh",
-            "label": "WG mesh",
-            "icon": "ic_wg",
-            "target": "page:wg/status"
-          },
-          {
-            "id": "vms",
-            "label": "VMs",
-            "icon": "ic_p_c3_vms",
-            "target": "page:c3/vms"
-          },
-          {
-            "id": "workflows",
-            "label": "Workflows",
-            "icon": "ic_p_c3_workflows",
-            "target": "page:c3/workflows"
-          },
-          {
-            "id": "logs",
-            "label": "Logs",
-            "icon": "ic_p_logs",
-            "target": "page:c3/logs"
-          },
-          {
-            "id": "reports",
-            "label": "Reports",
-            "icon": "ic_p_c3_reports",
-            "target": "page:c3/reports"
-          },
-          {
-            "id": "drive-conn",
-            "label": "Drive · Connections",
-            "icon": "ic_p_sol_cloud",
-            "target": "page:drive/connections"
-          }
-        ],
-        "_doc_stack_apps": "Labs/Apps tab — themed placeholder panels (Data & ML, Engineering, Quant & Markets, Aero & Space, Circus). kind=link_grid with empty links renders the title as a collapsable header until per-section content lands. Suite was removed (the Suite slide now lives only on the bottom-nav Suite section, not here).",
-        "stack_apps": [
-          {
-            "kind": "link_grid",
-            "title": "Data & ML",
-            "subtitle": "Datasets · ML pipelines · model registry"
-          },
-          {
-            "kind": "link_grid",
-            "title": "Engineering",
-            "subtitle": "Build systems · ops tooling · infra notes"
-          },
-          {
-            "kind": "link_grid",
-            "title": "Quant & Markets",
-            "subtitle": "Market data · strategies · backtests"
-          },
-          {
-            "kind": "link_grid",
-            "title": "Aero & Space",
-            "subtitle": "Mission tracking · orbital data · launches"
-          },
-          {
-            "kind": "link_grid",
-            "title": "Circus",
-            "subtitle": "Misc experiments and side quests"
-          }
-        ],
-        "stack_admin": [
-          {
-            "_doc": "Cloud dashboard — section_title dividers + 3 collapsible cloud_dashboard CARDS. 'Containers' heading → Infra Apps + User Apps (every container exactly once). 'Stack' heading → the Stack card (free cross-cut lists: Providers/VMs · DBs · MCP & API). Grouping + inventory DATA-DRIVEN from data/cloud_services.json (BuildConfig.CLOUD_SERVICES_B64), generated by data/gen_cloud_services.js from cloud/a_solutions. renderCloudDashboard draws an icon grid (ui.tile_columns/line) with a STATUS LIGHT under each icon (TCP-ping over WireGuard) + opens the URL in the in-app browser on tap. `group`/`groups` selects which cloud_services.json group(s) a card renders.",
-            "kind": "section_title",
-            "title": "Containers"
-          },
-          {
-            "kind": "cloud_dashboard",
-            "title": "Infra Apps",
-            "group": "infra"
-          },
-          {
-            "kind": "cloud_dashboard",
-            "title": "User Apps",
-            "group": "user"
-          },
-          {
-            "kind": "section_title",
-            "title": "Stack"
-          },
-          {
-            "kind": "cloud_dashboard",
-            "title": "Stack",
-            "groups": [
-              "providers",
-              "dbs",
-              "mcpapi"
+            "title": "Configs",
+            "packages": [
+              "com.android.vending",
+              "org.fdroid.fdroid",
+              "com.android.settings"
             ]
           }
-        ]
+        ],
+        "_doc_tile_groups": "Themed sub-groups for the Suite. tile_groups is the canonical schema, read by three surfaces: (1) bottom-nav Suite SECTION page → GroupedTilesFragment renders one titled row per group; (2) Home Apps Suite card → flattens all groups into a single horizontal scroll strip (home_groups entry has no group_explode); (3) aggregatorTilesFor flat fallback if anything else asks. Single source of truth — edit here, all surfaces update.",
+        "tabs": true,
+        "_doc_label": "Bottom-nav slot 5. What is left of the old Suite section once its Cloud half moved to sections[cloud]: the installed-Android-apps surface. Keeps phone_app_groups + active_apps, which app/build.gradle bakes into BuildConfig by looking the section up as id=='phone'. tabs stays true with a single page so adding a second one needs no code change."
       },
       {
         "id": "mail",
@@ -2668,7 +2673,7 @@
         ]
       },
       {
-        "_doc": "Wallet — MIGRATED to Cloud-Wallet (ac_cloud-wallet, com.diegonmarcos.cloudwallet). libs:wallet (Compose card-stack deck) was extracted from the SuperApp into a standalone constellation APK. The home tile target is now extapp:cloud-wallet (see ui.sections[home].tiles[Suite/Cloud][wallet]), so MainActivity.launchExternalApp handles launching; openSectionPage('wallet','cards') is dead code as of the migration. Section entry kept as a tombstone for reference; module:null + bottom_nav:false means it is not shown in drawer or bottom nav.",
+        "_doc": "Wallet — MIGRATED to Cloud-Wallet (ac_cloud-wallet, com.diegonmarcos.cloudwallet). libs:wallet (Compose card-stack deck) was extracted from the SuperApp into a standalone constellation APK. The home tile target is now extapp:cloud-wallet (see ui.sections[home].tiles[Cloud][wallet]), so MainActivity.launchExternalApp handles launching; openSectionPage('wallet','cards') is dead code as of the migration. Section entry kept as a tombstone for reference; module:null + bottom_nav:false means it is not shown in drawer or bottom nav.",
         "id": "wallet",
         "label": "Wallet",
         "icon": "ic_wallet",
@@ -3248,28 +3253,28 @@
         "label": "Home Apps · Phone"
       },
       {
-        "id": "suite-cloud",
-        "section": "suite",
+        "id": "cloud",
+        "section": "cloud",
         "page": "cloud",
-        "label": "Suite · Cloud"
+        "label": "Cloud"
       },
       {
-        "id": "suite-phone",
-        "section": "suite",
+        "id": "phone",
+        "section": "phone",
         "page": "phone",
-        "label": "Suite · Phone"
+        "label": "Phone"
       },
       {
-        "id": "labs-apps",
-        "section": "tools",
-        "page": "apps",
-        "label": "Labs · Apps"
+        "id": "labs",
+        "section": "cloud",
+        "page": "labs",
+        "label": "Labs"
       },
       {
-        "id": "labs-admin",
-        "section": "tools",
-        "page": "admin",
-        "label": "Labs · Admin"
+        "id": "c3",
+        "section": "cloud",
+        "page": "c3",
+        "label": "C3"
       },
       {
         "id": "configs",
@@ -4877,7 +4882,7 @@
         "notes": "MIME attachments inside JMAP store"
       }
     ],
-    "_doc_home_groups": "Home master view is organised into themed groups (Home / Comms / Infos / Suite / Labs / Configs). The first group 'Home' is a meta-row whose tiles deep-link to the OTHER groups' parent sections — call it a master index. Each tile's `id` is 'section:<X>' (switch section) or 'page:<section>/<page>' (deep-link), rendered tile_columns-per-row by HomeGroupedFragment. Both Suite and Labs entries FLATTEN their referenced section's tiles into a single horizontal-scroll strip — Suite pulls sections[suite].tile_groups (all 18 tiles), Labs pulls sections[tools].tiles_shared (6 Lab icons, each opening page:tools/<lab-id>). Single source of truth — change this to reshape the Home page, nothing else.",
+    "_doc_home_groups": "Home master view is organised into themed groups (Home / Cloud / Labs / Configs). The first group 'Home' is a meta-row whose tiles deep-link to the OTHER groups' parents — call it a master index. Each tile's `id` is 'section:<X>' (switch section) or 'page:<section>/<page>' (deep-link), rendered tile_columns-per-row by HomeGroupedFragment. Cloud pulls sections[cloud].tiles_shared (5 category icons); Labs pulls sections[cloud].tiles_labs (6 Lab icons, each opening page:cloud/<lab-id>) via the section/page form tiles_from_section='cloud/labs'. Single source of truth — change this to reshape the Home page, nothing else.",
     "home_groups": [
       {
         "title": "Home",
@@ -4893,12 +4898,12 @@
             "icon": "ic_pm_boards"
           },
           {
-            "id": "section:suite",
-            "label": "Suite",
+            "id": "section:cloud",
+            "label": "Cloud",
             "icon": "ic_suite"
           },
           {
-            "id": "section:tools",
+            "id": "page:cloud/labs",
             "label": "Labs",
             "icon": "ic_p_sol_tools"
           },
@@ -4910,17 +4915,17 @@
         ]
       },
       {
-        "_doc": "Home Apps Suite — FLATTENED card. tiles_from_section pulls sections[suite].tile_groups and flattens them in declaration order into a single horizontal-scroll strip (group_explode is OFF / absent). The grouped layout still lives on the bottom-nav Suite SECTION page via GroupedTilesFragment, so the sub-titles aren't lost — they're just absent from Home Apps. scroll=horizontal so all 18 tiles ride one strip; per-tile smooth scroll, not snap-per-page.",
-        "title": "Suite",
+        "_doc": "Home Apps CLOUD card - tiles_from_section='cloud' pulls sections[cloud].tiles_shared (5 category icons). The 18 grouped apps stay on the bottom-nav Cloud section page via GroupedTilesFragment.",
+        "title": "Cloud",
         "scroll": "horizontal",
-        "tiles_from_section": "suite",
+        "tiles_from_section": "cloud",
         "tiles": []
       },
       {
-        "_doc": "Home Apps Labs — ONE card containing 6 icon tiles (master Lab index). tiles_from_section flattens sections[tools].tiles_shared into this card (no group_explode). Each icon → page:tools/<lab-id> opens that Lab's stack page (placeholder content for now). scroll=horizontal so the 6 icons ride a single strip and stay reachable without wrapping into multiple rows.",
+        "_doc": "Home Apps LABS card - the section/page form of tiles_from_section, reading sections[cloud].tiles_labs (6 Lab icons). Needed because sections[cloud] already spends its plain tiles_shared on the Cloud index. Each icon -> page:cloud/<lab-id>.",
         "title": "Labs",
         "scroll": "horizontal",
-        "tiles_from_section": "tools",
+        "tiles_from_section": "cloud/labs",
         "tiles": []
       },
       {
@@ -5726,7 +5731,7 @@
         }
       },
       {
-        "_doc": "Cloud-Nav — the dedicated maps/navigation/tracker app (ac_cloud-nav). libs:maps was MOVED out of the SuperApp into this standalone app, so the Suite/Cloud 'Navigation' tile (target extapp:cloud-nav) opens it if installed, else downloads + installs install_apk_url. Single app (no forks), so the forkless extapp:cloud-nav resolves straight to hub_package. install_apk_url mirrors ac_cloud-nav/build.json::release.gh_release (asset Cloud-Nav.apk, published by ship-cloud-nav.yml).",
+        "_doc": "Cloud-Nav — the dedicated maps/navigation/tracker app (ac_cloud-nav). libs:maps was MOVED out of the SuperApp into this standalone app, so the Cloud 'Navigation' tile (target extapp:cloud-nav) opens it if installed, else downloads + installs install_apk_url. Single app (no forks), so the forkless extapp:cloud-nav resolves straight to hub_package. install_apk_url mirrors ac_cloud-nav/build.json::release.gh_release (asset Cloud-Nav.apk, published by ship-cloud-nav.yml).",
         "id": "cloud-nav",
         "label": "Cloud-Nav",
         "hub_package": "com.diegonmarcos.cloudnav",
@@ -5760,7 +5765,7 @@
         "forks": {}
       },
       {
-        "_doc": "Cloud-Wallet — standalone cards/passes/tickets app (ac_cloud-wallet). libs:wallet (Compose card-stack deck) was MOVED out of the SuperApp into this standalone APK; the Suite/Cloud 'Wallet' tile (target extapp:cloud-wallet) opens it if installed, else downloads + installs install_apk_url. Single app (no forks), so the forkless extapp:cloud-wallet resolves straight to hub_package. install_apk_url mirrors ac_cloud-wallet/build.json::release.gh_release (asset Cloud-Wallet.apk, published by ship-cloud-wallet.yml). Signs with the shared constellation key (vault A0_keys/providers/android/release.jks).",
+        "_doc": "Cloud-Wallet — standalone cards/passes/tickets app (ac_cloud-wallet). libs:wallet (Compose card-stack deck) was MOVED out of the SuperApp into this standalone APK; the Cloud 'Wallet' tile (target extapp:cloud-wallet) opens it if installed, else downloads + installs install_apk_url. Single app (no forks), so the forkless extapp:cloud-wallet resolves straight to hub_package. install_apk_url mirrors ac_cloud-wallet/build.json::release.gh_release (asset Cloud-Wallet.apk, published by ship-cloud-wallet.yml). Signs with the shared constellation key (vault A0_keys/providers/android/release.jks).",
         "id": "cloud-wallet",
         "label": "Cloud-Wallet",
         "hub_package": "com.diegonmarcos.cloudwallet",
@@ -5778,7 +5783,7 @@
         "forks": {}
       },
       {
-        "_doc": "Cloud-Vault — standalone Vaultwarden client app (ac_cloud-vault). Hosts vault.diegonmarcos.com (self-hosted Vaultwarden) in a dedicated BrowserHostFragment APK; the Suite/Cloud 'Vault' tile (target extapp:cloud-vault) opens it if installed, else downloads + installs install_apk_url. install_apk_url mirrors ac_cloud-vault/build.json::release.gh_release (asset Cloud-Vault.apk, published by ship-cloud-vault.yml). Signs with the shared constellation key.",
+        "_doc": "Cloud-Vault — standalone Vaultwarden client app (ac_cloud-vault). Hosts vault.diegonmarcos.com (self-hosted Vaultwarden) in a dedicated BrowserHostFragment APK; the Cloud 'Vault' tile (target extapp:cloud-vault) opens it if installed, else downloads + installs install_apk_url. install_apk_url mirrors ac_cloud-vault/build.json::release.gh_release (asset Cloud-Vault.apk, published by ship-cloud-vault.yml). Signs with the shared constellation key.",
         "id": "cloud-vault",
         "label": "Cloud-Vault",
         "hub_package": "com.diegonmarcos.cloudvault",
@@ -5787,7 +5792,7 @@
         "forks": {}
       },
       {
-        "_doc": "Cloud-Watchdog — standalone watchdog app (ac_cloud-watchdog). Added so the Suite/Cloud Tools Primary tile can use extapp:cloud-watchdog like every other tile in that group; with no entry here launchExternalApp has no package to open and no APK to offer.",
+        "_doc": "Cloud-Watchdog — standalone watchdog app (ac_cloud-watchdog). Added so the Cloud Tools Primary tile can use extapp:cloud-watchdog like every other tile in that group; with no entry here launchExternalApp has no package to open and no APK to offer.",
         "id": "cloud-watchdog",
         "label": "Cloud-Watchdog",
         "hub_package": "com.diegonmarcos.watchdog",
@@ -6038,12 +6043,12 @@
               "target": "action:open_home_apps"
             },
             {
-              "label": "Suite",
-              "target": "section:suite"
+              "label": "Cloud",
+              "target": "section:cloud"
             },
             {
               "label": "Labs",
-              "target": "section:tools"
+              "target": "page:cloud/labs"
             },
             {
               "label": "Configs",
@@ -6467,15 +6472,15 @@
     "pages": [
       {
         "id": "suite-cloud-quickmarks",
-        "label": "Suite · Cloud",
+        "label": "Cloud",
         "icon": "ic_suite",
-        "target": "page:suite/cloud"
+        "target": "page:cloud/cloud"
       },
       {
         "id": "suite-phone-quickmarks",
-        "label": "Suite · Phone",
+        "label": "Phone",
         "icon": "ic_suite",
-        "target": "page:suite/phone"
+        "target": "page:phone/phone"
       },
       {
         "id": "constellation",

@@ -1,13 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Bottom nav — five aggregator sections. Each is data-driven via
-     build.json::ui.sections[id=…] with is_aggregator=true and
-     tiles_shared / tiles_apps / tiles_admin lists. Content sections
-     (mail, cal, vault, drive, …) are now bottom_nav=false and only
-     reachable via tile clicks (target: section:X / page:X/Y). -->
+<!-- Bottom nav — five aggregator sections, left to right:
+       Inboxes · Projects · Home · Cloud · Phone
+     Item id == build.json section id == what the button says, so there is
+     nothing to reconcile between the three. This file is the structural
+     anchor only (item ids + order + fallback icons): MainActivity
+     .refreshBottomNavIconsForMode overwrites every title and icon from
+     build.json::ui.sections[id=…].label / .icon_apps / .icon_admin at
+     runtime, which is why renaming a section is a build.json edit.
+
+     Each section is is_aggregator=true and owns `tiles_<page>` /
+     `stack_<page>` lists keyed by its own page ids (Cloud: cloud | labs |
+     c3). Content sections (mail, cal, vault, drive, …) are bottom_nav=false
+     and only reachable via tile clicks (target: section:X / page:X/Y). -->
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:id="@+id/nav_communication" android:icon="@drawable/ic_p_inbox"    android:title="@string/section_communication" />
     <item android:id="@+id/nav_infos"         android:icon="@drawable/ic_pm_boards"   android:title="@string/section_infos" />
     <item android:id="@+id/nav_home"          android:icon="@drawable/ic_home"        android:title="@string/section_home" />
-    <item android:id="@+id/nav_suite"         android:icon="@drawable/ic_suite"       android:title="@string/section_suite" />
-    <item android:id="@+id/nav_tools"         android:icon="@drawable/ic_p_sol_tools" android:title="@string/section_tools" />
+    <item android:id="@+id/nav_cloud"         android:icon="@drawable/ic_suite"       android:title="@string/section_cloud" />
+    <item android:id="@+id/nav_phone"         android:icon="@drawable/ic_p_dialer"    android:title="@string/section_phone" />
 </menu>

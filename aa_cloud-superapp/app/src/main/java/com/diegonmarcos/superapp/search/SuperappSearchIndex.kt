@@ -49,7 +49,11 @@ object SuperappSearchIndex {
         val out = mutableListOf<SearchHit>()
         for (sec in Sections.all().filter { !it.isMasterIndex }) {
             out += SearchHit(sec.label, "Section", scopeId, target = "section:${sec.id}")
-            for (tile in (sec.tilesShared + sec.tilesApps + sec.tilesAdmin)) {
+            // EVERY `tiles_<x>` list, not a hardcoded shared/apps/admin three:
+            // tilesByPage keys on the suffix, so a section that renames a page
+            // (Cloud: tiles_admin -> tiles_c3) keeps its tiles searchable
+            // instead of quietly dropping them out of the index.
+            for (tile in sec.tilesByPage.values.flatten()) {
                 out += SearchHit(tile.label, "${sec.label} · Tile", scopeId, target = tile.target)
             }
         }

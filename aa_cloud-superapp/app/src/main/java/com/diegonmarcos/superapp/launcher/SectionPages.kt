@@ -36,7 +36,7 @@ object SectionPages {
 
     /** The section's pages as listed to the user. Pass [includeHidden] when
      *  RESOLVING a target rather than listing children: a hidden page (Labs'
-     *  c3, quant, …) still has to answer to `page:tools/c3`. */
+     *  c3, quant, …) still has to answer to `page:cloud/quant`. */
     fun pagesFor(sectionId: String, includeHidden: Boolean = false): List<Page> {
         val section = Sections.byId(sectionId) ?: return emptyList()
         return (if (includeHidden) section.allPages else section.pages).map { p ->
@@ -46,9 +46,9 @@ object SectionPages {
 
     private fun factoryFor(sectionId: String, pageId: String, label: String): Fragment = when {
         sectionId == "mail"  -> MailPages.fragmentFor(pageId)
-        // Suite ▸ Phone: installed Android apps, not build.json tile data — so
-        // it is an ordinary page here, unlike its `facet: true` sibling Cloud.
-        sectionId == "suite" && pageId == "phone" ->
+        // Phone ▸ Phone: installed Android apps, not build.json tile data — so
+        // it is an ordinary page here, unlike Cloud's `facet: true` pages.
+        sectionId == "phone" && pageId == "phone" ->
             com.diegonmarcos.superapp.apps.SuitePhoneAppsFragment.newInstance()
         sectionId == "chat"  -> ChatPages.fragmentFor(pageId)
         sectionId == "c3"    && pageId == "health"      -> C3HealthFragment.newInstance()

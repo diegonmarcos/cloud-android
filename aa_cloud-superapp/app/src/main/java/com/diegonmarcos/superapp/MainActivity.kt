@@ -694,7 +694,7 @@ class MainActivity : AppCompatActivity(),
             }
             "walk_step_next" -> { fireGeminiPattern(); walkStep(+1) }
             "walk_step_prev" -> { fireGeminiPattern(); walkStep(-1) }
-            // Target-string actions ("page:suite/phone") route through the tile
+            // Target-string actions ("page:phone/phone") route through the tile
             // grammar. Anything else IS a home action — hand it to the one
             // dispatcher that knows them all (open_home_apps_phone, ...).
             // Was: a blind openAppDrawerSheet(), which silently turned every
@@ -772,8 +772,8 @@ class MainActivity : AppCompatActivity(),
         R.id.nav_communication -> "communication"
         R.id.nav_infos         -> "infos"
         R.id.nav_home          -> "home"
-        R.id.nav_suite         -> "suite"
-        R.id.nav_tools         -> "tools"
+        R.id.nav_cloud         -> "cloud"
+        R.id.nav_phone         -> "phone"
         else -> null
     }
 
@@ -781,8 +781,8 @@ class MainActivity : AppCompatActivity(),
         "communication" -> R.id.nav_communication
         "infos"         -> R.id.nav_infos
         "home"          -> R.id.nav_home
-        "suite"         -> R.id.nav_suite
-        "tools"         -> R.id.nav_tools
+        "cloud"         -> R.id.nav_cloud
+        "phone"         -> R.id.nav_phone
         else            -> null
     }
 
