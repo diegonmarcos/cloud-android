@@ -1,16 +1,51 @@
 # cloud-watchdog
 
-The my-watchdog panel, on a phone. **This app draws no dashboard.**
+The my-watchdog panel, on a phone. **This app invents no page and no number.**
 
-It ssh's to nix-on-droid on `127.0.0.1` (Termux as fallback), runs
-`my-watchdog-tui tui --serve`, sends key names down its stdin and paints the
-frames that come back.
+The interface ships INSIDE the APK: `my-watchdog-tui app-shell` renders the
+whole drawer, every panel frame and every table header against an empty
+machine, and that page is baked in as `watchdog-app.html`. The app therefore
+opens whether or not it can reach anything — the failure that made it show a
+terminal error where a dashboard should be was the UI being a property of
+having measured something.
+
+The numbers arrive separately. It ssh's to nix-on-droid on `127.0.0.1` (Termux
+as fallback), asks for one envelope, and hands it to the page.
 
 ```
-  WebView  ──key:p──►  WatchdogBridge ──► WatchdogSsh ──ssh 127.0.0.1:8022──►
-                                                        my-watchdog-tui --serve
-  WebView  ◄──frame──  __wdEvent      ◄────────────────  <pre class="tui">…
+  APK opens ──► watchdog-app.html          (UI, baked in, no machine in it)
+  WebView   ──► WatchdogBridge ──ssh 127.0.0.1:8022──► my-watchdog-tui envelope
+  WebView   ◄── window.__wdRender(json)  ◄──────────── {snapshot, machines, …}
 ```
+
+## The pages
+
+Thirty-one, and not one of them is written here. The drawer is generated from
+the panel's own `TABS` table, and `da_watchdog/src/tui/monitor/data/pages.rs`
+says which array backs each node:
+
+| tab | pages |
+|---|---|
+| proc | normal · tree · zombies · parentless |
+| containers | compose · images · containers · volumes · network |
+| fleet | wg0-ipv4 · wg0-ipv6 · wg-public-ipv4 · wg-public-ipv6 · storage |
+| firewall | consolidated · os · container |
+| logs | summary · kernel · system · user · docker · network · ssh · watchdog |
+| history | the per-day rollup |
+| files | the tree the panel read |
+| about | about · rules · update · app-map |
+
+plus overview, report, machines and the raw envelope.
+
+**The phone had seventeen of these and nothing said so.** A tab node with no
+backing array rendered dimmed and inert, which looks exactly like a page whose
+data has not arrived — so eleven pages that were only ever missing a producer
+sat there through every release. They are derived at export time now, on the
+machine that can see them, and `tests::every_leaf_is_backed` makes a missing
+producer a red build.
+
+Adding a page is therefore a change in the CLI repo only: put it in `TABS`,
+give it a row in `BACKED_BY`, and it appears here on the next build.
 
 ## Why it works this way
 
@@ -63,3 +98,8 @@ fork, same self-generated ECDSA key, same manual `authorized_keys` step.
   reinstall by hand.
 * The transcript is a live session, but the **static** HTML report
   (`~/.watchdog/html/index-mobile.html`) is frozen at export time.
+* The journal pages are a 100-line tail per section, cached 30s on the
+  measured machine — the panel, reading local disk, keeps its 500.
+* `machines` is read from `cloud-infra/config.json`, which exists on the
+  desktop and not on the phone, so the fleet pages are empty when the phone
+  is the measured machine rather than the reader.

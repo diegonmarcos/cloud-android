@@ -38,16 +38,8 @@ import java.util.Locale
 /** Top-level wallet tabs. Events is a container with its own inner nav
  *  (Tickets / Bookings / Passes / Cal). */
 enum class WalletTab(val label: String) {
-    /** Payment cards — the tab is called Pay because that is what you open it
-     *  to do; the deck it holds is still the banking cards. */
-    Pay("Pay"),
+    Cards("Cards"),
     IDs("IDs"),
-    /** Me sits between the documents you carry and the events you go to: it is
-     *  the public half of the same wallet — one card per social, mirroring the
-     *  pages of front-diegonmarcos/b-Media/mySocials. Declared, not stored: it
-     *  holds no WalletStore cards, so it is the one tab whose content the user
-     *  cannot add to from the app. */
-    Me("Me"),
     Tickets("Events"),
     Config("Config"),
 }
