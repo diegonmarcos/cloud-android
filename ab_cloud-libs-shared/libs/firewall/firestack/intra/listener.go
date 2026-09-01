@@ -1,0 +1,200 @@
+// Copyright (c) 2023 RethinkDNS and its authors.
+//
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+package intra
+
+import (
+	"fmt"
+	"net/netip"
+	"time"
+
+	"github.com/celzero/firestack/intra/core"
+	"github.com/celzero/firestack/intra/ipn"
+)
+
+// FlowSummary reports information about each TCP connection,
+// or a non-DNS UDP association, or ICMP echo when it is closed.
+type FlowSummary struct {
+	// tcp, udp, or icmp.
+	Proto string
+	// Unique ID for this flow.
+	ID string
+	// Proxy ID that handled this flow.
+	PID string
+	// Relay Proxy ID that tunneled PID.
+	RPID string
+	// UID of the app that owns this flow (sans ICMP).
+	UID string
+	// Source IP.
+	Source string
+	// Remote IP, if dialed in.
+	Target string
+	// Total bytes downloaded.
+	Rx int64
+	// Total bytes uploaded.
+	Tx int64
+	// Duration in milliseconds.
+	Duration int64
+	// Tracks start time; unexported.
+	start time.Time
+	// Round-trip time (millis).
+	Rtt int64
+	// Err or other messages, if any.
+	Msg string
+}
+
+type FlowListener interface {
+	// Preflow is called before a new connection is established; return owner "uid", which is
+	// later used by dnsx.Resolver to determine the DNS transport to use for that "uid".
+	Preflow(protocol, uid int32, src, dst string) *PreMark
+	// Flow is called on a new connection; return Proxy IDs to forward the connection
+	// to a pre-registered proxy; "Base" or "Exit" to allow the connection; "Block" to block it.
+	// "connid" is used to uniquely identify a connection across all proxies, and a summary of the
+	// connection is sent back to a pre-registered listener.
+	// protocol is 6 for TCP, 17 for UDP, 1 for ICMP.
+	// uid is -1 in case owner-uid of the connection couldn't be determined.
+	// src and dst are string'd representation of net.TCPAddr and net.UDPAddr.
+	// origdsts is a comma-separated list of original source IPs, this may be same as dst.
+	// origdsts may contain unspecified IPv4 or IPv6 addresses, which denote that the domain
+	// was blocked by a rdns blocklist (but the resolution was allowed to go through). Listener
+	// may choose to "Block" this connection based on that information.
+	// domains is a comma-separated list of domain names associated with origdsts, if any.
+	// probableDomains is a comma-separated list of probable domain names associated with origdsts, if any.
+	// blocklists is a comma-separated list of rdns blocklist names that apply, if any.
+	Flow(protocol, uid int32, src, dst, origdsts, domains, probableDomains, blocklists string) *Mark
+	// Inflow is called on a new incoming connection. Returned *Mark values have no discernable effect on these connections,
+	// except for the CID field, which is sent back via Postflow, and "Block" proxy which
+	// will drop this connection on the floor.
+	Inflow(protocol, uid int32, src, dst string) *Mark
+	// Flowing is called after a flow is marked by Flow or Inflow.
+	// It denotes the final Mark that was applied to the flow.
+	// The only major discernable effect is PIDCSV has a single PID.
+	Flowing(m *Mark)
+	// Postflow reports summary after flow closes.
+	Postflow(*FlowSummary)
+}
+
+type PreMark struct {
+	// UID of the app which owns the flow.
+	// Set it to "-1" if unknown.
+	UID string
+	// Is the UID us (our app / process)?
+	IsUidSelf bool
+}
+
+type Mark struct {
+	// PIDCSV is a list of proxies to forward the flow over.
+	PIDCSV string
+	// CID uniquely identifies the flow.
+	CID string
+	// UID of the app which owns the flow.
+	UID string
+	// Preferred IP (for egress) to use for the flow (not guaranteed
+	// as the flow may prefer IPv4 or IPv6 and the IP may not be of that family).
+	IP string
+}
+
+const (
+	ProtoTypeUDP  = "udp"
+	ProtoTypeTCP  = "tcp"
+	ProtoTypeICMP = "icmp"
+)
+
+var (
+	optionsBlock = &Mark{PIDCSV: ipn.Block}
+	optionsExit  = &Mark{PIDCSV: ipn.Exit}
+)
+
+var errNone noerror
+
+type noerror struct{}
+
+var _ error = noerror{}
+
+func (noerror) Error() string { return "no error" }
+
+func icmpSummary(id, uid string) *FlowSummary {
+	return &FlowSummary{
+		Proto: ProtoTypeICMP,
+		ID:    id,
+		UID:   uid,
+		start: time.Now(),
+		Msg:   errNone.Error(),
+	}
+}
+
+func tcpSummary(id, uid string, src, dst netip.Addr) *FlowSummary {
+	return &FlowSummary{
+		Proto:  ProtoTypeTCP,
+		ID:     id,
+		UID:    uid,
+		Source: src.String(),
+		Target: dst.String(),
+		start:  time.Now(),
+		Msg:    errNone.Error(),
+	}
+}
+
+func udpSummary(id, uid string, src, dst netip.Addr) *FlowSummary {
+	s := tcpSummary(id, uid, src, dst)
+	s.Proto = ProtoTypeUDP
+	return s
+}
+
+func (s *FlowSummary) postMark() *Mark {
+	if s == nil {
+		return nil
+	}
+	return &Mark{
+		PIDCSV: s.PID,
+		CID:    s.ID,
+		UID:    s.UID,
+		IP:     s.Target,
+	}
+}
+
+// String implements fmt.Stringer.
+func (s *FlowSummary) String() string {
+	if s != nil {
+		return fmt.Sprintf("%s: id=%s pid=%s:%s uid=%s to=%s down=%s up=%s dur=%s synack=%s msg=%s",
+			s.Proto, s.ID, s.PID, s.RPID, s.UID, s.Target, core.FmtBytes(uint64(s.Rx)), core.FmtBytes(uint64(s.Tx)), core.FmtMillis(s.Duration), core.FmtMillis(s.Rtt), s.Msg)
+	}
+	return "<nil>"
+}
+
+func (s *FlowSummary) elapsed() {
+	if s != nil {
+		s.Duration = time.Since(s.start).Milliseconds()
+	}
+}
+
+func (s *FlowSummary) done(errs ...error) *FlowSummary {
+	if s == nil {
+		return nil
+	}
+
+	defer func() {
+		if len(s.Msg) <= 0 {
+			s.Msg = errNone.Error()
+		}
+	}()
+
+	s.elapsed()
+
+	if len(errs) <= 0 {
+		return s
+	}
+
+	err := core.UniqErr(errs...) // errs may be nil
+	if err != nil {
+		if s.Msg == errNone.Error() {
+			s.Msg = err.Error()
+		} else {
+			s.Msg = s.Msg + "; " + err.Error()
+		}
+	}
+	return s
+}

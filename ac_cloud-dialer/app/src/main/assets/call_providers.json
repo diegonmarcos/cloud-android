@@ -1,0 +1,66 @@
+[
+  {
+    "id": "whatsapp",
+    "label": "WhatsApp",
+    "packageName": "com.whatsapp",
+    "voipMimetype": "vnd.android.cursor.item/vnd.com.whatsapp.voip.call",
+    "deepLink": "https://wa.me/{number}"
+  },
+  {
+    "id": "whatsapp_business",
+    "label": "WhatsApp Business",
+    "packageName": "com.whatsapp.w4b",
+    "voipMimetype": "vnd.android.cursor.item/vnd.com.whatsapp.w4b.voip.call",
+    "deepLink": "https://wa.me/{number}"
+  },
+  {
+    "id": "telegram",
+    "label": "Telegram",
+    "packageName": "org.telegram.messenger",
+    "voipMimetype": "vnd.android.cursor.item/vnd.org.telegram.messenger.android.call",
+    "deepLink": "tg://resolve?phone={number}"
+  },
+  {
+    "id": "signal",
+    "label": "Signal",
+    "packageName": "org.thoughtcrime.securesms",
+    "voipMimetype": "vnd.android.cursor.item/vnd.org.thoughtcrime.securesms.call",
+    "deepLink": null
+  },
+  {
+    "id": "meet",
+    "label": "Google Meet",
+    "packageName": "com.google.android.apps.tachyon",
+    "voipMimetype": "vnd.android.cursor.item/com.google.android.apps.tachyon.phone.audio",
+    "deepLink": null
+  },
+  {
+    "id": "viber",
+    "label": "Viber",
+    "packageName": "com.viber.voip",
+    "voipMimetype": "vnd.android.cursor.item/vnd.com.viber.voip.viber_number_call",
+    "deepLink": null
+  },
+  {
+    "_doc": "VoIP mimetypes are fail-open: a mimetype that never appears in the contacts DB simply never surfaces as an option (availableOptions omits it). The messenger/threema/line rows below are best-effort mimetypes from contact-data dumps, not vendor docs — harmless if wrong, promoted the day a contact row matches.",
+    "id": "messenger",
+    "label": "Messenger",
+    "packageName": "com.facebook.orca",
+    "voipMimetype": "vnd.android.cursor.item/com.facebook.messenger.audiocall",
+    "deepLink": null
+  },
+  {
+    "id": "threema",
+    "label": "Threema",
+    "packageName": "ch.threema.app",
+    "voipMimetype": "vnd.android.cursor.item/vnd.ch.threema.app.call",
+    "deepLink": null
+  },
+  {
+    "id": "line",
+    "label": "LINE",
+    "packageName": "jp.naver.line.android",
+    "voipMimetype": "vnd.android.cursor.item/vnd.jp.naver.line.android.call",
+    "deepLink": null
+  }
+]

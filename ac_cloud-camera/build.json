@@ -1,0 +1,80 @@
+{
+  "name": "cloud-camera",
+  "description": "Diego's Cloud Camera — our own signed build of GrapheneOS Camera. Modern CameraX (photo, video, QR/barcode scan, timer, zoom/exposure bars, in-app gallery), pure Kotlin/Java, no NDK, no Play Services. Vendored upstream tree renamed onto cld.camera so it coexists with an officially-signed GrapheneOS Camera on the same device.",
+  "category": "android",
+  "mode": "single-app",
+  "_doc_mode": "Hub-less single-fork app, exactly like ac_cloud-media-center: there is no hub module and no IPC contract — the single forks.<key> entry IS the app, built through the engine's step_build_fork machinery.",
+  "build": {
+    "type": "gradle",
+    "entry": "build.sh"
+  },
+  "android": {
+    "application_id": "cld.camera",
+    "compile_sdk": 37,
+    "min_sdk": 29,
+    "target_sdk": 37,
+    "version_code": 93,
+    "version_name": "93",
+    "_doc_version": "Mirrors upstream app/build.gradle.kts, where versionName = versionCode.toString() and versionCode tracks the upstream release tag number (tag '93').",
+    "abi_filters": []
+  },
+  "_doc_abi_filters": "EMPTY ON PURPOSE. GrapheneOS Camera has no native code (no externalNativeBuild, no JNI) so it produces ONE universal APK that runs on every ABI — unlike ac_cloud-media-center, which needs an ABI build matrix because ReFra compiles libheif/libde265.",
+  "signing": {
+    "_doc": "ONE shared Cloud-constellation signing key for ALL Android apps. KEY LOCATION: A0_keys/providers/android/release.jks (OU=Cloud Constellation) + A0_keys/providers/android/signing.secrets.yaml.",
+    "vault_keystore": "A0_keys/providers/android/release.jks",
+    "vault_secrets": "A0_keys/providers/android/signing.secrets.yaml"
+  },
+  "forks": {
+    "camera": {
+      "_doc": "Plural 'forks.<key>' map — same shape as ac_cloud-media-center/build.json::forks.'media-center'. Exactly one key because this app IS the fork (no separate thin hub), matching top-level mode:'single-app'.",
+      "upstream_repo": "https://github.com/GrapheneOS/Camera.git",
+      "tracker_dir": "ac_cloud-camera",
+      "tracker_dir_note": "VENDORED: the upstream tree sits at the app root (no .git), so materialize-fork returns early and build-fork uses the committed source as-is. upstream_repo/pinned_tag/pinned_commit are provenance; re-vendoring means cloning a newer tag by hand and re-applying the cld.camera rename.",
+      "pinned_tag": "93",
+      "pinned_commit": "80ff01a955d3fa5a4f0cfa4cc6c47ee986962b8b",
+      "_doc_pinned_tag": "Verified 2026-08-31 via the GitHub tags API: GrapheneOS/Camera tags are bare release numbers (93, 92, 91, 90, ...). 93 is the newest. Vendored from that exact tag; pinned_commit is its tip.",
+      "license": "MIT",
+      "_doc_license": "Confirmed via GitHub's license API (spdx_id MIT) and the vendored LICENSE file, which is kept verbatim at ac_cloud-camera/LICENSE.",
+      "primary_lang": "Kotlin",
+      "build": {
+        "_doc": "Plain single-module gradle build with upstream's own wrapper (Gradle 9.6.1) and AGP 9.3.1. No product flavors and no ABI dimension, so ONE task serves every device — hence no gradle_task_by_abi map. NO 'signing' key on purpose: upstream's signingConfigs.release only activates when a rootProject keystore.properties is readable, and that block also builds a 'play' config that hard-casts keystoreProperties[\"uploadKeyAlias\"], so writing a 4-key keystore.properties would NPE at configure time. We instead let gradle emit app-release-unsigned.apk and let the engine's _enforce_signature zipalign + apksigner it with the ONE shared constellation key — which is the real signing guarantee anyway, since _enforce_signature overwrites whatever gradle produced.",
+        "gradle_task": "assembleRelease",
+        "apk_glob": "app/build/outputs/apk/**/*.apk"
+      },
+      "blocked_on": null,
+      "comment": "GrapheneOS Camera, renamed onto cld.camera. Chosen over Open Camera because it is actively maintained, CameraX-based and builds on a stock GHA runner with no NDK.",
+      "app_id": "cld.camera",
+      "image": "cloud-camera",
+      "_doc_rename": "applicationId AND namespace moved app.grapheneos.camera → cld.camera, the java source packages moved app/src/{main,androidTest}/java/app/grapheneos/camera → .../cld/camera, and every custom-view class name inside res/layout (app.grapheneos.camera.ui.*) followed. The rename is REQUIRED for coexistence: the user may install official GrapheneOS Camera builds, and two APKs cannot share an applicationId. Upstream declares no FileProvider authority and no shortcuts.xml, so there is nothing else keyed off the old id. The visible label is 'Cloud Camera' via the release buildType's resValue app_name."
+    }
+  },
+  "release": {
+    "_doc": "Per-APK distribution, same data-driven pattern as ac_cloud-media-center::release. {sha} → git short sha, {version_name} → android.version_name.",
+    "artifact": {
+      "debug": "Cloud-Camera-debug.apk",
+      "release": "Cloud-Camera.apk"
+    },
+    "ghcr": {
+      "_doc": "ORAS push as an OCI artifact (the APK is a blob, not a container). The layer's org.opencontainers.image.title annotation comes from the pushed filename, so publish-fork pushes release.artifact.release — the Constellation AppStore reads that title to name the download.",
+      "enabled": true,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-camera",
+      "media_type": "application/vnd.android.package-archive",
+      "tags": [
+        "latest",
+        "sha-{sha}",
+        "v{version_name}"
+      ]
+    },
+    "gh_release": {
+      "_doc": "Rolling GH release 'latest', overwritten on every main push, so /releases/latest/download/Cloud-Camera.apk stays a stable URL. Consumed by aa_cloud-superapp/data/constellation-fleet.json::apps[id=camera].release_url.",
+      "enabled": true,
+      "rolling_tag": "latest",
+      "asset_name": "Cloud-Camera.apk",
+      "draft": false,
+      "prerelease": false,
+      "generate_release_notes": false
+    }
+  }
+}

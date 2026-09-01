@@ -1,0 +1,77 @@
+{
+  "id": "ac_cloud-sheets",
+  "name": "Collabora Office",
+  "_doc": "MIRROR, NOT A BUILD. Every other ac_cloud-* dir here holds source we compile. This one holds no source at all, and deliberately: the Collabora Office engine is LibreOffice core, built from Collabora's own Gerrit with an NDK megabuild that pulls its whole external/ tree — hours of compute, a toolchain we do not carry, and a result we could not sign as com.collabora.libreoffice anyway. So ship-cloud-sheets.yml downloads the OFFICIAL APK from Collabora's F-Droid repo, verifies it against the sha256 pinned below, and republishes those exact bytes as our release asset + GHCR artifact so the Constellation AppStore can install and auto-update it like any fleet member. The pin is the whole security story: an unpinned mirror is a supply-chain hole, so a sha mismatch FAILS the job rather than publishing whatever upstream served. Bumping the version means editing upstream.* here (version_name, version_code, apk_name, sha256, size) in one commit — never just the sha.",
+  "upstream": {
+    "vendor": "Collabora Productivity",
+    "project": "Collabora Office for Android",
+    "fdroid_repo": "https://www.collaboraoffice.com/downloads/fdroid/repo/",
+    "fdroid_index": "https://www.collaboraoffice.com/downloads/fdroid/repo/index-v1.json",
+    "package_name": "com.collabora.libreoffice",
+    "version_name": "25.04.9.1",
+    "version_code": 115,
+    "apk_name": "collabora-office-mobile-25-04-release-arm64-v8a-2026-03-03.apk",
+    "url": "https://www.collaboraoffice.com/downloads/fdroid/repo/collabora-office-mobile-25-04-release-arm64-v8a-2026-03-03.apk",
+    "sha256": "761eefbb71aabb788843bffa4deb046f89e910e30896be1cc8ab522460a8da5c",
+    "size": 278215660,
+    "license": "MPL-2.0",
+    "source_repo": "https://gerrit.libreoffice.org/plugins/gitiles/core/"
+  },
+  "android": {
+    "application_id": "com.collabora.libreoffice",
+    "min_sdk": 26,
+    "abi_filters": [
+      "arm64-v8a"
+    ],
+    "_doc_application_id": "Upstream's own id, unchanged — these are upstream's bytes, signed with upstream's key. We are a mirror, so we neither rename the package nor re-sign it; installing ours is byte-identical to installing from Collabora's F-Droid repo."
+  },
+  "release": {
+    "kind": "app",
+    "variants": [
+      {
+        "_doc": "arm64-v8a ONLY. Collabora publishes one ABI per release channel and the pinned index entry declares abis [\"arm64-v8a\"]; there is no x86_64 artifact to mirror, so there is no second matrix job.",
+        "id": "arm64",
+        "abis": [
+          "arm64-v8a"
+        ],
+        "supported_abis": [
+          "arm64-v8a"
+        ],
+        "artifact_debug": "Cloud-Sheets.apk",
+        "gh_asset": "Cloud-Sheets.apk",
+        "ghcr_tag_suffix": "",
+        "update_tag": "latest"
+      }
+    ],
+    "auto_update": {
+      "enabled": true,
+      "tag": "latest",
+      "interval_hours": 6,
+      "require_unmetered_network": true,
+      "require_charging": false,
+      "install_mode": "silent",
+      "_doc_require_unmetered_network": "265 MB — the largest artifact in the fleet by an order of magnitude. Unmetered-only so a background auto-update pass cannot burn a mobile data plan.",
+      "max_installs_per_pass": 3
+    },
+    "ghcr": {
+      "enabled": true,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-sheets",
+      "media_type": "application/vnd.android.package-archive",
+      "tags": [
+        "latest",
+        "sha-{sha}",
+        "v{version_name}"
+      ]
+    },
+    "gh_release": {
+      "enabled": true,
+      "rolling_tag": "latest",
+      "asset_name": "Cloud-Sheets.apk",
+      "draft": false,
+      "prerelease": false,
+      "generate_release_notes": false
+    }
+  }
+}

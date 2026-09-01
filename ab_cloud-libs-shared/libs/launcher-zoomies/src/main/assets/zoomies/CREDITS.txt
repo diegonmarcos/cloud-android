@@ -1,0 +1,27 @@
+Pet sprite credits
+==================
+
+These pet animations come from the webpets project
+(https://github.com/sankalpaacharya/webpets). The majority of the assets
+originate from vscode-pets (https://github.com/tonybaloney/vscode-pets).
+
+Zoomies ships only the creatures that walk on legs. Artists for those:
+- Dog animations — NVPH Studio (https://nvph-studio.itch.io/dog-animation-4-different-dogs)
+- Akita inu — Kevin Huang (https://github.com/kevin2huang)
+- Fox — Elthen (https://twitter.com/pixelthen)
+- Turtle — enkeefe (via https://www.pixilart.com/draw)
+- Horse — adapted by Chris Kent (https://github.com/thechriskent) from
+  assets by Onfe (https://onfe.itch.io/horse-sprite-with-rider-asset-pack)
+- Panda — Jessie Ferris (https://github.com/jeferris)
+- Skeleton — adapted by Chris Kent from assets by MonoPixelArt
+  (https://monopixelart.itch.io/)
+
+Deno, rat, and vampire assets are also from the webpets / vscode-pets sets;
+see those repositories for full licensing details. The dog assets ship an
+explicit license at dog/license.txt.
+
+Classic sprite-sheet pets (from Zoomies 1.0):
+- Cat — the oneko.js sprite by adryd (https://github.com/adryd325/oneko.js), MIT.
+  License: cat/license.txt.
+- Dalmatian — a Neko Archive sprite, public domain (GOODCLOVER).
+  License: dalmatian/license.txt.

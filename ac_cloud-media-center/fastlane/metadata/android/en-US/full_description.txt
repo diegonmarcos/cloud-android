@@ -1,0 +1,68 @@
+<p><strong>ReFra</strong> is a modern, open-source media gallery for Android built with Jetpack Compose. It refracts how you browse, organize, and experience your photos and videos — with AI-powered categories, panorama viewing, motion photo playback, video casting, and a fully customizable Material 3 interface.</p>
+
+<p>&nbsp;</p>
+
+<p><strong>Features</strong></p>
+
+<ul>
+	<li>Media Timeline with date-grouped photos and videos
+	<ul>
+		<li>Grid and mosaic layout modes</li>
+		<li>Smooth scrolling with optimized thumbnail loading</li>
+		<li>Smart grouping for RAW+JPG pairs, burst shots, and edited copies</li>
+	</ul>
+	</li>
+	<li>360° Panorama &amp; Photosphere Viewer
+	<ul>
+		<li>OpenGL-powered spherical and cylindrical projections</li>
+		<li>Touch and gyroscope navigation with compass overlay</li>
+	</ul>
+	</li>
+	<li>Motion Photo Playback
+	<ul>
+		<li>Detects Google Motion Photos, Samsung Live Photos, and Micro Videos</li>
+		<li>Interactive filmstrip scrubber with haptic feedback</li>
+	</ul>
+	</li>
+	<li>FCast Video Casting
+	<ul>
+		<li>Cast videos and images to devices on your local network</li>
+		<li>mDNS device discovery with remote playback controls</li>
+	</ul>
+	</li>
+	<li>AI-Powered Categories &amp; Search
+	<ul>
+		<li>On-device CLIP-based image classification with customizable categories</li>
+		<li>Natural language search and image-to-image similarity search</li>
+		<li>Optional AI model downloads — not bundled, installed on demand</li>
+	</ul>
+	</li>
+	<li>Location Map Viewer
+	<ul>
+		<li>Interactive MapLibre map with clustered photo markers</li>
+		<li>Browse geotagged media by location</li>
+	</ul>
+	</li>
+	<li>Smart Search with Discovery
+	<ul>
+		<li>Carousels for categories, locations, media types, camera models</li>
+		<li>Special mode filters: night shots, long exposures, panoramas</li>
+	</ul>
+	</li>
+	<li>Custom Color Palettes
+	<ul>
+		<li>Pick from wallpaper-derived or preset color schemes</li>
+		<li>Live preview with full Material 3 theme generation</li>
+	</ul>
+	</li>
+	<li>Albums with Groups, Collections, and Merge by Name</li>
+	<li>Multi-Select with configurable action sheet and right-align option</li>
+	<li>Sortable and pinnable albums</li>
+	<li>Encrypted Vault with gate authentication, custom passwords, and biometric unlock</li>
+	<li>Built-in Photo Editor with markup, crop, filters, and edit backups</li>
+	<li>Custom Video Player powered by <em>Media3 ExoPlayer</em> with frame-accurate seeking</li>
+	<li>Auto-contrast viewer enhancement (Beta)</li>
+	<li>Full EXIF and metadata viewer</li>
+	<li>Google Sans typography and modern <strong>Material 3</strong> design</li>
+	<li><strong><u>Open Source</u></strong> (Apache-2.0) with active development</li>
+</ul>

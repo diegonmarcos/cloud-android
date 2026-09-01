@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- FileProvider paths for the keyboard Sticker/GIF panel (libs:media).
+     Matches MediaCommit.toContent → File(cacheDir, "keyboard_media"). -->
+<paths>
+    <cache-path name="keyboard_media" path="keyboard_media/" />
+</paths>

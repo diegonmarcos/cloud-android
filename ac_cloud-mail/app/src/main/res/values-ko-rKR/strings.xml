@@ -1,0 +1,2212 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_search">FairEmail 검색</string>
+    <string name="app_send_self">내게 보내기</string>
+    <string name="app_changelog">변경 로그</string>
+    <string name="app_welcome">FairEmail은 프라이버시와 보안을 위한 오픈 소스 이메일 앱입니다. 그렇기에 몇몇 기능은 당신이 지금까지 써왔던 것과 조금 다르게 작동할 수 있습니다.</string>
+    <string name="app_limitations">예를 들어, 안전하지 않은 요소를 제거하고 가독성을 향상시키기 위해 기본적으로 메시지가 재구성되며 안전을 위해 링크를 열 때 이를 확인해야 합니다. 원하는 경우 둘 다 비활성화할 수 있습니다.</string>
+    <string name="app_unsupported">해당 기기 Android 버전의 버그로 인해 충돌이 발생합니다</string>
+    <string name="app_data_loss">모든 데이터가 손실됩니다</string>
+    <string name="app_continue">그냥 진행하기</string>
+    <string name="app_exit">나가려면 뒤로 버튼을 한번 더 누르세요</string>
+    <string name="app_cake">저장 공간 부족</string>
+    <string name="app_cake_remaining">기기에 남은 저장 공간: %1$s</string>
+    <string name="app_cake_required">최소 필요 저장 공간: %1$s</string>
+    <string name="app_updated">최근 업데이트: %1$s</string>
+    <string name="app_download">%1$s에서 다운로드됨</string>
+    <string name="app_error">대부분의 오류 메시지는 외부 원인(네트워크, 서버 등) 또는 잘못되거나 비표준적인 구성으로 인해 발생합니다. 부정적인 평가로는 이런 문제를 해결할 수 없습니다. 지원을 요청하는 것은 거의 언제나 더 효과적입니다.</string>
+    <string name="app_motd">        Android 14/15 베타에서, \'앱이 응답하지 않음\' 알림이 때때로 나타납니다.
+        구글이 고치고 있습니다.
+        Android의 문제로 앱을 비난하지 말아주세요!
+    </string>
+    <string name="channel_service">모니터</string>
+    <string name="channel_send">발신</string>
+    <string name="channel_notification">이메일</string>
+    <string name="channel_progress">진행</string>
+    <string name="channel_update">업데이트</string>
+    <string name="channel_announcements">공지</string>
+    <string name="channel_warning">경고</string>
+    <string name="channel_error">오류</string>
+    <string name="channel_alert">서버 알림</string>
+    <string name="channel_group_contacts">연락</string>
+    <string name="channel_service_description">계정 동기화 및 모니터링</string>
+    <string name="channel_send_description">메시지 전송 중</string>
+    <string name="channel_notification_description">새 메시지 알림</string>
+    <string name="channel_progress_description">장기 실행 활동의 진행 알림</string>
+    <plurals name="page_conversation">
+        <item quantity="other">대화</item>
+    </plurals>
+    <plurals name="page_message">
+        <item quantity="other">메시지</item>
+    </plurals>
+    <string name="page_folders">폴더</string>
+    <string name="page_compose">작성</string>
+    <string name="tile_synchronize">동기화</string>
+    <string name="tile_unseen">새 메일</string>
+    <string name="shortcut_refresh">새로고침</string>
+    <string name="shortcut_compose">작성</string>
+    <string name="shortcut_setup">설정</string>
+    <plurals name="title_notification_synchronizing">
+        <item quantity="other">%1$d 계정 모니터링</item>
+    </plurals>
+    <plurals name="title_notification_operations">
+        <item quantity="other">%1$d 작업 보류중</item>
+    </plurals>
+    <plurals name="title_notification_unseen">
+        <item quantity="other">%1$d 새 메시지</item>
+    </plurals>
+    <plurals name="title_notification_unsent">
+        <item quantity="other">보낼 메시지 %1$d</item>
+    </plurals>
+    <plurals name="title_tile_unseen">
+        <item quantity="other">새 메일 %1$d건</item>
+    </plurals>
+    <plurals name="title_moving_messages">
+        <item quantity="other">%1$d개의 메일을 이동하시겠습니까?</item>
+    </plurals>
+    <plurals name="title_deleting_messages">
+        <item quantity="other">%1$d개의 메일을 영구적으로 삭제하시겠습니까?</item>
+    </plurals>
+    <plurals name="title_attachments">
+        <item quantity="other">첨부파일 %1$d개</item>
+    </plurals>
+    <plurals name="title_ask_spam">
+        <item quantity="other">%1$d개의 메일을 스팸 처리하겠습니까?</item>
+    </plurals>
+    <string name="title_ask_spam_who">%1$s의 메일을 스팸 처리하시겠습니까?</string>
+    <string name="title_junk_hint">이메일 제공업체는 스팸 필터링을 담당합니다. 이메일 앱에는 이를 안정적으로 수행하는데 필요한 데이터를 모두 갖고 있지 않습니다.</string>
+    <string name="title_junk_pop_hint">        차단한 발신자의 메시지는 다운로드되지 않습니다.
+        \"서버에 메시지 보관\"이 활성화되어 있지 않은 경우, 이러한 메시지는 영구적으로 손실됩니다!
+    </string>
+    <string name="title_block">%1$s 차단</string>
+    <string name="title_block_sender">보낸사람 차단</string>
+    <string name="title_block_sender_domain">도메인 \'%1$s\' 차단</string>
+    <string name="title_block_sender_remark">차단은 자동으로 스팸함으로 이동함을 의미합니다.</string>
+    <string name="title_block_sender_hint">        발신자를 차단하는 것은 무료 기능입니다.
+        발신자 도메인을 차단하는 것은 유료 기능인 필터 규칙을 사용합니다.
+    </string>
+    <string name="title_blocked_senders">차단된 발신자</string>
+    <string name="title_unblock_all">모두 차단 해제</string>
+    <string name="title_unblock_all_remark">모든 목록 및 옵션이 재설정되고 이는 발신자 차단으로 이어질 수 있습니다</string>
+    <string name="title_unblock_all_hint">이 앱은 이메일 서버가 메시지를 스팸 폴더로 이동하는 것을 막을 수 없습니다!</string>
+    <plurals name="title_ask_block_sender">
+        <item quantity="other">%1$s개 메시지를 보낸 사람을 차단하시겠습니까?</item>
+    </plurals>
+    <plurals name="title_hours">
+        <item quantity="other">%1$s시간</item>
+    </plurals>
+    <plurals name="title_days">
+        <item quantity="other">%1$s일</item>
+    </plurals>
+    <string name="title_junk_filter">로컬 스팸 필터 사용</string>
+    <string name="title_junk_filter_hint">배터리 사용량이 증가할 수 있으며 스팸 메일로 잘못 인식할 수도 있습니다.</string>
+    <string name="title_junk_blocklist">스팸 차단 목록 사용</string>
+    <string name="title_junk_clear">비우기</string>
+    <string name="title_junk_clear_hint">이는 모든 발신자 차단 규칙을 제거합니다.</string>
+    <string name="title_notification_sending">메일 전송 중</string>
+    <string name="title_notification_waiting">안정된 인터넷 연결을 기다리는 중</string>
+    <string name="title_notification_idle">유휴</string>
+    <string name="title_notification_failed">\'%1$s\' 계정 연결 실패</string>
+    <string name="title_notification_alert">서버 알림: \'%1$s\'</string>
+    <string name="title_notification_sending_left">남은 시도 횟수: %1$d</string>
+    <string name="title_notification_sending_retry">인터넷 연결 변경 또는 아웃박스 해제 발생 시 보내기를 다시 시도합니다.</string>
+    <string name="title_notification_sending_failed">%1$s에게 전송 실패</string>
+    <string name="title_notification_redacted">수정됨: 생체 및 PIN 인증 활성화됨</string>
+    <string name="title_factor_minutes">%1$d분</string>
+    <string name="menu_answers">템플릿</string>
+    <string name="menu_rules">규칙</string>
+    <string name="menu_operations">작업</string>
+    <string name="menu_contacts">로컬 주소록</string>
+    <string name="menu_setup">설정</string>
+    <string name="menu_legend">범례</string>
+    <string name="menu_test">프로그램 테스트</string>
+    <string name="menu_faq">지원</string>
+    <string name="menu_translate">번역 참여하기</string>
+    <string name="menu_issue">오류 보고</string>
+    <string name="menu_attribution">기여</string>
+    <string name="menu_privacy">개인 정보 보호</string>
+    <string name="menu_about">About</string>
+    <string name="menu_pro">Pro 기능</string>
+    <string name="menu_rate">앱 평가하기</string>
+    <string name="title_welcome">환영합니다</string>
+    <string name="title_eula">최종 사용자 라이선스 계약</string>
+    <string name="title_license">오픈소스 라이선스</string>
+    <string name="title_contributors">도와주신 분들</string>
+    <string name="title_agree">동의합니다</string>
+    <string name="title_disagree">동의하지 않습니다</string>
+    <string name="title_version">버전: %1$s</string>
+    <string name="title_privacy_policy">개인정보 보호 정책</string>
+    <string name="title_list_accounts">계정</string>
+    <string name="title_list_identities">ID</string>
+    <string name="title_edit_account">계정 편집</string>
+    <string name="title_edit_identity">사용자 ID 변경</string>
+    <string name="title_new_folder">새 폴더</string>
+    <string name="title_edit_folder">폴더 변경</string>
+    <string name="title_disable_gmail">Gmial 앱 비활성화</string>
+    <string name="title_setup">설정</string>
+    <string name="title_setup_help">도움말</string>
+    <string name="title_setup_quick">빠른 설정</string>
+    <string name="title_setup_intro">새 계정을 설정하는 것은 오직 3단계이며 그 후에는 이메일을 보내거나 받을 수 있습니다.</string>
+    <string name="title_setup_simple">다른 설정을 변경할 필요가 없습니다.</string>
+    <string name="title_setup_issue">FairEmail은 당신의 개인정보를 보호하기 위해 만들어 졌으며 몇천 시간의 일을 의미합니다. 문제가 있으시다면 나쁜 별점을 남기시기 전에 저에게 먼저 연락해 주세요. 저의 최선을 다해 도와드리겠습니다!</string>
+    <string name="title_setup_analytics">FairEmail은 광고를 표시하지 않으며 사용자 행동을 추적하거나 분석하지 않습니다.</string>
+    <string name="title_setup_quick_accounts">계정 추가 및 변경</string>
+    <string name="title_setup_quick_support">몇몇 제공업체들은 계정 추가하기를 어렵도록 설계해 두었습니다. FairEmail을 탓하지 마시고, 대신 도움을 요청해 주세요.</string>
+    <string name="title_setup_quick_hint">입력한 이메일 주소는 구성 정보를 가져 오기 위해 이메일 서버와 autoconfig.thunderbird.net에 문의하는 데 사용됩니다.</string>
+    <string name="title_setup_quick_patience">인내심을 가지고 기다려 주세요 &#8230;</string>
+    <string name="title_setup_quick_imap">메시지를 수신할 IMAP 서버</string>
+    <string name="title_setup_quick_smtp">메시지를 발신할 SMTP 서버</string>
+    <string name="title_setup_quick_certificates">서버 인증서</string>
+    <string name="title_setup_wizard">마법사</string>
+    <string name="title_setup_wizard_intro">대부분의 경우 마법사 버튼을 사용하여 계정을 추가할 수 있으며, 그렇지 않은 경우 수동 설정 옵션을 사용하여 수동으로 서버 주소를 입력하거나 변경할 수 있습니다</string>
+    <string name="title_setup_wizard_tutorials">튜토리얼</string>
+    <string name="title_setup_wizard_multiple">마법사는 여러 계정을 설정하기 위해 여려번 사용할 수 있습니다.</string>
+    <string name="title_setup_wizard_new">새 이메일 주소 받기</string>
+    <string name="title_setup_manual">수동 설정 및 계정 설정</string>
+    <string name="title_setup_classic">보편적인 설정</string>
+    <string name="title_setup_wizard_hint">위에 표시된 \"기타 제공업체\"에 대한 빠른 설정 마법사도 일반적으로 작동하며, 모든 서버 데이터를 입력하는 것보다 간단합니다．</string>
+    <string name="title_setup_documentation">올바른 이메일 서버 설정을 위해 당신의 이메일 제공업체의 문서를 참고해 주세요.</string>
+    <string name="title_setup_account_remark">이메일 수신</string>
+    <string name="title_setup_identity_remark">이메일 발신</string>
+    <string name="title_setup_account_identity_hint">계정 설정에서 이름, 색상 및 스와이프 동작을, 사용자 ID 설정에서 서명을 지정할 수 있습니다</string>
+    <string name="title_setup_accounts">계정</string>
+    <string name="title_setup_identities">ID</string>
+    <string name="title_setup_google_sign_in">Google 로그인</string>
+    <string name="title_setup_other">기타 제공업체</string>
+    <string name="title_setup_inbound">수신 이메일 전용 (이메일을 보낼 수 없습니다!)</string>
+    <string name="title_setup_imap">IMAP 계정</string>
+    <string name="title_setup_pop3">POP3 계정</string>
+    <string name="title_setup_oauth_permission">이메일 제공업체가 Play 스토어 및 Github 버전의 OAuth만 승인했습니다</string>
+    <string name="title_setup_gmail_support">Android에서는 디지털 앱 서명을 확인하므로 Google 계정 인증은 Play 스토어 및 Github 버전에서만 동작합니다</string>
+    <string name="title_setup_gmail_rationale">계정을 설정하고 이름을 읽기 위해 권한을 허용해 주세요</string>
+    <string name="title_setup_gmail_permissions">Google은 모든 이메일을 읽고(사용자에게 메시지를 표시하기 위해), 작성하고(초안 메시지를 저장하기 위해), 전송하고 영구적으로 삭제할 수 있는 권한을 요청합니다. FairEmail은 사용자의 명시적인 동의 없이는 절대로 사용자의 메시지를 삭제하지 않습니다. 사용자 본인만 메시지에 액세스할 수 있으며 다른 그 누구도 메시지에 액세스할 수 없습니다.</string>
+    <string name="title_setup_gmail_login">크롬이 계정에 로그인 되어 있는 경우 새 계정은 Android를 통해서만 추가할 수 있습니다. 이는 크롬 동기화 설정을 통해 크롬에서 로그아웃하여 피할 수 있습니다.</string>
+    <string name="title_setup_gmail_max">\"최대 계정 수에 로그인되어 있습니다\"라는 오류 메시지의 경우, 브라우저에서 모든 Google 계정을 로그 아웃해야 합니다.</string>
+    <string name="title_setup_outlook_hint">별칭 주소의 경우 Office 365 마법사를 사용해야 합니다．</string>
+    <string name="title_setup_outlook_modern">Mircosoft의 보안 정책으로 인하여, 2024년 9월 16일부터는 Outlook/Hotmail/Live 마법사만 작동합니다．</string>
+    <string name="title_setup_gmail_on_device">기기 내 계정을 선택해야 하는 이유는 무엇입니까?</string>
+    <string name="title_setup_gmail_password">기기 내 계정 대신 비밀번호를 사용하여 계정을 인증하고 싶습니다</string>
+    <string name="title_setup_office_auth">\'인증 실패\' 오류는 시스템 관리자에 의해 IMAP/SMTP가 비활성화된 경우 발생할 수 있습니다.</string>
+    <string name="title_setup_office_auth_5_7_3">\'다른 제공업체\'로 빠른 설정 마법사를 시도해보세요.</string>
+    <string name="title_setup_office_auth_5_7_139">Outlook/Hotmail/Live 빠른 설치 마법사를 사용해 주십시오．</string>
+    <string name="title_setup_office_not_connected">        \'User is authenticated but not connected\' 오류는 대부분 IMAP을 사용할 수 없음을 의미합니다.
+        개인 Outlook 계정일 경우, Outlook 웹사이트로 이동하여 우측 상단의 설정 버튼을 누르고 \'메일\'을 선택한 후, \'전달 및 IMAP\'을 선택한 다음 \'POP 및 IMAP\' 섹션에서 \'장치 및 앱이 IMAP을 사용하도록 허용\'으로 설정해 주십시오.
+        기업 및 교육기관 등에서 사용하는 계정일 경우, 이메일 서버의 시스템 관리자에게 문의하십시오.
+    </string>
+    <string name="title_setup_oauth_rationale">귀하의 %1$s 계정에 대한 액세스 권한 부여</string>
+    <string name="title_setup_oauth_update">기존 계정을 다시 인증하십시오 (그렇지 않으면 새 계정을 만드십시오)</string>
+    <string name="title_setup_oauth_updated">계정 인증이 갱신되었습니다</string>
+    <string name="title_setup_oauth_edge">Edge 브라우저를 사용하는 경우, \'개인정보, 보안 및 서비스\' 설정에서 \'외부 앱 열기 차단\'이 \'비활성화\'로 설정되어 있는지 확인해 보십시오.</string>
+    <string name="title_setup_oauth_brave">Brave 브라우저를 사용할 때, 브라우저 설정에서 Brave 이외의 앱에서 앱 링크가 열리도록 하는 옵션을 활성화해야 합니다</string>
+    <string name="title_setup_oauth_browser">인증에는 앱 링크를 열 수 있는 브라우저(때로는 보안 설정)가 필요하며, 마지막 단계에서 인증 토큰이 앱으로 전송될 수 있도록 합니다.</string>
+    <string name="title_setup_oauth_authorize">인증</string>
+    <string name="title_setup_select_account">계정 선택</string>
+    <string name="title_setup_instructions">설정 방법</string>
+    <string name="title_setup_no_settings">\'%1$s\' 도메인에 대한 설정을 찾을 수 없음</string>
+    <string name="title_setup_no_settings_hint">이메일 제공업체에서 제공하는 설정을 사용하여 계정을 수동으로 설정해보십시오.</string>
+    <string name="title_setup_no_auth_hint">이메일 주소와 비밀번호를 다시 확인하고 귀하의 계정에 대한 외부 액세스 (IMAP/SMTP) 가 활성화되어 있도록 하세요</string>
+    <string name="title_setup_no_auth_outlook">입력된 계정에는 Outlook / Office 365 빠른 설정 마법사가 필요합니다 (Microsoft에 의해 요구됨)</string>
+    <string name="title_setup_app_password_hint">이 제공 업체는 계정 비밀번호 대신 앱 비밀번호가 필요하므로, 제공 업체의 사용 방법을 확인해주세요</string>
+    <string name="title_setup_no_inbox">받은메일함을 찾을 수 없음</string>
+    <string name="title_setup_advanced_protection">고급 보호 프로그램에 등록된 경우 타사 이메일 앱을 사용할 수 없습니다. 이는 Google 정책 상의 제한 사항입니다.</string>
+    <string name="title_setup_quick_success">계정을 성공적으로 추가했습니다</string>
+    <string name="title_setup_quick_no_sent">보낸 메시지 폴더가 선택되지 않았습니다. 보낸 메시지가 저장되지 않을 수 있습니다.</string>
+    <string name="title_setup_quick_configure">이름, 색상, 스와이프 동작 등을 편집하기</string>
+    <string name="title_setup_manage">관리</string>
+    <string name="title_setup_grant">권한 허용</string>
+    <string name="title_setup_grant_again">필요한 권한 허용하기</string>
+    <string name="title_setup_exchange_support">Microsoft Exchange가 지원되나요?</string>
+    <string name="title_setup_identity_what">사용자 ID가 무엇입니까?</string>
+    <string name="title_setup_free">앱을 무료로 사용할 수 있습니까?</string>
+    <string name="title_setup_permissions">권한 부여</string>
+    <string name="title_setup_permissions_remark">연락처 정보에 액세스하려면 (선택사항)</string>
+    <string name="title_setup_permissions_calendar">초대를 저장하려면 (선택사항)</string>
+    <string name="title_setup_permissions_explanation">연락처 정보를 조회하고 연락처를 추천하려면 연락처 권한이 필요합니다</string>
+    <string name="title_setup_permissions_notify">새 메시지 알림을 표시하려면 (선택사항)</string>
+    <string name="title_setup_permissions_notify_explanation">상태 표시줄에 새 메시지에 대한 알림을 표시하려면 알림 권한이 필요합니다</string>
+    <string name="title_setup_permission_why">어떤 권한이 왜 필요한가요?</string>
+    <string name="title_setup_permission_import_contacts">연락처를 어떻게 가져올 수 있나요?</string>
+    <string name="title_setup_import_graph_contact">Outlook 연락처</string>
+    <string name="title_setup_import_graph_new">새 연락처: %1$s</string>
+    <string name="title_setup_doze">배터리 최적화 비활성화</string>
+    <string name="title_setup_doze_remark">백그라운드에서 안정적으로 이메일을 주고받으려면</string>
+    <string name="title_setup_doze_explanation">앱이 백그라운드에서도 안정적으로 메일을 수신 및 발신하려면 이 앱에 대한 배터리 최적화 기능을 꺼야 합니다</string>
+    <string name="title_setup_doze_hint">모순적으로 들릴 수 있으나, 이 앱에 대한 배터리 최적화를 해제하면 배터리 사용량이 줄어듭니다</string>
+    <string name="title_setup_doze_aggressively">이 기기에서는 동기화 서비스가 제대로 작동하지 않을 수 있습니다</string>
+    <string name="title_setup_doze_why">왜 배터리 최적화를 꺼야 하나요?</string>
+    <string name="title_setup_doze_instructions">다음 Android 대화 상자에서 \"최적화되지 않음\"을 \"모든 앱\"으로 변경한 후, 이 앱을 선택하고 \"최적화하지 않음\"를 선택합니다</string>
+    <string name="title_setup_doze_battery">배터리 사용량이 많습니까?</string>
+    <string name="title_setup_doze_stopped">동기화가 중단되었습니까?</string>
+    <string name="title_setup_doze_device">이 기기에 필요한 작업으로 예상됩니다</string>
+    <string name="title_setup_alarm_12">이 앱이 제대로 작동하지 않을 것입니다.</string>
+    <string name="title_setup_fg_15">이 앱은 자동으로 시작되지 않습니다</string>
+    <string name="title_setup_inexact">알람 &amp; 반복이 비활성화됨</string>
+    <string name="title_setup_background">백그라운드 제한이 설정되었습니다</string>
+    <string name="title_setup_data">데이터 절약 모드를 사용합니다</string>
+    <string name="title_setup_always">빠른 새 메시지 알림</string>
+    <string name="title_setup_always_remark">이를 활성화할 경우 불안정한 연결, 오래된 네트워크 하드웨어 등으로 인해 배터리 사용량이 증가할 수 있습니다</string>
+    <string name="title_setup_advanced_options">고급 설정 표시</string>
+    <string name="title_setup_inbox">받은메일함으로 이동</string>
+    <string name="title_setup_go">시작</string>
+    <string name="title_setup_to_do">할 일</string>
+    <string name="title_setup_done">완료</string>
+    <string name="title_setup_still">여전히 해야 할 일</string>
+    <string name="title_setup_error">오류</string>
+    <string name="title_setup_manual_setup">수동 설정</string>
+    <string name="title_setup_pop">POP3 사용 (권장하지 않음)</string>
+    <string name="title_setup_recent">여러 이메일 클라이언트에 대해 \'recent\' 사용</string>
+    <string name="title_setup_configuring">계정 &#8230; 지정</string>
+    <string name="title_setup_app_password">앱 비밀번호가 필요할 수 있습니다</string>
+    <string name="title_setup_extra">기타</string>
+    <string name="title_setup_delete_account_hint">앱에서만 계정이 삭제될 것입니다</string>
+    <string name="title_setup_close">설정 닫기</string>
+    <string name="title_setup_export">설정 내보내기</string>
+    <string name="title_setup_import">설정 불러오기</string>
+    <string name="title_setup_export_remark">        설정 파일은 모든 설정 및 계정 정보를 포함하고 있기 때문에 비밀번호로 암호화됩니다.
+        설정을 다시 가져오려면 비밀번호가 필요하니 비밀번호를 잊지 마세요!
+    </string>
+    <string name="title_setup_export_do">내보내기한 파일에는 모든 설정과 데이터가 포함되지만 서명에 참조되는 메시지와 이미지는 없습니다</string>
+    <string name="title_setup_scroll">입력 대화 상자는 스크롤 가능할 수 있습니다!</string>
+    <string name="title_setup_backup">메시지를 어떻게 백업하나요?</string>
+    <string name="title_setup_password">비밀번호</string>
+    <string name="title_setup_password_chars">비밀번호에 제어 문자 및 공백 문자가 포함되어 있습니다</string>
+    <string name="title_setup_password_repeat">비밀번호 재입력</string>
+    <string name="title_setup_password_missing">비밀번호를 입력해 주세요</string>
+    <string name="title_setup_password_different">비밀번호가 일치하지 않습니다</string>
+    <string name="title_setup_password_invalid">잘못된 비밀번호 또는 손상된 설정 파일</string>
+    <string name="title_setup_import_accounts">ID 및 계정 가져오기</string>
+    <string name="title_setup_import_delete">기존 계정을 먼저 삭제하십시오</string>
+    <string name="title_setup_import_rules">필터 규칙 가져오기</string>
+    <string name="title_setup_import_contacts">로컬 연락처 가져오기</string>
+    <string name="title_setup_import_answers">답장 템플릿 가져오기</string>
+    <string name="title_setup_import_searches">저장된 검색 기록 가져오기</string>
+    <string name="title_setup_import_settings">가져오기 옵션</string>
+    <string name="title_setup_exported">설정 내보냄</string>
+    <string name="title_setup_imported">설정 불러옴</string>
+    <string name="title_setup_import_invalid">유효하지 않은 설정 파일</string>
+    <string name="title_importing_account">계정 %1$s</string>
+    <string name="title_importing_identity">사용자 ID %1$s</string>
+    <string name="title_importing_exists">건너뜀: 이미 존재</string>
+    <string name="title_importing_wizard">재인증을 위해 마법사 다시 실행하기</string>
+    <string name="title_setup_reorder_accounts">계정 정렬</string>
+    <string name="title_setup_reorder_folders">폴더 정렬</string>
+    <string name="title_reset_order">정렬 초기화</string>
+    <string name="title_setup_authentication">인증</string>
+    <string name="title_setup_biometrics">생체 정보 인증</string>
+    <string name="title_setup_biometrics_enable">사용</string>
+    <string name="title_setup_biometrics_disable">사용 안 함</string>
+    <string name="title_setup_biometrics_unlock">잠금 해제</string>
+    <string name="title_setup_theme">테마 선택</string>
+    <string name="title_setup_theme_blue_orange">파랑/주황</string>
+    <string name="title_setup_theme_yellow_purple">노랑/보라</string>
+    <string name="title_setup_theme_red_green">빨강/초록</string>
+    <string name="title_setup_theme_grey">회색</string>
+    <string name="title_setup_theme_black">검정</string>
+    <string name="title_setup_theme_white">하양</string>
+    <string name="title_setup_theme_black_or_white">검정 혹은 하양</string>
+    <string name="title_setup_theme_black_and_white">흑백</string>
+    <string name="title_setup_theme_reverse">색상 뒤바꾸기</string>
+    <string name="title_setup_theme_light">밝게</string>
+    <string name="title_setup_theme_dark">어둡게</string>
+    <string name="title_setup_theme_system">시스템 설정</string>
+    <string name="title_setup_theme_black_background">검정 배경</string>
+    <string name="title_setup_theme_html_light">원본 메시지 보기에 밝은 배경색 사용</string>
+    <string name="title_setup_theme_composer_light">메시지 편집기에 밝은 배경색 사용</string>
+    <string name="title_setup_theme_you_hint">Android Wallpaper &amp; 스타일 설정에서 Material You 색상을 지정할 수 있습니다</string>
+    <string name="title_setup_theme_system_hint">Android가 지원하는 경우 주간/야간 모드에 따라 테마가 라이트/다크로 자동 전환됩니다.</string>
+    <string name="title_setup_theme_more_colors">다른 색으로 설정하고 싶습니다</string>
+    <string name="title_setup_advanced">고급 설정</string>
+    <string name="title_setup_options">설정</string>
+    <string name="title_setup_defaults">기본값 복원</string>
+    <string name="title_setup_reset_questions">질문 초기화</string>
+    <string name="title_setup_reset_general">일반 질문</string>
+    <string name="title_setup_reset_links">링크 승인</string>
+    <string name="title_setup_reset_files">파일 보기</string>
+    <string name="title_setup_reset_images">사진 표시</string>
+    <string name="title_setup_reset_full">원본 메시지 보기</string>
+    <string name="title_check_gmail_oauth">Gmail 계정이 2022년 5월 30일 이후에도 계속 작동할 예정입니다</string>
+    <string name="title_check_gmail_password">일부 Gmail 계정이 2022년 5월 30일 이후 정지될 수 있습니다</string>
+    <string name="title_check_outlook_oauth">Outlook 계정이 2024년 9월 16일 이후에도 계속 작동할 예정입니다</string>
+    <string name="title_check_outlook_password">일부 Outlook/Hotmail/Live 계정이 2024년 9월 16일 이후 정지될 수 있습니다</string>
+    <string name="title_advanced_hint_title">고급 설정 더보기</string>
+    <string name="title_advanced_hint_message">        고급 옵션으로 이동 중입니다.
+        모든 옵션에는 일반적으로 사용되는 표준 설이 있으므로 선호하는 설정이 없는 한 변경할 필요가 없습니다.
+    </string>
+    <string name="title_advanced_hint_remark">        옵션은 탭으로 분류되고, 섹션으로 나누어져 있으며, 형태나 용도별로 구성되며, 검색 가능합니다.
+    </string>
+    <string name="title_advanced_hint_options">        대부분의 옵션이 필요하지 않으며 일부 옵션은 매우 구체적이기 때문에 
+        모든 옵션의 기능이 즉시 명확하지 않더라도 이해할 수 있습니다.
+        옵션의 개수만 보거나 모든 옵션을 바로 이해하지 못했다고 해서 나쁜 리뷰를 남기지 마세요.
+        모든 옵션이 몇몇 사람에게는 유용할지 모르지만, 여러분에게는 (아직) 유용하지 않을 수도 있습니다.</string>
+    <string name="title_advanced_hint_setup">메인 설정 화면에서 마법사 버튼을 눌러 계정을 편집할 수 있습니다.</string>
+    <string name="title_advanced_section_main">메인</string>
+    <string name="title_advanced_section_synchronize">수신</string>
+    <string name="title_advanced_section_send">발신</string>
+    <string name="title_advanced_section_connection">연결</string>
+    <string name="title_advanced_section_display">표시</string>
+    <string name="title_advanced_section_behavior">동작</string>
+    <string name="title_advanced_section_privacy">개인정보</string>
+    <string name="title_advanced_section_encryption">암호화</string>
+    <string name="title_advanced_section_notifications">알림</string>
+    <string name="title_advanced_section_misc">기타</string>
+    <string name="title_advanced_section_backup">백업</string>
+    <string name="title_advanced_default">모든 옵션에는 일반적으로 사용되는 표준 설정이 있으며, 앱을 사용하기 위해 변경할 필요가 없습니다</string>
+    <string name="title_advanced_receive">모든 계정의 메시지 수신</string>
+    <string name="title_advanced_when">일시</string>
+    <string name="title_advanced_optimize">자동으로 최적화</string>
+    <string name="title_advanced_always">이 계정들의 메시지를 항상 수신</string>
+    <string name="title_advanced_with_exceptions">다만, 다음과 같은 예외사항이 있습니다:</string>
+    <string name="title_advanced_poll_metered">데이터 네트워크를 사용할 때 새 메시지를 주기적으로 확인</string>
+    <string name="title_advanced_poll_unmetered">데이터 네트워크를 사용하지 않을 때 새 메시지를 주기적으로 확인</string>
+    <string name="title_advanced_schedule">일정</string>
+    <string name="title_advanced_schedule_workdays">평일</string>
+    <string name="title_advanced_schedule_weekend">주말</string>
+    <string name="title_advanced_advanced">고급</string>
+    <string name="title_advanced_quick_sync">빠른 동기화</string>
+    <string name="title_advanced_no_date">날짜 없는 메시지</string>
+    <string name="title_advanced_unseen">모든 읽지 않은 메시지</string>
+    <string name="title_advanced_flagged">모든 즐겨찾기 메시지</string>
+    <string name="title_advanced_delete_unseen">오래된 읽지 않은 메시지 삭제</string>
+    <string name="title_advanced_kept_removed">오래된 메시지가 서버에서 제거되었는지 확인</string>
+    <string name="title_advanced_gmail_thread">Gmail 계정을 위한 Gmail 메시지 그룹화 스타일</string>
+    <string name="title_advanced_subject_threading">보낸사람 및 제목으로 메시지 그룹화하기</string>
+    <string name="title_advanced_outlook_categories">Outlook 카테고리 동기화</string>
+    <string name="title_advanced_sync_folders">동기화 폴더 목록</string>
+    <string name="title_advanced_sync_folders_poll">폴더 목록을 동적으로 동기화</string>
+    <string name="title_advanced_sync_shared_folders">동기화 공유 폴더 목록</string>
+    <string name="title_advanced_sync_added">새 사용자 폴더에 대해 동기화 사용</string>
+    <string name="title_advanced_subscriptions">폴더 구독 관리</string>
+    <string name="title_advanced_check_authentication">메시지 인증 확인하기</string>
+    <string name="title_advanced_check_tls">전송 계층 보안 (TLS) 확인</string>
+    <string name="title_advanced_check_reply_domain">메시지 동기화 시 답장할 주소를 확인하세요</string>
+    <string name="title_advanced_check_mx">메시지 동기화 시 보낸사람 이메일 주소를 확인하세요</string>
+    <string name="title_advanced_check_blocklist">보낸사람의 도메인 이름이 스팸 차단 목록에 있는지 확인</string>
+    <string name="title_advanced_use_blocklist">차단 목록에 있는 도메인에서 온 메시지를 스팸 폴더로 이동</string>
+    <string name="title_advanced_use_blocklist_pop3">차단 목록의 도메인에서 온 메시지 건너뛰기 (POP3 전용)</string>
+    <string name="title_advanced_tune_keep_alive">Keep-live 간격 자동 조정</string>
+    <string name="title_advanced_blocklist_warning">차단 목록은 완벽하지 않으며 단순 스팸 메일 이상을 차단할 수 있습니다!</string>
+    <string name="title_advanced_keyboard">키보드를 자동으로 표시</string>
+    <string name="title_advanced_keyboard_margin">키보드 위에 여백 추가</string>
+    <string name="title_advanced_keyboard_no_fullscreen">전체화면 키보드 비활성화</string>
+    <string name="title_advanced_suggest_names">이름 및 이메일 주소 사용</string>
+    <string name="title_advanced_suggest_local">로컬에 저장된 연락처를 추천</string>
+    <string name="title_advanced_suggest_sent">발신함에서 찾은 주소를 추천</string>
+    <string name="title_advanced_suggest_received">수신함에서 찾은 주소를 추천</string>
+    <string name="title_advanced_suggest_frequently">추천된 주소를 사용 빈도에 따라 정렬</string>
+    <string name="title_advanced_suggest_account">추천을 현재 계정으로 제한</string>
+    <string name="title_advanced_auto_delete_local">다음보다 오래되고 적게 사용된 로컬 연락처를 자동으로 삭제합니다:</string>
+    <string name="title_advanced_alt_re_fwd">다른 답장/전달 시작 문구</string>
+    <string name="title_advanced_send_chips">주소 풍선 표시</string>
+    <string name="title_advanced_send_nav_color">맨 아래 작업 표시줄에 사용자 ID 색상 사용</string>
+    <string name="title_advanced_send_reminders">리마인더 표시</string>
+    <string name="title_advanced_send_delayed">메일 전송 지연</string>
+    <string name="title_advanced_send_undo">전송 취소 옵션 표시</string>
+    <string name="title_advanced_send_top">상단에 전송 버튼 표시</string>
+    <string name="title_advanced_attach_new">공유 주소 및 파일에 대한 새 임시저장 메시지 작성</string>
+    <string name="title_advanced_answer_caption">답장 버튼 설정</string>
+    <string name="title_advanced_answer_default">답장 버튼을 짧게 누르면:</string>
+    <string name="title_advanced_answer_action">답장 버튼을 길게 누르면:</string>
+    <string name="title_advanced_answer_hint">전송 설정 탭 페이지에서도 답장 버튼 동작을 지정할 수 있습니다</string>
+    <string name="title_advanced_answer_warning">선택 메뉴가 없으면 작업이 불가능한 경우가 있을 수 있습니다!</string>
+    <string name="title_advanced_send_pending">방해되지 않는 전송 지연 아이콘 표시</string>
+    <string name="title_advanced_save_revisions">되돌리기 및 재실행을 위해 임시저장 메일의 수정본을 저장</string>
+    <string name="title_advanced_auto_save_paragraph">모든 문단에 대해 자동으로 임시저장본 생성</string>
+    <string name="title_advanced_auto_save_dot">모든 문장에 대해 자동으로 임시저장본 생성</string>
+    <string name="title_advanced_compose_color">기본 글씨 색</string>
+    <string name="title_advanced_compose_font">기본 글꼴</string>
+    <string name="title_advanced_compose_monospaced">일반 텍스트 메시지에 고정폭 글꼴 사용</string>
+    <string name="title_advanced_auto_identity">새 메시지에 대한 사용자 ID를 자동으로 선택합니다</string>
+    <string name="title_advanced_prefix_once">답장 또는 전달 시 시작 문구 제목은 한 번만 가능합니다</string>
+    <string name="title_advanced_prefix_count">답장 시작 문구에 카운트 추가</string>
+    <string name="title_advanced_separate_reply">답장/전달 헤더 앞에 구분선 삽입</string>
+    <string name="title_advanced_extended_reply">확장된 답장/전달 헤더 사용</string>
+    <string name="title_advanced_template_reply">답장/전달 헤더 템플릿</string>
+    <string name="title_advanced_write_above">보낸사람의 텍스트 위에 쓰기</string>
+    <string name="title_advanced_write_below">보낸사람의 텍스트 밑에 쓰기</string>
+    <string name="title_advanced_quote_reply">답장된 텍스트 인용</string>
+    <string name="title_advanced_limit_reply">중첩 인용의 수를 제한합니다</string>
+    <string name="title_advanced_resize_reply">답장된 텍스트의 이미지 크기를 조정</string>
+    <string name="title_advanced_signature_location">서명 위치</string>
+    <string name="title_advanced_signature_new">새 메시지에 서명 사용</string>
+    <string name="title_advanced_signature_reply">답장 시 서명 사용</string>
+    <string name="title_advanced_signature_reply_once">처음 답장에만</string>
+    <string name="title_advanced_signature_forward">전달 시 서명 사용</string>
+    <string name="title_advanced_discard_delete">임지저장 메일이 영구적으로 삭제됩니다</string>
+    <string name="title_advanced_reply_move">답장 시 응답을 같은 폴더에 저장합니다</string>
+    <string name="title_advanced_reply_move_inbox">받은메일함에 있는 메시지 포함</string>
+    <string name="title_advanced_send_retry_max">최대 전송 시도 횟수</string>
+    <string name="title_advanced_send_retry_hint">연결이 변경되면 전송이 다시 시도됩니다</string>
+    <string name="title_advanced_send_partial">전송 시 잘못된 주소 무시하기</string>
+    <string name="title_advanced_send_partial_hint">일부 주소가 유효하지 않은 경우에도 다른 주소로 메시지가 전송됩니다</string>
+    <string name="title_advanced_sent_partially">메시지가 모든 수신자에게 전송되지 않았습니다</string>
+    <string name="title_advanced_auto_link">자동으로 링크 생성</string>
+    <string name="title_advanced_plain_only">기본적으로 일반 텍스트만 전송</string>
+    <string name="title_advanced_plain_only_reply">일반 텍스트 메시지에 답장할 경우에만 자동으로 일반 텍스트 적용</string>
+    <string name="title_advanced_flow">일반 텍스트에 대해 \'format flowed\' 적용</string>
+    <string name="title_advanced_usenet_signature">Usnet 서명 규칙을 따릅니다</string>
+    <string name="title_advanced_remove_signatures">인식된 서명을 제거합니다</string>
+    <string name="title_advanced_receipt">수신 확인서를 요청할 때</string>
+    <string name="title_advanced_forward_new">메일 전달 시 새로운 대화 시작하기</string>
+    <string name="title_advanced_lookup_mx">발송 전 받는사람의 이메일 주소를 확인하세요</string>
+    <string name="title_advanced_metered">과금 연결 사용</string>
+    <string name="title_advanced_download">최대 다음의 용량까지 모바일 데이터 연결에서 메시지 및 첨부 파일 자동 다운로드</string>
+    <string name="title_advanced_download_limited">Wi-Fi 연결에서도 적용하기</string>
+    <string name="title_advanced_roaming">데이터 사용 중에 메시지 및 첨부 파일 다운로드</string>
+    <string name="title_advanced_rlah">EU 내 무제한 로밍</string>
+    <string name="title_advanced_download_headers">모든 메시지 제목 다운로드</string>
+    <string name="title_advanced_download_eml">RAW 메시지 파일 다운로드</string>
+    <string name="title_advanced_download_plain">기본적으로 일반 텍스트만 다운로드 (사용 가능한 경우)</string>
+    <string name="title_advanced_validated">검증된 (확인된) 연결 필요</string>
+    <string name="title_advanced_validated_captive">검증된 캡티브 포탈 연결 필요</string>
+    <string name="title_advanced_vpn_only">VPN을 통해서만 연결</string>
+    <string name="title_advanced_timeout">연결 시 타임아웃 시간 (초)</string>
+    <string name="title_advanced_prefer_ip4">IPv6보다 IPv4 우선</string>
+    <string name="title_advanced_prefer_ip6">IPv4보다 IPv6 선호</string>
+    <string name="title_advanced_dns">선호하는 DNS 서버 주소 (콤마로 구분)</string>
+    <string name="title_advanced_dns_custom">사용자 정의 DNS resolver 사용</string>
+    <string name="title_advanced_dns_clear">연결 변경 시 DNS 캐시 삭제</string>
+    <string name="title_advanced_ssl_update">업데이트된 SSL 제공업체 사용</string>
+    <string name="title_advanced_ssl_harden">강화된 SSL 연결</string>
+    <string name="title_advanced_ssl_harden_strict">TLS 1.3 필요</string>
+    <string name="title_advanced_cert_strict">엄격한 인증서 확인</string>
+    <string name="title_advanced_cert_transparency">인증서 투명성</string>
+    <string name="title_advanced_check_names">호스트 이름과 서버 인증서 확인</string>
+    <string name="title_advanced_open_safe">보안 연결만 여시오.</string>
+    <string name="title_advanced_http_redirect">연결 리디렉션 허용</string>
+    <string name="title_advanced_bouncy_castle">Bouncy Castle의 보안 소켓 제공자 (JSSE) 사용</string>
+    <string name="title_advanced_manage_connectivity">연결 관리</string>
+    <string name="title_advanced_caption_general">일반</string>
+    <string name="title_advanced_caption_navigation">메뉴</string>
+    <string name="title_advanced_caption_checks">확인</string>
+    <string name="title_advanced_caption_list">목록</string>
+    <string name="title_advanced_caption_conversation">대화</string>
+    <string name="title_advanced_caption_message">메시지</string>
+    <string name="title_advanced_caption_message_header">메시지 제목</string>
+    <string name="title_advanced_caption_message_body">메시지 본문</string>
+    <string name="title_advanced_caption_file">파일</string>
+    <string name="title_advanced_caption_integrations">통합</string>
+    <string name="title_advanced_portrait">세로 모드</string>
+    <string name="title_advanced_landscape">가로 모드</string>
+    <string name="title_advanced_two_row">2행으로 표시</string>
+    <string name="title_advanced_two_col">2열로 표시</string>
+    <string name="title_advanced_min_screen_size">화면 분할 시 최소 화면 크기</string>
+    <string name="title_advanced_close_pane">대화 상자를 닫을 때 행 또는 열 축소</string>
+    <string name="title_advanced_column_width">메시지 열 너비 및 행 높이: %1$s %%</string>
+    <string name="title_advanced_hide_toolbar">메시지를 스크롤할 때 상단 툴바 숨기기</string>
+    <string name="title_advanced_edge_to_edge">Android 네비게이션 바에 앱 배경색 사용</string>
+    <string name="title_advanced_nav_options">탐색 메뉴 설정을 표시합니다</string>
+    <string name="title_advanced_nav_categories">탐색 메뉴에 계정 카테고리를 표시합니다</string>
+    <string name="title_advanced_nav_pin">탐색 메뉴 고정</string>
+    <string name="title_advanced_nav_hide_title">탐색 메뉴 설정을 숨길까요?</string>
+    <string name="title_advanced_nav_hide_message">디스플레이 설정에서 옵션을 다시 활성화할 수 있습니다</string>
+    <string name="title_advanced_nav_last_sync">탐색 메뉴에 마지막 동기화 시간 표시</string>
+    <string name="title_advanced_nav_message_count">탐색 메뉴에서 로컬에 저장된 메시지 수 표시</string>
+    <string name="title_advanced_nav_unseen">탐색 메뉴에 읽지 않은 메시지 수 표시</string>
+    <string name="title_advanced_nav_unseen_drafts">탐색 메뉴에서 읽지 않은 임시저장 메일 수 표시</string>
+    <string name="title_advanced_nav_pinned_count">고정된 탐색 메뉴에 읽지 않은 메시지 수 표시</string>
+    <string name="title_advanced_show_unexposed">새로 받은 읽지 않은 메시지가 있는 계정/폴더에 별표 표시</string>
+    <string name="title_advanced_startup">시작 화면을 표시합니다</string>
+    <string name="title_advanced_cards">표 스타일 대신 카드 스타일 사용</string>
+    <string name="title_advanced_category">계정 카테고리는 기본 설정 화면을 통해 고급 계정 옵션에서 설정할 수 있습니다</string>
+    <string name="title_advanced_cards_beige">카드 스타일 사용 시 베이지색 배경 사용 (라이트 테마만 해당)</string>
+    <string name="title_advanced_tabular_background">표 스타일을 사용할 때 카드 색상을 배경색으로 사용</string>
+    <string name="title_advanced_cards_shadow">카드 스타일을 사용할 때 읽지 않은 메시지에 그림자 사용하기</string>
+    <string name="title_advanced_cards_shadow_border">테두리 표시</string>
+    <string name="title_advanced_cards_shadow_highlight">강조 색상 대신 하이라이트 색상 사용하기</string>
+    <string name="title_advanced_tabular_dividers">태블릿 스타일 사용 중 구분선 표시</string>
+    <string name="title_advanced_tabular_unread_bg">표 스타일을 사용할 때 읽지 않은 메시지에 회색 배경을 사용하기</string>
+    <string name="title_advanced_date_header">날짜로 그룹화하기</string>
+    <string name="title_advanced_date_week">하루가 아닌 일주일 단위로 그룹화하기</string>
+    <string name="title_advanced_date_fixed">날짜를 상단 헤더에 고정적으로 표시</string>
+    <string name="title_advanced_date_bold">날짜를 굵게 표시</string>
+    <string name="title_advanced_date_time">항상 날짜와 시간 모두 표시</string>
+    <string name="title_advanced_threading">대화 스레딩</string>
+    <string name="title_advanced_threading_unread">대화에서 읽지 않은 메시지 갯수 표시</string>
+    <string name="title_advanced_indentation">대화에서 받은/보낸 메시지를 왼쪽/오른쪽 들여쓰기</string>
+    <string name="title_advanced_highlight_unread">읽지 않은 메세지 강조 표시</string>
+    <string name="title_advanced_account_color">색이 있는 선 또는 점 표시하기</string>
+    <string name="title_advanced_account_color_size">색이 있는 선의 너비</string>
+    <string name="title_advanced_avatars">연락처 사진 표시</string>
+    <string name="title_advanced_bimi">Brand Indicators for Message Identification (BIMI) 표시하기</string>
+    <string name="title_advanced_bimi_vmc">유효한 VMC 인증서가 필요합니다</string>
+    <string name="title_advanced_bimi_unverified">확인되지 않은 발신자</string>
+    <string name="title_advanced_bimi_verified">확인된 발신자</string>
+    <string name="title_advanced_gravatars">그라바타 표시</string>
+    <string name="title_advanced_libravatars">리브라바타 표시</string>
+    <string name="title_advanced_favicons">파비콘 표시</string>
+    <string name="title_advanced_favicons_partial">웹 페이지의 첫 %1$s만 스캔</string>
+    <string name="title_advanced_favicons_manifest">웹 앱 매니페스트 스캔하기</string>
+    <string name="title_advanced_ddg">DuckDuckGo로 아이콘 표시하기</string>
+    <string name="title_advanced_favicons_dmarc">외부 이미지에 DMARC 인증 요구하기</string>
+    <string name="title_advanced_generated_icons">생성된 아이콘 표시</string>
+    <string name="title_advanced_identicons">아이덴티콘 표시</string>
+    <string name="title_advanced_circular">둥근 아이콘 표시</string>
+    <string name="title_advanced_color_saturation">채도: %1$s %%</string>
+    <string name="title_advanced_color_value">밝기: %1$s %%</string>
+    <string name="title_advanced_color_threshold">글자 색 임계값: %1$s %%</string>
+    <string name="title_advanced_name_email">이름 및 이메일 주소 표시</string>
+    <string name="title_advanced_replace_name">보낸 이름보다 연락처에 저장된 이름을 우선시 합니다</string>
+    <string name="title_advanced_only_name">연락처 이름만 표시</string>
+    <string name="title_advanced_distinguish_contacts">보낸사람이 로컬 연락처에 있을 때 발신인에게 밑줄을 표시합니다</string>
+    <string name="title_advanced_show_recipients">메시지 헤더에 받는사람 표시</string>
+    <string name="title_advanced_reverse_addresses">보낸 메시지에 받는사람 표시</string>
+    <string name="title_advanced_font_size_sender">보낸사람의 텍스트 크기</string>
+    <string name="title_advanced_sender_ellipsize">필요한 경우 보낸사람을 단축하여 표시합니다</string>
+    <string name="title_advanced_subject_top">보낸사람 위에 주제 표시</string>
+    <string name="title_advanced_subject_italic">제목을 이탤릭체로 표시</string>
+    <string name="title_advanced_highlight_subject">제목 강조</string>
+    <string name="title_advanced_font_size_subject">제목 크기</string>
+    <string name="title_advanced_subject_ellipsize">필요한 경우 제목을 단축하여 표시합니다</string>
+    <string name="title_advanced_compact_mode_remark">컴팩트 모드 전용</string>
+    <string name="title_advanced_highlight_color">강조 색</string>
+    <string name="title_advanced_keywords">메시지 헤더에 키워드 표시</string>
+    <string name="title_advanced_labels">메시지 헤더에 Gmail 레이블 표시</string>
+    <string name="title_advanced_flags">즐겨찾기 보기</string>
+    <string name="title_advanced_flags_background">색칠된 별표 대신 색칠된 배경 보여주기</string>
+    <string name="title_advanced_preview">메시지 미리보기 표시</string>
+    <string name="title_advanced_preview_italic">메시지 미리보기를 기울임꼴로 표시</string>
+    <string name="title_advanced_preview_lines">미리보기 줄 수</string>
+    <string name="title_advanced_align_header">키워드, 미리보기 텍스트, 메모를 수직으로 정렬하기</string>
+    <string name="title_advanced_addresses">주소 상세정보를 기본으로 펼치기</string>
+    <string name="title_advanced_hide_attachments">첨부 파일을 자동으로 숨기기</string>
+    <string name="title_advanced_unzip">압축한 첨부 파일의 내용 표시</string>
+    <string name="title_advanced_attachments_alt">메시지 택스트 이후에 첨부파일 표시</string>
+    <string name="title_advanced_thumbnails">메시지 텍스트 이후에 이미지 썸네일 표시</string>
+    <string name="title_advanced_pdf_preview">PDF 썸네일 표시</string>
+    <string name="title_advanced_video_preview">영상 썸네일 표시</string>
+    <string name="title_advanced_audio_preview">미니 오디오 플레이어 표시하기</string>
+    <string name="title_advanced_barcode_preview">바코드 내용 표시</string>
+    <string name="title_advanced_message_text_zoom2">기본 메시지 글자 배율: %1$s %%</string>
+    <string name="title_advanced_editor_text_zoom">메시지 글자 배율을 메시지 편집기에도 적용</string>
+    <string name="title_advanced_overview_mode">화면에 맞춰 원본 메시지를 조정하기</string>
+    <string name="title_advanced_line_spacing">줄 간격: %1$s %%</string>
+    <string name="title_advanced_hyphenation">하이픈 자동 삽입</string>
+    <string name="title_advanced_contrast">메시지 텍스트에 고대비 적용</string>
+    <string name="title_advanced_monospaced">기본적으로 메시지 텍스트에 고정폭 글꼴 사용</string>
+    <string name="title_advanced_monospaced_pre">사전 서식 지정된 텍스트에 고정폭 글꼴 사용</string>
+    <string name="title_advanced_background_color">배경색 사용</string>
+    <string name="title_advanced_text_color">글씨 색상 사용</string>
+    <string name="title_advanced_text_size">글씨 크기 사용</string>
+    <string name="title_advanced_text_font">글꼴 사용</string>
+    <string name="title_advanced_text_align">글자 정렬 사용</string>
+    <string name="title_advanced_text_titles">{HTML titles} 표시</string>
+    <string name="title_advanced_text_separators">구분선 사용</string>
+    <string name="title_advanced_collapse_quotes">인용한 텍스트 접기</string>
+    <string name="title_advanced_image_placeholders">사진 자리표시자 표시</string>
+    <string name="title_advanced_images_inline">자동으로 인라인 사진 표시</string>
+    <string name="title_advanced_button_extra">메시지 하단에 추가 버튼 표시</string>
+    <string name="title_advanced_spacing">메시지와 대화 사이 간격</string>
+    <string name="title_advanced_seekbar">관련있는 대화의 위치를 점으로 보여주기</string>
+    <string name="title_advanced_actionbar">대화 액션 바 보여주기</string>
+    <string name="title_advanced_actionbar_swap">휴지통과 보관 버튼 바꾸기</string>
+    <string name="title_advanced_actionbar_color">계정 색상을 대화 액션 바의 배경색으로 사용</string>
+    <string name="title_advanced_category_header">계정 카테고리로 그룹화하기</string>
+    <string name="title_advanced_list_count">상단 액션 바에 메시지나 대화의 수를 보여주기</string>
+    <string name="title_advanced_bundled_fonts">번들 글꼴 사용</string>
+    <string name="title_advanced_narrow_fonts">좁은 폭 글꼴 사용</string>
+    <string name="title_advanced_parse_classes">CSS 구문 분석</string>
+    <string name="title_advanced_authentication">인증 경고 표시</string>
+    <string name="title_advanced_authentication_hint">수신 설정에서 확인 내용을 설정할 수 있습니다</string>
+    <string name="title_advanced_authentication_indicator">인증 상태 표시기를 표시하기</string>
+    <string name="title_advanced_authentication_none">인증 없음</string>
+    <string name="title_advanced_authentication_some">부분적 인증</string>
+    <string name="title_advanced_authentication_all">완전한 인증</string>
+    <string name="title_advanced_restore_on_launch">앱 설정 초기화</string>
+    <string name="title_advanced_sync_on_launch">실행 시 동기화</string>
+    <string name="title_advanced_double_back">2번 눌러 종료</string>
+    <string name="title_advanced_conversation_actions">동작 추천 (Android 10 이상)</string>
+    <string name="title_advanced_conversation_actions_replies">답장 내용 추천 (Android 10 이상)</string>
+    <string name="title_advanced_language_detection">메시지 본문 언어 감지</string>
+    <string name="title_advanced_photo_picker">Android 사진 선택 사용하기</string>
+    <string name="title_advanced_pull_refresh">아래로 당겨 새로고침</string>
+    <string name="title_advanced_pull_all">모든 폴더 동기화</string>
+    <string name="title_advanced_autoscroll">상단으로 스크롤하여 새 메시지 받기</string>
+    <string name="title_advanced_double_tap">2번 눌러 메시지를 읽음/읽지 않음으로 표시</string>
+    <string name="title_advanced_swipenav">좌우로 밀어 전후 대화로 이동</string>
+    <string name="title_advanced_volumenav">음량 상하 버튼을 눌러 전후 대화로 이동</string>
+    <string name="title_advanced_up_down">상하 키로 전후 대화로 이동</string>
+    <string name="title_advanced_reversed">탐색 방향 반전</string>
+    <string name="title_advanced_swipe_close">아래로 밀어 대화 닫기</string>
+    <string name="title_advanced_swipe_move">위로 밀어 대화 이동</string>
+    <string name="title_advanced_autoexpand">메시지를 자동으로 펼치기</string>
+    <string name="title_advanced_expand_first">대화를 읽을 때 첫 메시지를 자동으로 펼치기</string>
+    <string name="title_advanced_expand_all">모든 메시지를 자동으로 펼치기</string>
+    <string name="title_advanced_expand_one">한 번에 하나의 메시지만 펼치기</string>
+    <string name="title_advanced_collapse_multiple">뒤로가기를 누르면 여러 메시지가 포함된 대화를 접습니다</string>
+    <string name="title_advanced_seen_delay">메시지를 지연 시간 후 자동으로 읽기 표시 설정</string>
+    <string name="title_advanced_autoclose">자동으로 대화 닫기</string>
+    <string name="title_advanced_autoclose_send">메세지 전송 후 자동으로 대화 닫기</string>
+    <string name="title_advanced_onclose">대화를 닫을 시</string>
+    <string name="title_advanced_autoclose_unread">읽지 않음으로 표시한 메시지 닫기</string>
+    <string name="title_advanced_collapse_marked">수동으로 읽음 또는 읽지 않음으로 표시된 메시지 접기</string>
+    <string name="title_advanced_undo">되돌리기 타임아웃 시간</string>
+    <string name="title_advanced_quick_filter">눈에 잘 띄지 않는 퀵 필터 아이콘 표시</string>
+    <string name="title_advanced_quick_scroll">눈에 잘 띄지 않는 퀵 스크롤 위/아래 아이콘 표시</string>
+    <string name="title_advanced_quick_actions">메시지 선택 시 빠른 동작 메뉴 표시</string>
+    <string name="title_advanced_folder_nav">항상 메시지 목록에서 폴더 목록으로 돌아가기</string>
+    <string name="title_advanced_autoread">옮기는 메시지를 자동으로 읽음 표시</string>
+    <string name="title_advanced_autounstar">옮기는 메시지에서 별 표시 자동 제거</string>
+    <string name="title_advanced_reset_importance">옮기는 메시지의 중요도 초기화</string>
+    <string name="title_advanced_star_snoozed">반복 알림 설정한 메시지에 자동으로 별 표시 추가</string>
+    <string name="title_advanced_star_unsnoozed">반복 알림 해제 메시지의 별 표시 자동 제거</string>
+    <string name="title_advanced_important_unsnoozed">반복 알림 해제 메시지에 자동으로 중요 표시</string>
+    <string name="title_advanced_auto_important">별 표시된 메시지에 자동으로 중요 표시</string>
+    <string name="title_advanced_cancel_snooze">옮기는 메시지의 반복 알림 해제</string>
+    <string name="title_advanced_auto_block_sender">스팸 신고 시 보낸사람 자동 차단</string>
+    <string name="title_advanced_auto_hide_answer">스크롤 시 자동으로 답장 버튼 숨기기</string>
+    <string name="title_advanced_swipe_reply">답장하려면 펼쳐진 메시지를 오른쪽으로 스와이프하세요</string>
+    <string name="title_advanced_move_thread_all">선택한 대화를 옮길 때 모든 메시지 옮기기</string>
+    <string name="title_advanced_move_thread_sent">대화를 옮길 때 보낸 메시지도 함께 옮기기</string>
+    <string name="title_advanced_swipe_trash_all">대화를 삭제할 때 모든 메시지를 삭제</string>
+    <string name="title_advanced_gmail_delete_all">메시지를 영구 삭제할 때 Gmail 레이블 제거</string>
+    <string name="title_advanced_default_snooze">기본 알림 일시 중지 시간</string>
+    <string name="title_advanced_default_folder">기본 폴더 선택</string>
+    <string name="title_advanced_notifications">알림 관리</string>
+    <string name="title_advanced_notifications_delete">알림 채널 삭제</string>
+    <string name="title_advanced_notifications_default">기본 채널</string>
+    <string name="title_advanced_notifications_service">채널 모니터링</string>
+    <string name="title_advanced_notifications_newest_first">새 알림을 먼저 표시</string>
+    <string name="title_advanced_badge">런처 아이콘에 새로운 메세지 수 표시</string>
+    <string name="title_advanced_unseen_ignored">새 메시지 숫자와 알림 숫자를 일치하게 표시</string>
+    <string name="title_advanced_notify_grouping">그룹 알림</string>
+    <string name="title_advanced_notify_private">기기가 잠금 상태일 때 알림 내용 표시 안 함</string>
+    <string name="title_advanced_notify_background">백그라운드에서만 알림 표시</string>
+    <string name="title_advanced_notify_known">연락처에서만 알림 표시</string>
+    <string name="title_advanced_notify_suppress_in_call">통화 중 알림을 표시하지 않음</string>
+    <string name="title_advanced_notify_suppress_in_car">Android Auto에 연결되면 알림 미루기</string>
+    <string name="title_advanced_notify_summary">요약돤 알림만 표시</string>
+    <string name="title_advanced_notify_subject">알림에 제목을 표시합니다</string>
+    <string name="title_advanced_notify_preview">알림에 메세지 미리보기 표시</string>
+    <string name="title_advanced_notify_preview_all">모든 내용 미리보기</string>
+    <string name="title_advanced_notify_preview_only">알림에 미리보기 텍스트만 표시</string>
+    <string name="title_advanced_notify_transliterate">라틴 알파벳으로 음역</string>
+    <string name="title_advanced_notify_ascii">ASCII 텍스트만 보이기</string>
+    <string name="title_advanced_notify_actions">알림 동작</string>
+    <string name="title_advanced_notify_action_trash">삭제</string>
+    <string name="title_advanced_notify_action_delete">제거</string>
+    <string name="title_advanced_notify_action_junk">스팸</string>
+    <string name="title_advanced_notify_action_archive">보관</string>
+    <string name="title_advanced_notify_action_move">이동</string>
+    <string name="title_advanced_notify_action_reply">답장</string>
+    <string name="title_advanced_notify_action_reply_direct">답장</string>
+    <string name="title_advanced_notify_action_flag">즐겨찾기</string>
+    <string name="title_advanced_notify_action_seen">읽음</string>
+    <string name="title_advanced_notify_action_hide">숨김</string>
+    <string name="title_advanced_notify_action_snooze">미루기</string>
+    <string name="title_advanced_notify_remove">알림 클릭 시 새 메세지 알림 지우기</string>
+    <string name="title_advanced_notify_clear">메시지 목록 보기에서 새 메시지 알림 제거</string>
+    <string name="title_advanced_notify_subtext">부가 텍스트로 계정이나 폴더명 보기</string>
+    <string name="title_advanced_wearable_preview">웨어러블 디바이스에서 메시지 미리보기 알림만 표시</string>
+    <string name="title_advanced_notify_messaging">Android의 \'messaging style\' 알림 형식 사용</string>
+    <string name="title_advanced_biometrics_notify">생체 인증 사용시 알림의 내용 표시</string>
+    <string name="title_advanced_notify_open_folder">새 메시지를 열 때 폴더 열기</string>
+    <string name="title_advanced_light">알림 LED 활성화</string>
+    <string name="title_advanced_sound">알림음 선택</string>
+    <string name="title_advanced_notify_screen_on">새 메시지 알림을 표시하기 위해 화면을 잠시 켜기</string>
+    <string name="title_advanced_notifications_background">메시지 동기화를 위해 백그라운드 서비스 사용</string>
+    <string name="title_advanced_notifications_background_hint">백그라운드 서비스는 Android에 의해 언제든 중단될 수 있지만, 상태 표시줄 알림을 필요로 하지 않습니다</string>
+    <string name="title_advanced_rate_limit">한 번에 울리는 새 메시지 알림음 횟수 제한:</string>
+    <string name="title_advanced_confirm_links">링크 열기 승인</string>
+    <string name="title_advanced_confirm_files">파일 보기 승인</string>
+    <string name="title_advanced_sanitize_links">자동으로 추적 매개변수 제거</string>
+    <string name="title_advanced_sanitize_links_hint">링크 확인 시에만</string>
+    <string name="title_advanced_adguard">AdGuard 필터 목록 사용하기</string>
+    <string name="title_advanced_adguard_weekly">매주 자동으로 다운</string>
+    <string name="title_advanced_check_links_dbl">의심스러운 링크가 있는지 도메인 차단 목록 확인</string>
+    <string name="title_advanced_confirm_images">기본적으로 이미지 표시 안 함</string>
+    <string name="title_advanced_ask_images">이미지 표시를 승인</string>
+    <string name="title_advanced_confirm_html">기본적으로 재구성된 메시지 표시</string>
+    <string name="title_advanced_ask_html">원본 메시지 표시를 승인</string>
+    <string name="title_advanced_tracking">트래킹 이미지 식별 및 비활성화를 시도합니다</string>
+    <string name="title_advanced_hide_timezone">시간대 정보 없이 메시지 보내기</string>
+    <string name="title_advanced_client_id">앱 이름 및 버전을 이메일 서버로 전송</string>
+    <string name="title_advanced_display_hidden">숨겨진 메시지 텍스트 표시</string>
+    <string name="title_advanced_incognito_keyboard">Incognito 키보드 사용 (안드로이드 8 이상)</string>
+    <string name="title_advanced_secure">최근 앱 화면에서 숨기기 및 스크린샷 방지</string>
+    <string name="title_advanced_pin">PIN</string>
+    <string name="title_advanced_biometrics_timeout">생체 인증 시 타임아웃 시간</string>
+    <string name="title_advanced_autolock">화면이 꺼질 때 잠금</string>
+    <string name="title_advanced_autolock_nav">앱을 끌 시 잠그기</string>
+    <string name="title_advanced_generic_user_agent">일반 브라우저의 사용자 에이전트를 사용합니다</string>
+    <string name="title_advanced_load_emoji">Google Play Services에서 업데이트된 이모지 불러오기</string>
+    <string name="title_advanced_disconnect_auto_update">메주 목록을 자동으로 업데이트합니다</string>
+    <string name="title_advanced_disconnect_links">목록을 사용하여 링크 추적에 대해 경고합니다</string>
+    <string name="title_advanced_disconnect_images">추적 이미지 목록 사용</string>
+    <string name="title_advanced_clear_all_hint">이는 설정된 이메일 계정, 메시지, 설정 및 수집된 데이터를 포함하여 기기에서 모든 앱 데이터를 삭제합니다.</string>
+    <string name="title_advanced_mnemonic">원격 데이터 삭제</string>
+    <string name="title_advanced_mnemonic_hint">제목에 아래 단어가 포함된 이메일을 받은 경우 자동으로 이 기기의 모든 앱 데이터를 즉시 삭제합니다</string>
+    <string name="title_advanced_clear_all">앱 데이터 삭제</string>
+    <string name="title_advanced_clear_all_remark">앱 데이터가 삭제되며 되돌릴 수 없습니다!</string>
+    <string name="title_advanced_default_encryption">        기본 암호화 방식(PGP 또는 S/MIME)은 서명 또는 암호화된 메시지를 전송한 후 사용자 ID별로 저장됩니다.
+        메시지를 보내기 전에 전송 설정 대화 상자에서 암호화 방법을 선택할 수 있습니다(전송 버튼을 길게 누르세요).
+    </string>
+    <string name="title_advanced_sign_default">자동으로 서명</string>
+    <string name="title_advanced_encrypt_default">기본 설정으로 서명 및 암호화를 사용합니다</string>
+    <string name="title_advanced_encrypt_auto">모든 수신인의 키를 사용할 수 있을 때 자동으로 암호화</string>
+    <string name="title_advanced_encrypt_reply">암호화된 메시지에 답장할 때 자동으로 암호화</string>
+    <string name="title_advanced_auto_verify">서명된 메시지 자동으로 인증 확인</string>
+    <string name="title_advanced_auto_decrypt">자동으로 메세지 복호화</string>
+    <string name="title_advanced_auto_undo_decrypt">대화를 닫을 때 복호화 취소</string>
+    <string name="title_advanced_openpgp">OpenPGP 제공업체</string>
+    <string name="title_advanced_autocrypt">Autocrypt 사용</string>
+    <string name="title_advanced_autocrypt_mutual">상호 자동 암호화 모드</string>
+    <string name="title_advanced_encrypt_subject">제목 암호화</string>
+    <string name="title_advanced_import_pgp">키 가져오기</string>
+    <string name="title_advanced_sign_algo">서명 알고리즘</string>
+    <string name="title_advanced_encrypt_algo">암호화 알고리즘</string>
+    <string name="title_advanced_remark_algo">        모든 이메일 클라이언트가 모든 알고리즘을 지원하는 것은 아닙니다.
+        기본 알고리즘인 SHA256과 AES128은 공통적으로 지원됩니다.
+    </string>
+    <string name="title_advanced_check_certificate">전송 시 공개 키 확인</string>
+    <string name="title_advanced_check_key_usage">전송할 때 키 사용 표시 여부 확인</string>
+    <string name="title_advanced_manage_certificates">공개 키 관리</string>
+    <string name="title_advanced_import_key">개인 키 불러오기</string>
+    <string name="title_advanced_manage_keys">개인 키 관리</string>
+    <string name="title_advanced_ca">설치된 CA 인증서</string>
+    <string name="title_advanced_manage_keys_hint">        안드로이드 보안 설정을 엽니다.
+        개인 키와 인증서는 일반적으로 고급 - 암호화 및 자격 증명 메뉴에 있습니다.
+    </string>
+    <string name="title_advanced_power_menu">Android 전원 메뉴에 동작 추가</string>
+    <string name="title_advanced_send_self">안드로이드 공유 메뉴에 \'나에게 보내기\' 추가</string>
+    <string name="title_advanced_external_search">안드로이드 텍스트 선택 메뉴에 \'FairEmail 검색\' 추가</string>
+    <string name="title_advanced_sort_answers">답장 템플릿을 사용 빈도순으로 정렬</string>
+    <string name="title_advanced_shortcuts">안드로이드 공유 메뉴에 자주 사용한 연락처 보이기</string>
+    <string name="title_advanced_ical_tentative">수신한 초대를 \'미정\' 으로 저장합니다</string>
+    <string name="title_advanced_ical_email">회의 참석자의 이메일 주소를 저장합니다</string>
+    <string name="title_advanced_fts">검색 인덱스를 적용합니다</string>
+    <string name="title_advanced_fts_indexed">%1$d / %2$d 메시지 분류 완료 (저장 공간 %3$s 사용)</string>
+    <string name="title_advanced_classification">메시지를 분류합니다</string>
+    <string name="title_advanced_class_min_chance">최소 분류 확률: %1$s %%</string>
+    <string name="title_advanced_class_min_difference">최소 클래스 차이: %1$s %%</string>
+    <string name="title_advanced_show_filtered">규칙이 적용되었을 때 필터 아이콘 표시</string>
+    <string name="title_advanced_haptic_feedback">중요한 행동을 할 때 진동 반응</string>
+    <string name="title_advanced_haptic_feedback_swipe">왼쪽/오른쪽으로 스와이프할 때 진동 반응</string>
+    <string name="title_advanced_language">언어</string>
+    <string name="title_advanced_language_system">시스템</string>
+    <string name="title_advanced_integrations_hint">아래의 클라우드 서비스는 앱에 포함되어 있지 않습니다. 모든 결제는 앱 개발자가 아닌 클라우드 서비스로 연결됩니다.</string>
+    <string name="title_advanced_integrations_inert">설정되지 않은 연동 서비스는 완전히 비활성화됩니다. 추적 또는 분석을 방지하기 위해 제3자 라이브러리는 사용되지 않습니다.</string>
+    <string name="title_advanced_lt">LanguageTool 연동</string>
+    <string name="title_advanced_lt_sentence">모든 문장 검사하기</string>
+    <string name="title_advanced_lt_auto">새 줄 뒤에 단락 확인</string>
+    <string name="title_advanced_lt_highlight">검사 중인 텍스트 강조 표시</string>
+    <string name="title_advanced_lt_description">상세 오류 내용을 팝업 표시</string>
+    <string name="title_advanced_lt_user">사용자 이름 (선택사항)</string>
+    <string name="title_advanced_lt_key">API 키 (선택사항)</string>
+    <string name="title_advanced_deepl">DeepL 연동</string>
+    <string name="title_advanced_virus_total">VirusTotal 연동</string>
+    <string name="title_advanced_send">Send 연동</string>
+    <string name="title_advanced_openai">OpenAI (ChatGPT) 연동</string>
+    <string name="title_advanced_openai_model">모델</string>
+    <string name="title_advanced_openai_temperature">온도: %1$s</string>
+    <string name="title_advanced_openai_moderation">콘텐츠 검토</string>
+    <string name="title_advanced_gemini">Gemini 연동</string>
+    <string name="title_advanced_multi_modal">멀티모달</string>
+    <string name="title_advanced_summarize_prompt">요약 프롬프트</string>
+    <string name="title_advanced_answer_prompt">답변 프롬프트</string>
+    <string name="title_advanced_system_instructions">시스템 지침</string>
+    <string name="title_advanced_default_prompt">기본 프롬프트</string>
+    <string name="title_advanced_ai">AI</string>
+    <string name="title_advanced_ai_input_system">입력 시스템 프롬프트</string>
+    <string name="title_advanced_ai_input_body">메시지 내용을 입력하세요</string>
+    <string name="title_advanced_ai_input_reply">답변 메시지 내용을 입력하십시오</string>
+    <string name="title_advanced_entered_text">입력된 텍스트</string>
+    <string name="title_advanced_sdcard">SD 카드를 사용하시기 바랍니다</string>
+    <string name="title_advanced_watchdog">주기적으로 FairEmail이 활성화 상태인지 확인하기</string>
+    <string name="title_advanced_updates">GitHub 업데이트 확인</string>
+    <string name="title_advanced_check_weekly">매일이 아닌 매주 확인합니다</string>
+    <string name="title_advanced_beta">BigBucket에서 테스트 버전을 확인하세요</string>
+    <string name="title_advanced_changelog">업데이트 후 변경 로그 표시</string>
+    <string name="title_advanced_announcements">공지를 확인하세요</string>
+    <string name="title_advanced_experiments">실험적 기능 사용해보기</string>
+    <string name="title_advanced_crash_reports">오류 보고서 보내기</string>
+    <string name="title_advanced_cleanup_attachments">오래된 메세지의 첨부파일 삭제하기</string>
+    <string name="title_advanced_cleanup">비우기</string>
+    <string name="title_advanced_google_backup">Android 데이터 백업 사용</string>
+    <string name="title_advanced_app">앱 설정</string>
+    <string name="title_advanced_more">설정 더보기</string>
+    <string name="title_advanced_main_log">메인 로깅</string>
+    <string name="title_advanced_main_log_mem">로그 메모리 사용량</string>
+    <string name="title_advanced_protocol">프로토콜 로깅</string>
+    <string name="title_advanced_log_info">디버그 기록</string>
+    <string name="title_advanced_debug">디버그 모드</string>
+    <string name="title_advanced_manual_hint">메시지 수신이 비활성화된 경우에도 메시지 목록을 밑으로 내려 수동으로 메시지를 수신할 수 있습니다</string>
+    <string name="title_advanced_poll_battery">배터리 사용량이 증가할 수 있습니다!</string>
+    <string name="title_advanced_poll_hint">주기적으로 새 메시지를 확인하면 매번 오프라인 메시지와 온라인 메시지를 비교하게 되므로, 배터리 사용량이 증가할 수 있습니다. 항상 수신 기능은 변경사항을 그때그때 반영하므로 이런 현상을 막을 수 있습니다.</string>
+    <string name="title_advanced_optimize_hint">이메일 서버의 기능 및 동작에 따라 동기화 빈도를 변경하여 배터리 사용량을 줄입니다</string>
+    <string name="title_advanced_schedule_hint">시간을 탭하여 시간 설정</string>
+    <string name="title_advanced_schedule_ignore">고급 계정 설정에서 일정을 비활성화할 수 있습니다</string>
+    <string name="title_advanced_quick_sync_hint">데이터 사용량이 감소하지만 이메일 서버가 표준을 준수하지 않을 경우 메시지를 수신하지 않습니다</string>
+    <string name="title_advanced_no_date_hint">일부 제공업체는 날짜를 알 수 없거나, 유효하지 않거나, 미래 날짜가 있는 메시지를 날짜가 없는 메시지로 저장합니다</string>
+    <string name="title_advanced_unseen_hint">일부 제공업체가 이를 제대로 지원하지 않아 메시지를 아예 동기화하지 않거나 모두 동기화해버릴 수 있음</string>
+    <string name="title_advanced_data_usage">데이터 사용량이 증가할 수 있습니다!</string>
+    <string name="title_advanced_deleted_unseen">비활성화된 경우 읽지 않은 메시지는 기기에 영구히 보관됩니다</string>
+    <string name="title_advanced_sync_kept_hint">설정 시 추가 데이터를 전송하고 추가 배터리 전력을 소비하며, 기기에 많은 메시지가 저장되어 있을 경우 심해집니다.</string>
+    <string name="title_advanced_gmail_thread_hint">이 사항은 새로 받은 메시지에만 적용되며 기존 그룹을 훼손할 수 있습니다</string>
+    <string name="title_advanced_subject_threading_hint">최근 %1$d시간 동안 수신된 메시지만</string>
+    <string name="title_advanced_outlook_categories_hint">Outlook 카테고리는 Outlook IMAP 서버 제한 정책으로 가져오기만 가능하며 자동으로 갱신할 수 없습니다</string>
+    <string name="title_advanced_sync_folders_hint">비활성화하면 데이터 및 배터리 사용량이 다소 감소하지만 폴더 목록 업데이트도 비활성화됩니다</string>
+    <string name="title_advanced_poll_folders_hint">계정에 연결한 후 주기적으로 폴더 목록 동기화합니다</string>
+    <string name="title_advanced_check_authentication_hint">이메일 서버에서 수행한 DKIM, SPF, DMARC 인증 결과를 확인합니다</string>
+    <string name="title_advanced_check_tls_hint">메시지가 모든 서버에서 안전하게 전송된 경우에만 녹색 방패 아이콘이 표시됩니다.</string>
+    <string name="title_advanced_check_reply_hint">보낸사람의 도메인 이름과 답장할 주소가 동일한지 확인합니다</string>
+    <string name="title_advanced_lookup_mx_hint">DNS MX 레코드가 존재하는지 확인합니다</string>
+    <string name="title_advanced_sync_delay_hint">메시지 동기화 속도가 느려집니다</string>
+    <string name="title_advanced_folder_nav_hint">메시지 목록 화면에서 뒤로 이동하면 항상 관련 계정의 폴더 목록으로 이동합니다</string>
+    <string name="title_advanced_pull_all_hint">폴더 또는 계정 목록을 아래로 당길 때</string>
+    <string name="title_advanced_suggest_names_hint">비활성화된 경우 연락처 선택 시 이메일 주소만 사용됩니다</string>
+    <string name="title_advanced_suggest_local_hint">Android에서 제공하는 연락처 이외. 활성화된 경우에만 새로 보내거나 받은 메시지에 대해 연락처 데이터가 저장됩니다.</string>
+    <string name="title_advanced_suggest_account_hint">Android 주소록의 연락처가 특정 계정에 연결되어 있지 않기 때문에 이는 로컬 연락처에만 적용됩니다</string>
+    <string name="title_advanced_auto_identity_hint">새 메시지의 수신자를 선택할 때 마지막으로 사용된 사용자 ID를 선택합니다</string>
+    <string name="title_advanced_send_reminders_hint">메시지 텍스트 또는 제목이 비어 있거나 파일 첨부에 실패했을 가능성이 있는 경우 경고를 표시합니다</string>
+    <string name="title_advanced_reply_move_hint">이메일 서버는 계속해서 보낸 메시지 폴더에 메시지를 추가할 수 있습니다</string>
+    <string name="title_advanced_compose_color_hint">색상이 매우 밝거나 매우 어두운 경우 받는사람 측에서 읽기 어려운 메시지가 표시됩니다</string>
+    <string name="title_advanced_compose_font_hint">기본값에서는 받는 쪽에서 설정한 폰트가 적용됩니다</string>
+    <string name="title_advanced_template_reply_hint">HTML이 허용됩니다. 사용 가능한 플레이스홀더: %1$s</string>
+    <string name="title_advanced_write_below_hint">긴 메시지가 잘리는 등의 경우 받는사람이 답장을 보지 못할 수 있습니다</string>
+    <string name="title_advanced_attach_new_hint">그렇지 않으면 공유 주소 또는 파일을 현재 임시저장 메시지에 추가합니다</string>
+    <string name="title_advanced_usenet_hint">텍스트와 서명 사이에 \'-- \' 문자열 삽입</string>
+    <string name="title_advanced_remove_signature_hint">텍스트가 너무 적게 또는 많이 제거될 수 있습니다</string>
+    <string name="title_advanced_metered_hint">요금이 부과되는 연결은 보통 모바일 데이터나 유료 와이파이 핫스팟입니다</string>
+    <string name="title_advanced_metered_warning">비활성화할 경우 모바일 데이터로 메시지를 주고받을 수 없습니다</string>
+    <string name="title_advanced_rlah_hint">EU 내에서 로밍을 사용하지 않는다고 가정합니다</string>
+    <string name="title_advanced_usage_hint">이는 배터리, 데이터 및 저장 공간 사용량을 증가시킵니다</string>
+    <string name="title_advanced_plain_hint">데이터 사용량이 감소하지만 메시지에서 스타일과 이미지가 제거됩니다</string>
+    <string name="title_advanced_plain_remark">일반 텍스트 부분에는 항상 전체 메시지가 포함되어 있지는 않습니다!</string>
+    <string name="title_advanced_tcp_keep_alive_hint">활성화하면 일부 기기에서 연결 문제가 발생할 수 있으며 배터리 사용량이 증가할 수 있습니다</string>
+    <string name="title_advanced_validate_hint">이로 인해 VPN을 사용하는 등의 상황에서 메시지가 동기화되지 않을 수 있습니다.</string>
+    <string name="title_advanced_timeout_hint">읽기/쓰기 타임아웃은 접속 타임아웃의 두 배로 설정됩니다. 값을 크게 하면 배터리 사용이 증가합니다.</string>
+    <string name="title_advanced_cert_strict_hint">설정을 끄면 서버 인증서 체크를 느슨하게 하게 됩니다</string>
+    <string name="title_advanced_ssl_harden_hint">이 기능을 활성화할 경우 취약한 SSL 프로토콜 및 암호화가 비활성화되어 연결 문제가 발생할 수 있습니다</string>
+    <string name="title_advanced_open_safe_hint">이 설정을 켜면 이미지 등 콘텐츠를 다운로드 할 때 보안 연결을 사용합니다.</string>
+    <string name="title_advanced_roaming_hint">로밍 시 메시지 헤더를 항상 불러옵니다. 기기의 로밍 설정을 사용하여 로밍 중에 인터넷을 비활성화할 수 있습니다.</string>
+    <string name="title_advanced_browse_hint">아래로 스크롤하여 메시지 더보기</string>
+    <string name="title_advanced_layout_hint">메시지 보기 화면 상단의 작업 표시줄 메뉴에서 더 간결한 레이아웃으로 전환하고 메시지 텍스트 크기를 변경할 수 있습니다</string>
+    <string name="title_advanced_startup_hint">통합메일함에 폴더 목록의 폴더를 추가 또는 제거하려면 길게 누르세요</string>
+    <string name="title_advanced_date_hint">메시지가 시간별로 정렬된 경우 날짜별로만 그룹화됩니다</string>
+    <string name="title_advanced_navbar_colorize_hint">작동 여부는 Android 버전 등에 다릅니다</string>
+    <string name="title_advanced_split_hint">화면을 여러 부분으로 분할합니다</string>
+    <string name="title_advanced_split_min_hint">폴더블 기기를 위한 조건입니다</string>
+    <string name="title_advanced_threading_hint">서로 관련된 메시지를 그룹화하기</string>
+    <string name="title_advanced_indentation_hint">카드 스타일 전용</string>
+    <string name="title_advanced_highlight_hint">테마의 주요 색상은 강조 표시에 사용됩니다</string>
+    <string name="title_advanced_free">이 클라우드 서비스는 무료 입니다</string>
+    <string name="title_advanced_free_tier">이 클라우드 서비스는 무료 티어를 제공합니다</string>
+    <string name="title_advanced_paid_service">이 클라우드 서비스는 유료입니다</string>
+    <string name="title_advanced_privacy_risk">프라이버시 위험이 있을 수 있음</string>
+    <string name="title_advanced_name_email_hint">이름은 가능한 경우에만 표시됩니다</string>
+    <string name="title_advanced_preview_hint">메시지가 다운로드 되었을 때에만 표시됩니다</string>
+    <string name="title_advanced_preview_lines_hint">최대 %s 글자</string>
+    <string name="title_advanced_preview_issue">2줄 이상인 경우 일부 Android 버전의 버그로 인해 스크롤이 느려질 수 있습니다</string>
+    <string name="title_advanced_overview_mode_hint">폰트가 아주 작아질 수 있음</string>
+    <string name="title_advanced_monospaced_pre_hint">일반 텍스트 메시지만 사전 서식 지정된 형식으로 간주됩니다</string>
+    <string name="title_advanced_placeholders_hint">이는 재구성된 메시지에만 적용됩니다</string>
+    <string name="title_advanced_inline_hint">인라인 이미지는 메시지에 포함된 이미지입니다</string>
+    <string name="compressed">파일 %2$s개 또는 %3$s 이상이 포함된 압축 파일(%1$s)의 내용은 표시되지 않습니다</string>
+    <string name="title_advanced_parse_classes_hint">이렇게 하면 메시지가 더 정확하게 표시되지만 지연이 있을 수 있습니다</string>
+    <string name="title_advanced_default_folder_hint">        안드로이드는 앱이 필요로 하지 않더라도 선택된 폴더에 액세스할 수 있는 권한을 요청할 수 있습니다.
+        선택 대화 상자를 취소하여 기본 폴더(일반적으로 \'다운로드\' 폴더)를 복원할 수 있습니다.
+    </string>
+    <string name="title_advanced_restore_on_launch_hint">런처 아이콘을 통해 재시작할 때 가능한 경우 마지막 앱 상태를 복원합니다</string>
+    <string name="title_advanced_autoexpand_hint">대화에 메시지가 하나이거나 읽지 않은 메시지가 하나일 때 자동으로 메시지 열기</string>
+    <string name="title_advanced_expandall_hint">메시지가 여러 개 펼쳐지면 어떤 메시지에 버튼이 적용되는지 불분명하기 때문에 응답 버튼이 표시되지 않습니다</string>
+    <string name="title_advanced_autoseen_hint">각 계정의 고급 계정 설정에서 메시지를 펼칠 때 읽음으로 자동 표시하는 기능을 끌 수 있습니다</string>
+    <string name="title_advanced_autoclose_hint">모든 메시지가 보관, 발송 또는 삭제될 때 대화를 자동 종료합니다</string>
+    <string name="title_advanced_sender_hint">대부분의 제공업체가 수정된 보낸사람 주소를 허용하지 않습니다</string>
+    <string name="title_advanced_bcc_hint">주소가 표시되지 않지만, 보낼 때 추가됩니다</string>
+    <string name="title_advanced_envelope_from_hint">SMTP MAIL FROM에 이 주소가 사용됩니다</string>
+    <string name="title_advanced_internal_hint">다른 도메인으로 전송할 때 경고가 표시됩니다</string>
+    <string name="title_advanced_uri">선택한 연락처의 세부 정보는 vCard 첨부파일에 사용됩니다</string>
+    <string name="title_advanced_e2e_encryption">종단 간 암호화 옵션</string>
+    <string name="title_advanced_display_harmful_hint">이 옵션을 비활성화하면 프라이버시에 해로울 수 있습니다</string>
+    <string name="title_advanced_display_hidden_hint">이상한 표시나 중복 텍스트가 발생할 수 있습니다</string>
+    <string name="title_advanced_display_pin_hint">PIN은 생체 인증보다 우선합니다</string>
+    <string name="title_advanced_user_agent_hint">일부 서버는 일반적인 유저 에이전트 스트링을 허용하지 않습니다</string>
+    <string name="title_advanced_safe_browsing_hint">Google 서버는 어떤 주소들이 조회되고 있는지 알고 있습니다</string>
+    <string name="title_advanced_badge_hint">지원되는 런처에서만 사용 가능</string>
+    <string name="title_advanced_notify_action_hint">최대 3개의 동작이 표시됩니다</string>
+    <string name="title_advanced_notify_car_hint">\'연결\'이란 지도나 내비게이션을 표시하는 상태임을 의미합니다</string>
+    <string name="title_advanced_notify_remove_hint">새 메시지 알림은 스와이프하여 제거하거나 메시지를 읽음으로 표시하면 사라집니다</string>
+    <string name="title_advanced_notify_manage_hint">채널 이름을 탭하여 채널 속성을 설정합니다</string>
+    <string name="title_advanced_notify_samsung_hint">알림 채널을 관리하려면 Android 설정을 활성화해야 할 수도 있습니다: 알림 > 고급 설정 > 앱별 알림 카테고리 관리</string>
+    <string name="title_advanced_notify_manage_default_hint">기본 알림음이나 방해금지 (Do Not Disturb) 등을 설정하려면.</string>
+    <string name="title_advanced_notify_manage_service_hint">모니터링 알림 끄기</string>
+    <string name="title_advanced_notify_separate_hint">계정, 폴더 및 보낸사람에 대한 알림은 어떻게 설정하나요?</string>
+    <string name="title_advanced_notify_preview_all_hint">전체 텍스트(최대 5,000자)를 표시할 수 있는 웨어러블 기기</string>
+    <string name="title_advanced_notify_preview_only_hint">이 기능은 메시지 텍스트가 다운로드될 때까지 알림 표시를 늦춥니다</string>
+    <string name="title_advanced_wearable_hint">알림은 메시지 텍스트가 다운로드된 후에 웨어러블 기기로 전송됩니다</string>
+    <string name="title_advanced_messaging_hint">안드로이드 오토 지원을 위해 반드시 필요</string>
+    <string name="title_advanced_move_hint">계정 설정에서 해당 폴더를 편집할 수 있습니다</string>
+    <string name="title_advanced_notify_sensitive_hint">Android 설정에서 민감한 알림을 비활성화해야 합니다</string>
+    <string name="title_advanced_notify_no_grouping">이 Android 버전은 알림 그룹화를 지원하지 않습니다</string>
+    <string name="title_advanced_notify_no_channels">이 안드로이드 버전은 알림 채널을 지원하지 않습니다</string>
+    <string name="title_advanced_fts_hint">이 기능을 사용하면 검색 성능이 향상되지만 배터리 및 저장 공간 사용량도 증가합니다</string>
+    <string name="title_advanced_english_hint">앱이 재시작 됩니다</string>
+    <string name="title_advanced_experiments_hint">현재 실험적 기능 목록</string>
+    <string name="title_advanced_protocol_hint">이로 인해 배터리와 저장 공간 사용량이 크게 증가합니다!</string>
+    <string name="title_advanced_debug_hint">이를 활성화하면 지저분한 디버그 정보가 여러 곳에서 표시됩니다</string>
+    <string name="title_advanced_cleanup_attachments_hint">수동 정리할 때는 더 이상 동기화되지 않은 메시지에서 첨부 파일이 제거됩니다</string>
+    <string name="title_advanced_cleanup_hint">모든 임시 파일을 지웁니다</string>
+    <string name="title_advanced_never_favorite">즐겨찾기 등록 차단</string>
+    <string name="title_advanced_edit_name">이름 수정</string>
+    <string name="title_advanced_create_alias">별칭 생성</string>
+    <string name="title_advanced_create_alias_remark">대부분의 경우 별칭 주소는 먼저 메일 공급업체의 웹사이트를 통해 확인되어야 합니다</string>
+    <string name="title_create_folder">폴더 생성</string>
+    <string name="title_create_folder_name">폴더명</string>
+    <string name="title_create_folder_parent">상위 폴더</string>
+    <string name="title_advanced_swipe_actions">스와이프 액션 설정</string>
+    <string name="title_advanced_swipe_actions_hint">모든 IMAP 계정에 좌우 스와이프 동작을 지정합니다</string>
+    <string name="title_advanced_swipe_sensitivity">좌/우 스와이프 감도</string>
+    <string name="title_select">&#8230; 선택</string>
+    <string name="title_identity_name">이름</string>
+    <string name="title_identity_email">사용자 이메일 주소</string>
+    <string name="title_identity_tenant_hint">이 입력란은 대부분의 경우에 비어 있어야 합니다</string>
+    <string name="title_identity_receive_first_hint">이 옵션이 필요한 경우는 거의 없으며, 데이터 사용량이 증가합니다!</string>
+    <string name="title_identity_color_hint">사용자 ID 색상은 폴더 및 계정 색상보다 우선시됩니다</string>
+    <string name="title_advanced_sender">보낸사람 주소 수정을 허용합니다</string>
+    <string name="title_advanced_sender_name">보낸사람 주소가 변경되었을 때 이름 사용</string>
+    <string name="title_advanced_reply_name">받은 메시지에서 이름을 복사합니다</string>
+    <string name="title_advanced_sender_regex">수신되는 이메일 주소의 사용자 이름과 일치시키기 위한 정규 표현식</string>
+    <string name="title_identity_reply_to">답장할 주소</string>
+    <string name="title_identity_internal">내부 도메인 이름 (쉼표로 구분)</string>
+    <string name="title_identity_unicode">메시지 헤더에 UTF-8 허용</string>
+    <string name="title_identity_unicode_remark">대부분의 서버는 지원하지 않습니다</string>
+    <string name="title_identity_octetmime">8BITMIME 허용</string>
+    <string name="title_identity_max_size">최대 메시지 크기 (MB)</string>
+    <string name="title_identity_receipt">자동으로 전달/읽음 확인서를 요청</string>
+    <string name="title_identity_receipt_legacy">기존 수신 확인서 요청 헤더 사용</string>
+    <string name="title_identity_use_ip_hint">\'invalid greeting\', \'requires valid address\' 와 같은 에러의 경우, 이 설정을 바꿔 보세요</string>
+    <string name="title_identity_self_hint">자기 자신에게 답장하는 것도 방지합니다</string>
+    <string name="title_optional">선택사항</string>
+    <string name="title_recommended">추천</string>
+    <string name="title_account_linked">연결된 계정</string>
+    <string name="title_account_name">계정명</string>
+    <string name="title_account_category">카테고리</string>
+    <string name="title_account_name_hint">폴더 구분을 위해 사용</string>
+    <string name="title_account_interval_hint">푸시 메시지 연결 새로고침 빈도 또는 새 메시지 확인 빈도</string>
+    <string name="title_account_noop_hint">연결이 더 적극적으로 갱신되지만, 배터리 소모도 많아집니다</string>
+    <string name="title_account_partial_fetch_hint">빈 메시지 또는 손상된 첨부 파일의 경우에만 비활성화하세요</string>
+    <string name="title_account_raw_fetch_hint">이 설정을 켜면 배터리와 데이터 사용이 증가합니다</string>
+    <string name="title_color">색상</string>
+    <string name="title_avatar">이미지</string>
+    <string name="title_calendar">달력</string>
+    <string name="title_background">배경</string>
+    <string name="title_transparent">투명도</string>
+    <string name="title_account_ondemand">수동으로 동기화하기</string>
+    <string name="title_account_notify">분리 알림</string>
+    <string name="title_account_left">왼쪽으로 밀기</string>
+    <string name="title_account_right">우측으로 밀기</string>
+    <string name="title_account_gmail">Gmail 계정의 안정적인 동기화를 위해, 가능한 경우 항상 Gmail 빠른 설정 마법사를 사용해야 합니다</string>
+    <string name="title_domain">도메인명</string>
+    <string name="title_autoconfig">설정 가져오기</string>
+    <string name="title_aliases">별칭</string>
+    <string name="title_provider">제공업체</string>
+    <string name="title_custom">사용자 지정</string>
+    <string name="title_dnssec">DNSSEC 강제 사용</string>
+    <string name="title_dnssec_remark">소수의 DNS 서버만이 DNSSEC을 지원합니다</string>
+    <string name="title_host">호스트명</string>
+    <string name="title_encryption">암호화</string>
+    <string name="title_encryption_none">없음 (보안성 낮음)</string>
+    <string name="title_allow_insecure">비보안 연결 허용</string>
+    <string name="title_insecure_remark">비보안 연결은 신뢰할 수 있는 네트워크에서만 허용되어야 하며, 공용 네트워크에서 허용해서는 안됩니다</string>
+    <string name="title_dane">DANE 강제 사용</string>
+    <string name="title_dane_remark">일부 이메일 제공 업체만이 DANE을 지원합니다</string>
+    <string name="title_notify_remark">계정별 알림 설정을 위해 이 기능을 활성화할 수 있습니다</string>
+    <string name="title_port">포트 번호</string>
+    <string name="title_user">사용자명</string>
+    <string name="title_password">비밀번호</string>
+    <string name="title_password_storage">비밀번호는 어떻게 저장되나요?</string>
+    <string name="title_case_sensitive">일반적으로 사용자 이름과 비밀번는 대소문자를 구분합니다</string>
+    <string name="title_login_before_send">보내기 전에 받기</string>
+    <string name="title_client_certificate">클라이언트 인증서</string>
+    <string name="title_no_key_selected">Key가 선택되지 않았거나 Key를 찾을 수 없습니다</string>
+    <string name="title_realm">NTML 인증 도메인</string>
+    <string name="title_use_ip">호스트 이름 대신 로컬 IP 주소 사용</string>
+    <string name="title_ehlo">커스텀 HELO/EHLO 신원</string>
+    <string name="title_primary">기본</string>
+    <string name="title_primary_account">주계정 (기본 계정)</string>
+    <string name="title_primary_identity">주 사용자 ID (기본 사용자 ID)</string>
+    <string name="title_self_identity">답장할 때 이메일 주소 삭제</string>
+    <string name="title_leave_on_server">서버에 메시지를 보관</string>
+    <string name="title_leave_on_server_hint">서버에서 메시지를 다운로드한 후에도, 메시지는 서버에 남아 있습니다</string>
+    <string name="title_client_delete">다운로드 후 메시지를 적극적으로 삭제하세요</string>
+    <string name="title_leave_deleted">서버에 삭제된 메시지를 보관</string>
+    <string name="title_leave_deleted_hint">기기에서 메시지를 삭제한 후에도, 메시지는 서버에 남아 있습니다</string>
+    <string name="title_leave_on_device">기기에 메시지를 보관</string>
+    <string name="title_leave_on_device_hint">서버에서 메시지가 삭제되어도, 메시지는 기기에 남아 있습니다</string>
+    <string name="title_max_messages">다운로드할 메시지 최대 개수 (비워둘 경우 모두)</string>
+    <string name="title_max_messages_keep">기기에 계속해서 저장할 수 있는 최대 메시지 수입니다</string>
+    <string name="title_max_messages_remark">        양수를 입력하여 메시지 끝 부분을 다운로드합니다 (대부분의 경우)
+        음수를 입력하여 메시지 시작 부분을 다운로드합니다 (드문 경우)
+    </string>
+    <string name="title_keep_poll_interval">여론조사 시간 (분)</string>
+    <string name="title_keep_alive_interval">유지 간격 (분)</string>
+    <string name="title_keep_alive_noop">주기적으로 IMAP IDLE 재시작</string>
+    <string name="title_server_time">수신 시간(서버) 사용</string>
+    <string name="title_received_header">\'Received\' 헤더 사용</string>
+    <string name="title_date_header">\'Date\' 헤더 사용 (보낸 시간)</string>
+    <string name="title_date_remark">새 메시지에만 변경 사항이 적용됩니다</string>
+    <string name="title_unmetered_only">무료 네트워크를 통해서만 연결</string>
+    <string name="title_ignore_schedule">스케줄 밖에서도 동기화합니다</string>
+    <string name="title_related_identity">관련된 신원(SMTP 서버) 추가</string>
+    <string name="title_check">확인</string>
+    <string name="title_trust">지문 %1$s 서버 인증서를 신뢰합니다</string>
+    <string name="title_no_name">이름을 입력해 주세요</string>
+    <string name="title_no_email">이메일 주소를 입력해 주세요</string>
+    <string name="title_email_invalid">이메일 주소가 존재하지 않습니다: \'%1$s\'</string>
+    <string name="title_no_account">계정명을 입력해 주세요</string>
+    <string name="title_no_host">호스트 이름을 입력해 주세요</string>
+    <string name="title_no_user">사용자 이름을 입력해 주세요</string>
+    <string name="title_no_password">비밀번호를 입력해 주세요</string>
+    <string name="title_no_inbox">받은메일함을 찾을 수 없음</string>
+    <string name="title_no_drafts">임시보관함 없음</string>
+    <string name="title_no_junk_folder">이 계정에 대한 스팸 폴더가 선택되지 않았습니다</string>
+    <string name="title_default_composable">기본 이메일 주소는 주계정의 주 사용자 ID에 따라 결정됩니다</string>
+    <string name="title_no_composable">이메일을 보내려면 사용자 ID를 설정해야 하며 계정 설정에서 임시보관함으로 사용할 폴더를 선택해야 합니다</string>
+    <string name="title_no_standard">이 제공업체는 독점 이메일 프로토콜을 사용하므로 타사 이메일 클라이언트를 사용할 수 없습니다</string>
+    <string name="title_no_idle">이 제공업체는 푸시 메시지를 지원하지 않습니다. 이는 새 메시지 수신을 지연시키고 배터리 사용량이 증가합니다.</string>
+    <string name="title_no_utf8">이 제공업체는 UTF-8을 지원하지 않습니다</string>
+    <string name="title_reply_domain">보낸사람(%1$s)과 답장 도메인(%2$s)이 다릅니다</string>
+    <string name="title_drafts_required">이메일을 보내려면 임시보관함이 있어야 합니다</string>
+    <string name="title_drafts_select">이메일을 보내려면 계정 설정에서 임시보관함으로 사용할 폴더를 선택해야 합니다</string>
+    <string name="title_account_auth_update">권한 업데이트</string>
+    <string name="title_account_auth_password">비밀번호 인증으로 전환</string>
+    <string name="title_change_password">비밀번호 변경</string>
+    <string name="title_delete_account">계정 삭제</string>
+    <string name="title_account_delete">이 계정을 영구적으로 삭제할까요?</string>
+    <string name="title_edit_html">HTML 편집</string>
+    <string name="title_check_html">HTML 확인</string>
+    <string name="title_import_file">파일 가져오기</string>
+    <string name="title_sign_key">서명 키: %1$s</string>
+    <string name="title_last_connected">마지막 접속: %1$s</string>
+    <string name="title_storage_quota">서버 저장 공간 사용량: %1$s/%2$s</string>
+    <string name="title_pop_support">POP3 프로토콜은 받은메일함에서 메시지를 다운로드하고 삭제하는 작업만 수행할 수 있습니다. 메시지를 읽은 상태로 표시, 스팸 신고, 메시지 이동 등의 작업은 불가능합니다. 가능하면 IMAP 프로토콜을 사용하십시오.</string>
+    <string name="title_pop_sent">기기를 분실하거나 도난당한 경우 보낸 메시지가 손실될 수 있습니다.</string>
+    <string name="title_pop_warning">POP3 서버가 UIDL 명령을 지원하지 않을 경우 데이터 사용량이 늘어날 수 있습니다. 아래의 폴링 빈도를 적절히 조정하십시오.</string>
+    <string name="title_pop_folders">POP3 프로토콜은 폴더 생성을 허용하지 않습니다</string>
+    <string name="title_oauth_support">OAuth가 지원되지 않습니다</string>
+    <string name="title_review">검토</string>
+    <string name="title_hint_accounts">길게 눌러 계정 비활성화 및 삭제 등 설정 표시</string>
+    <string name="title_service_auth">이메일 서버 응답: \'%1$s\'</string>
+    <string name="title_service_vpn">VPN이 사용되고 있는 것 때문일 수도 있습니다</string>
+    <string name="title_service_token">Android 계정 관리자가 VPN, 방화벽, 광고 차단기 등에 의해 차단되어 액세스 토큰을 받지 못할 수 있습니다</string>
+    <string name="title_service_port">포트 번호를 다시 확인해주세요</string>
+    <string name="title_service_protocol">프로토콜(SSL/TLS 또는 STARTTLS)을 다시 확인해주세요</string>
+    <string name="title_service_error10">이 계정은 다시 인증해야 하며, 빠른 설정 마법사를 통해 인증할 수 있습니다</string>
+    <string name="title_certificate_error">        Google의 Play 스토어 정책으로 인해, Play 스토어에 배포되는 FairEmail 버전으로 더 이상 인증서 문제가 있는 불안정한 이메일 서버 연결을 지원할 수 없습니다.
+        따라서 이 문제는 이메일 제공업체만 해결할 수 있습니다 - 위의 오류 정보는 이 문제를 해결하는 데 도움이 될 수 있습니다.
+    </string>
+    <string name="title_advanced_browse">서버에서 메시지 찾기</string>
+    <string name="title_advanced_expand_read">펼칠 때 읽은 메시지 표시</string>
+    <string name="title_synchronize_now">지금 동기화</string>
+    <string name="title_synchronize_subfolders">하위 폴더</string>
+    <string name="title_synchronize_more">더 많은 메시지 가져오기</string>
+    <string name="title_synchronize_more_hint">오래된 메시지를 한 번만 다운로드하므로, 일상적인 사용시 배터리 사용량이 늘어나지 않습니다</string>
+    <string name="title_synchronize_more_hint2">        이메일 서버가 메시지를 전달함과 동시에 이를 불러올 수 있으며 가능한 한 빨리 저장 및 분류됩니다.
+        진행이 느리다면 기기 내부 저장 공간의 속도 문제일 가능성이 높습니다.
+    </string>
+    <string name="title_synchronize_more_hint3">내부 저장 공간이 무한히 빠르지 않기 때문에 기기에 많은 메시지(만 개 이상)를 저장하면 기기가 느려질 수 있습니다.</string>
+    <string name="title_synchronize_enabled">동기화</string>
+    <string name="title_synchronize_batch_enable">동기화 활성화</string>
+    <string name="title_synchronize_batch_disable">동기화 비활성화</string>
+    <string name="title_notify_batch_enable">새 메시지 알림 활성화</string>
+    <string name="title_notify_batch_disable">새 메시지 알림 비활성화</string>
+    <string name="title_download_batch_enable">텍스트 및 첨부파일 다운로드</string>
+    <string name="title_download_batch_disable">헤더만 다운로드</string>
+    <string name="title_delete_local">로컬 메시지 삭제</string>
+    <string name="title_delete_browsed">탐색/검색된 메시지 삭제</string>
+    <string name="title_expunge">말소</string>
+    <string name="title_expunge_remark">삭제하도록 표시한 모든 메시지가 영구적으로 삭제됩니다</string>
+    <string name="title_empty_trash">휴지통 비우기</string>
+    <string name="title_empty_spam">스팸함 비우기</string>
+    <string name="title_edit_color">색상 편집</string>
+    <string name="title_edit_properties">속성 수정</string>
+    <string name="title_edit_rules">규칙 수정</string>
+    <string name="title_execute_rules">규칙 실행</string>
+    <string name="title_export_messages">메시지 내보내기</string>
+    <string name="title_import_messages">메시지 가져오기</string>
+    <string name="title_create_channel">알림 채널 생성</string>
+    <string name="title_edit_channel">공지 채널 편집</string>
+    <string name="title_delete_channel">알림 채널 삭제</string>
+    <string name="title_insert_contact">주소록에 추가</string>
+    <string name="title_edit_contact">연락처 수정</string>
+    <string name="title_delete_contact">연락처를 삭제하시겠습니까?</string>
+    <string name="title_contact_email">이메일</string>
+    <string name="title_contact_name">이름</string>
+    <string name="title_contact_group">그룹</string>
+    <string name="title_import_contacts">vCard 들여오기</string>
+    <string name="title_export_contacts">vCard 내보내기</string>
+    <string name="title_create_sub_folder">하위 폴더 생성</string>
+    <string name="title_empty_trash_ask">모든 휴지통에 있는 메시지를 영구적으로 삭제하시겠습니까?</string>
+    <string name="title_empty_spam_ask">모든 스팸 메시지를 영구적으로 삭제하시겠습니까?</string>
+    <string name="title_empty_trash_all_ask">모든 계정의 휴지통에 있는 메시지를 영구적으로 삭제하시겠습니까?</string>
+    <string name="title_empty_spam_all_ask">모든 계정의 스팸 메시지를 영구적으로 삭제하시겠습니까?</string>
+    <string name="title_empty_all">기기와 서버에서 모든 메시지가 삭제됩니다</string>
+    <string name="title_delete_contacts">모든 로컬 연락처를 삭제하시겠습니까?</string>
+    <string name="title_op_title_headers">헤더 다운로드 중</string>
+    <string name="title_op_title_raw">원본 메시지 다운로드 중</string>
+    <string name="title_op_title_add">메시지 업로드 중</string>
+    <string name="title_folder_name">폴더명</string>
+    <string name="title_display_name">표시되는 이름</string>
+    <string name="title_show_folders">숨겨진 폴더 표시</string>
+    <string name="title_show_flagged">별 표시된 메시지 수 표시</string>
+    <string name="title_subscribed_only">구독중일 경우만</string>
+    <string name="title_sort_unread_atop">읽지 않은 메시지 위로 정렬</string>
+    <string name="title_search_folder">폴더 찾기</string>
+    <string name="title_apply_to_all">모든 대상에 적용</string>
+    <string name="title_edit_account_name">계정 이름 변경</string>
+    <string name="title_edit_account_color">계정 색상 변경</string>
+    <string name="title_hide_folder">폴더 숨기기</string>
+    <string name="title_hide_seen_folder">메시지를 모두 읽으면 폴더를 숨깁니다</string>
+    <string name="title_hide_seen_folder_hint">계정 및 통합 폴더 목록에서만</string>
+    <string name="title_unified_folder">통합 받은메일함에서 표시</string>
+    <string name="title_navigation_folder">탐색 메뉴에 표시</string>
+    <string name="title_navigation_folder_hide">탐색 메뉴에서 숨김</string>
+    <string name="title_unified_inbox_add">통합 받은메일함에 추가</string>
+    <string name="title_unified_inbox_delete">통합 받은메일함에서 삭제</string>
+    <string name="title_synchronize_folder">동기화 (메시지 수신)</string>
+    <string name="title_poll_folder_remark">대부분의 메일 서버는 일부 폴더에만 푸시 메시지를 허용합니다!</string>
+    <string name="title_auto_classify_source">이 폴더에 있는 새 메시지들을 분류합니다</string>
+    <string name="title_auto_classify_target">분류된 메시지를 이 폴더로 자동 이동</string>
+    <string name="title_sync_days_remark">해당 값을 높이면 배터리 및 데이터 사용량이 증가합니다</string>
+    <string name="title_keep_days_remark">오래된 메시지는 기기에서 제거되지만 서버에는 남아 있습니다</string>
+    <string name="title_auto_trash">오래된 메시지를 자동으로 휴지통으로 이동</string>
+    <string name="title_auto_delete">오래된 메시지를 자동으로 영구 삭제</string>
+    <string name="title_auto_delete_hint">오래된 메시지란 기기에 더 이상 보관되지 않는 메시지입니다</string>
+    <string name="title_auto_delete_archive_hint">메일 서버가 보관 폴더에서의 삭제를 허용하지 않을 수 있습니다</string>
+    <string name="title_inbox_root_hint">        일부 제공업체는 받은메일함 아래에 새 폴더를 만들 것을 요구합니다.
+        이 경우 폴더 목록에서 받은메일함을 길게 누르고 \'하위 폴더 만들기\'를 선택할 수 있습니다.
+    </string>
+    <string name="title_folder_name_missing">폴더 이름을 입력해 주세요</string>
+    <string name="title_folder_delete">이 폴더와 그 안의 모든 메시지를 영구적으로 삭제하시겠습니까?</string>
+    <string name="title_months">개월</string>
+    <string name="title_months_all">모두</string>
+    <string name="title_folder_unified">통합 받은메일함</string>
+    <string name="title_folder_inbox">받은메일함</string>
+    <string name="title_folder_outbox">보낸 편지함</string>
+    <string name="title_folder_all">보관하기</string>
+    <string name="title_folder_drafts">임시보관함</string>
+    <string name="title_folder_trash">휴지통</string>
+    <string name="title_folder_junk">스팸</string>
+    <string name="title_folder_sent">보냄</string>
+    <string name="title_folder_system">시스템</string>
+    <string name="title_folder_user">사용자</string>
+    <string name="title_folder_user_only">사용자 폴더만</string>
+    <string name="title_folder_primary">주계정 폴더</string>
+    <string name="title_folders_unified">통합 받은메일함 폴더</string>
+    <string name="title_folder_local_drafts">로컬 임시보관함</string>
+    <string name="title_no_folders">폴더 없음</string>
+    <string name="title_no_messages">메시지 없음</string>
+    <string name="title_filters_active">하나 이상의 필터 활성화됨</string>
+    <string name="title_subject_reply">답장: %1$s</string>
+    <string name="title_subject_forward">전달: %1$s</string>
+    <string name="title_subject_reply_alt">답장: %1$s</string>
+    <string name="title_subject_forward_alt">전달: %1$s</string>
+    <string name="title_seen">읽음으로 표시</string>
+    <string name="title_unseen">읽지 않음으로 표시</string>
+    <string name="title_seen_unseen">읽음/안읽음 표시</string>
+    <string name="title_toggle_seen">읽음 상태 전환</string>
+    <string name="title_hide">숨김</string>
+    <string name="title_unhide">표시</string>
+    <string name="title_toggle_hide">숨김 상태 전환</string>
+    <string name="title_flag">즐겨찾기에 추가</string>
+    <string name="title_unflag">즐겨찾기 해제</string>
+    <string name="title_set_importance">중요도 설정</string>
+    <string name="title_importance_low">낮음</string>
+    <string name="title_importance_normal">보통</string>
+    <string name="title_importance_high">높음</string>
+    <string name="title_important">중요</string>
+    <string name="title_unimportant">중요하지 않음</string>
+    <string name="title_search_in_text">&#8230; 문서에서 검색</string>
+    <string name="title_forward">앞으로</string>
+    <string name="title_forward_to">전달</string>
+    <string name="title_resend">재전송</string>
+    <string name="title_new_message">새 메시지</string>
+    <string name="title_editasnew">다른 이름으로 수정</string>
+    <string name="title_edit_notes">로컬 노트 수정하기</string>
+    <string name="title_edit_notes_remark">로컬 메모는 메일 서버에 저장되지 않으므로 해당 기기의 이 앱에서만 사용할 수 있습니다</string>
+    <string name="title_create_rule">규칙 &#8230; 생성</string>
+    <string name="title_full_screen">전체 화면</string>
+    <string name="title_force_light">라이트 테마 강제 적용</string>
+    <string name="title_rename">이름 변경</string>
+    <string name="title_share">공유</string>
+    <string name="title_analyze">분석</string>
+    <string name="title_event">달력에 추가</string>
+    <string name="title_pin">바로가기 추가</string>
+    <string name="title_pin_label"></string>
+    <string name="title_print">인쇄</string>
+    <string name="title_print_header">제목 인쇄</string>
+    <string name="title_print_images">사진 인쇄</string>
+    <string name="title_print_images_remark">이미지 다운로드는 시간이 소요될 수 있습니다</string>
+    <string name="title_print_margins">여백 추가</string>
+    <string name="title_show_headers">헤더 표시</string>
+    <string name="title_show_html">소스 보기</string>
+    <string name="title_raw_save">원본 메시지(.eml) 보기</string>
+    <string name="title_raw_send">첨부파일로 전송</string>
+    <string name="title_raw_send_message">메시지</string>
+    <string name="title_raw_send_thread">대화</string>
+    <string name="title_manage_keywords">키워드 관리</string>
+    <string name="title_manage_keywords_pop">POP3를 사용하면 키워드는 메일 서버에 저장되지 않습니다!</string>
+    <string name="title_add_keyword">키워드 추가</string>
+    <string name="title_show_inline">인라인 첨부파일 표시</string>
+    <string name="title_download_all">모두 다운로드</string>
+    <string name="title_save_all">모두 저장</string>
+    <string name="title_save_eml">원본 메시지 파일 저장</string>
+    <string name="title_save_file">파일 저장</string>
+    <string name="title_eml_remark">메시지를 전달하려면 원본 메시지를 메일 서버에서 다운로드해야 합니다. 이를 위해 인터넷 연결이 필요하며, 메시지가 메일 서버에 저장되어 있어야 합니다.</string>
+    <string name="title_eml_option">연결 설정에서 항상 원본 메시지 파일 다운로드를 활성화하면 이를 방지할 수 있습니다</string>
+    <string name="title_eml_downloaded">다운로드된 원본 메시지: %1$s</string>
+    <string name="title_auto_confirm">몇 초 후 자동으로 확인 처리됩니다</string>
+    <string name="title_buttons">선택 버튼</string>
+    <string name="title_buttons_hint">실제로 사용 가능한 작업은 계정 유형과 설정에 따라 다릅니다</string>
+    <string name="title_button_search_similar">유사한 메시지 검색</string>
+    <string name="title_button_search_text">메시지 내용에서 검색</string>
+    <string name="title_configure_buttons">버튼 &#8230; 설정</string>
+    <string name="title_quick_actions">동작 선택</string>
+    <string name="title_quick_actions_hint">최대 %1$d개의 동작이 표시됩니다</string>
+    <string name="title_quick_actions_low">중요도 낮음</string>
+    <string name="title_quick_actions_normal">중요도 보통</string>
+    <string name="title_quick_actions_high">중요도 높음</string>
+    <string name="title_quick_actions_snooze">미루기</string>
+    <string name="title_quick_actions_clear">작업 후 선택 지우기</string>
+    <string name="title_trash">휴지통</string>
+    <string name="title_copy">&#8230; 복사</string>
+    <string name="title_copy_to">&#8230;으로 복사</string>
+    <string name="title_subscribe">구독</string>
+    <string name="title_delete">삭제</string>
+    <string name="title_delete_all">모두 삭제</string>
+    <string name="title_more">더보기</string>
+    <string name="title_spam">스팸</string>
+    <string name="title_move">이동</string>
+    <string name="title_copy_btn">복사</string>
+    <string name="title_keywords_btn">키워드</string>
+    <string name="title_unsubscribe">구독 해제</string>
+    <string name="title_unsubscribe_error">메시지의 수신 거부 링크가 작동하지 않습니다. 오류 %1$s</string>
+    <string name="title_message_rule">규칙 생성</string>
+    <string name="title_no_junk">스팸 아님</string>
+    <string name="title_edit_subject">제목 &#8230; 편집</string>
+    <string name="title_move_to">&#8230;으로 이동</string>
+    <string name="title_move_to_folder">&#8230;으로 이동</string>
+    <string name="title_report_spam">스팸으로 처리</string>
+    <string name="title_delete_permanently">영구 삭제</string>
+    <string name="title_delete_attachments">첨부파일 삭제</string>
+    <string name="title_delete_attachments_remark">        첨부파일을 삭제하려면 새 메시지를 추가하고 기존 메시지를 삭제해야 합니다.
+        이 작업은 실패할 수 있으므로, 기존 메시지는 휴지통으로 이동됩니다.
+    </string>
+    <string name="title_snooze">&#8230; 미루기</string>
+    <string name="title_archive">보관하기</string>
+    <string name="title_reply">답장</string>
+    <string name="title_reply_to_sender">발신인에게 답장</string>
+    <string name="title_reply_to_recipient">받는사람에게 답장</string>
+    <string name="title_reply_to_all">모두에게 답장</string>
+    <string name="title_reply_list">답장 목록</string>
+    <string name="title_reply_receipt">읽음 확인서 전송</string>
+    <string name="title_reply_hard_bounce">하드 바운스 전송</string>
+    <string name="title_reply_template">템플릿을 사용하여 답장</string>
+    <string name="title_reply_menu">선택 메뉴 표시</string>
+    <string name="title_authentication_failed">%1$s 인증 실패</string>
+    <string name="title_on_blocklist">스팸 차단 목록</string>
+    <string name="title_receipt_subject">읽음 확인서: %1$s</string>
+    <string name="title_receipt_text">이 읽음 확인서는 메시지가 표시되었다는 것만 알립니다. 받는사람이 메시지 내용을 읽었다는 보장은 없습니다.</string>
+    <string name="title_no_answers">정의된 답장 템플릿 없음</string>
+    <string name="title_no_viewer_caption">사용 가능한 뷰어 앱 없음</string>
+    <string name="title_no_viewer_name">콘텐츠 이름</string>
+    <string name="title_no_viewer_type">콘텐츠 유형</string>
+    <string name="title_no_viewer_search">앱 검색</string>
+    <string name="title_no_recorder">적합한 음성 녹음 앱을 찾지 못함</string>
+    <string name="title_no_camera">적합한 카메라 앱 없음</string>
+    <string name="title_no_saf">저장 공간 액세스 프레임워크가 유효하지 않습니다</string>
+    <string name="title_no_stream">FairEmail은 이 파일을 직접 읽을 권한이 없습니다</string>
+    <string name="title_no_stream_help">더 현대적인 파일 관리자 앱으로 파일을 선택하거나 파일 읽기 권한을 부여하여 해결할 수 있습니다</string>
+    <string name="title_no_permissions">파일을 선택하는 데 사용된 앱이 그 파일의 읽기 권한을 부여하지 않았습니다</string>
+    <string name="title_no_internet">인터넷 연결이 없거나 적합하지 않습니다</string>
+    <string name="title_no_connection">하나 이상의 계정에 연결 중 &#8230;</string>
+    <string name="title_no_folder">폴더가 존재하지 않습니다</string>
+    <string name="title_no_format">받은 메시지의 원본이 포함됩니다</string>
+    <string name="title_no_search">이 계정에서는 서버 검색을 사용할 수 없습니다</string>
+    <string name="title_complex_search">복합 검색을 위한 폴더를 선택하세요</string>
+    <string name="title_too_large">메시지가 너무 커서 완전히 재구성할 수 없음</string>
+    <string name="title_truncated">메시지가 너무 커서 완전히 표시할 수 없습니다</string>
+    <string name="title_insufficient_memory">메시지가 가용 메모리(%1$d)보다 큽니다</string>
+    <string name="title_screen_recording">화면이 녹화 중입니다!</string>
+    <string name="title_show_full">전체 메시지 표시</string>
+    <string name="title_fullscreen">전체 화면 표시</string>
+    <string name="title_fit_width">너비 맞춤</string>
+    <string name="title_disable_widths">너비 비활성화</string>
+    <string name="title_monospaced_pre">고정폭 &lt;pre&gt;</string>
+    <string name="title_unused_inline">사용되지 않은 인라인 이미지는 전송 시 제거됩니다</string>
+    <string name="title_accross_remark">계정 간 이동된 메시지는 다시 다운로드되어 추가 데이터 사용량이 발생합니다</string>
+    <string name="title_raw_saved">원본 메시지 저장됨</string>
+    <string name="title_attachment_eml">첨부된 메시지</string>
+    <string name="title_attachment_saved">첨부파일 저장됨</string>
+    <string name="title_attachments_saved">첨부파일 저장됨</string>
+    <string name="title_attachments_incomplete">일부 첨부 파일이나 이미지가 다운로드되지 않아 추가할 수 없습니다</string>
+    <string name="title_report_remark">이 보고서는 특별히 형식화된 이메일로, 발송된 메시지가 수신자에게 전달되지 못했기 때문에 이메일 서버에서 발송되었습니다. 예를 들어, 사서함이 가득 차 있거나 이메일 주소가 (더 이상) 존재하지 않기 때문일 수 있습니다.</string>
+    <string name="title_ask_save">변경 사항을 저장합니까?</string>
+    <string name="title_ask_delete">메시지를 영구적으로 삭제하시겠습니까?</string>
+    <string name="title_ask_delete_accept">메시지를 삭제하면 되돌릴 수 없음을 압니다</string>
+    <string name="title_ask_delete_answer">답장 템플릿을 영구적으로 삭제할까요?</string>
+    <string name="title_ask_delete_rule">규칙을 영구적으로 삭제할까요?</string>
+    <string name="title_ask_delete_attachments">모든 첨부파일을 삭제하시겠습니까?</string>
+    <string name="title_ask_discard">작성 중인 글을 지우시겠습니까?</string>
+    <string name="title_ask_show_html">원본 메시지를 표시하면 민감한 개인정보가 유출될 수 있습니다</string>
+    <string name="title_ask_show_html_remark">원본 메시지를 어두운 배경에 표시하는 것은 불가능합니다. 어두운 텍스트와 이미지가 보이지 않을 수 있기 때문입니다</string>
+    <string name="title_ask_show_html_images">원본 메시지를 표시할 때 항상 이미지를 표시합니다</string>
+    <string name="title_ask_show_html_always">원본 메시지를 기본으로 표시</string>
+    <string name="title_ask_show_image">이미지를 표시하면 민감한 개인정보가 유출될 수 있습니다</string>
+    <string name="title_ask_show_images_always">이미지를 기본으로 표시</string>
+    <string name="title_ask_show_image_hint">추적 이미지로 인식된 이미지는 표시되지 않습니다</string>
+    <string name="title_ask_show_amp">메시지의 AMP 버전을 표시하시겠습니까?</string>
+    <string name="title_ask_show_amp_hint">AMP 메시지는 동적이며 인터넷과 상호작용하도록 설계되었으므로, 정의상 사용자를 추적하는 데 활용될 수 있습니다</string>
+    <string name="title_ask_view_file">%1$s 파일을 보시겠습니까?</string>
+    <string name="title_ask_delete_local">로컬 메시지를 삭제하시겠습니까? 원격 서버에 메시지가 남을 것입니다.</string>
+    <string name="title_ask_help">FairEmail 개선을 도와주세요</string>
+    <string name="title_ask_reporting">오류 보고서를 보내시겠습니까?</string>
+    <string name="title_reporting_why">오류 보고는 FairEmail 개선에 도움이 될 것입니다</string>
+    <string name="title_ask_review">FairEmail을 리뷰해 주세요</string>
+    <string name="title_ask_review_rationale">        한동안 FairEmail을 사용하고 계셨습니다.
+        Play 스토어에서 FairEmail을 평가해 주시면 감사하겠습니다.
+    </string>
+    <string name="title_need_help">도움 요청</string>
+    <string name="title_ask_once">이 메시지는 \'나중에\'를 선택하지 않는다면 한 번만 표시됩니다</string>
+    <string name="title_third_party">제3자 소프트웨어 버전을 사용하고 있습니다</string>
+    <string name="title_expand_warning">이 메시지를 펼치면 %1$s가 다운로드됩니다</string>
+    <string name="title_download_message">&#8230; 다운로드 중</string>
+    <string name="title_reformatted">        이것은 안전하게 재구성된 메시지 화면입니다.
+        &#x26F6; 아이콘을 탭하여 덜 안전한 메시지를 확인하고 이 메시지를 숨길 수 있습니다.
+        메시지 재구성은 메시지 크기와 기기 속도에 따라 시간이 소요될 수 있습니다.
+        QR 코드를 확인하려면 원본 메시지를 봐야 할 수도 있습니다.
+    </string>
+    <string name="title_compose">작성</string>
+    <string name="title_submitter">발신인:</string>
+    <string name="title_signed_by">서명자:</string>
+    <string name="title_delivered_to">전송됨:</string>
+    <string name="title_from">발신:</string>
+    <string name="title_to">수신:</string>
+    <string name="title_reply_to">답장:</string>
+    <string name="title_cc">참조:</string>
+    <string name="title_bcc">숨은 참조:</string>
+    <string name="title_envelope_from">발신인:</string>
+    <string name="title_recipients">받는사람 %1$d명</string>
+    <string name="title_via_identity">경유:</string>
+    <string name="title_sent">발신일시:</string>
+    <string name="title_received">수신:</string>
+    <string name="title_date">날짜:</string>
+    <string name="title_stored">저장:</string>
+    <string name="title_size">크기:</string>
+    <string name="title_language">언어:</string>
+    <string name="title_subject">제목:</string>
+    <string name="title_attachment">첨부파일:</string>
+    <string name="title_body_hint">메시지 내용</string>
+    <string name="title_body_hint_style">텍스트를 선택하여 형식을 지정할 수 있습니다</string>
+    <string name="title_discard">제거</string>
+    <string name="title_save">저장</string>
+    <string name="title_send">발신</string>
+    <string name="title_sending">전송 중&#8230;</string>
+    <string name="title_sending_to">%1$s으로 전송 중</string>
+    <string name="title_send_now">지금 발신</string>
+    <string name="title_send_via">전송 방법</string>
+    <string name="title_send_at">&#8230;에서 보내기</string>
+    <string name="title_send_auto_archive">답장된 메시지 보관</string>
+    <string name="title_send_encryption">암호화</string>
+    <string name="title_send_priority">우선순위</string>
+    <string name="title_send_sensitivity">민감도</string>
+    <string name="title_no_server">\'%1$s\'에서 서버를 찾을 수 없습니다</string>
+    <string name="title_style">서식</string>
+    <string name="title_style_bold">굵게</string>
+    <string name="title_style_italic">기울임꼴</string>
+    <string name="title_style_underline">밑줄</string>
+    <string name="title_style_size">크기</string>
+    <string name="title_style_size_xsmall">매우 작게</string>
+    <string name="title_style_size_small">작게</string>
+    <string name="title_style_size_medium">보통</string>
+    <string name="title_style_size_large">크게</string>
+    <string name="title_style_size_xlarge">매우 크게</string>
+    <string name="title_style_align">정렬</string>
+    <string name="title_style_align_start">시작</string>
+    <string name="title_style_align_center">가운데</string>
+    <string name="title_style_align_end">끝</string>
+    <string name="title_style_list">목록</string>
+    <string name="title_style_list_bullets">글머리 기호</string>
+    <string name="title_style_list_numbered">순서 있음</string>
+    <string name="title_style_list_level_increase">들여쓰기 늘리기</string>
+    <string name="title_style_list_level_decrease">들여쓰기 줄이기</string>
+    <string name="title_style_font">글꼴</string>
+    <string name="title_style_font_default">기본</string>
+    <string name="title_style_blockquote">긴 인용문</string>
+    <string name="title_style_indentation">들여쓰기</string>
+    <string name="title_style_mark">강조</string>
+    <string name="title_style_subscript">아래 첨자</string>
+    <string name="title_style_superscript">위 첨자</string>
+    <string name="title_style_strikethrough">취소선</string>
+    <string name="title_style_protect">비밀번호로 보호</string>
+    <string name="title_style_protected">보호된 컨텐츠</string>
+    <string name="title_style_protect_size">텍스트가 너무 깁니다</string>
+    <string name="title_style_clear">서식 지우기</string>
+    <string name="title_style_setting_keep_selection">선택 중인 옵션 유지</string>
+    <string name="title_style_link">링크 삽입</string>
+    <string name="title_style_link_address">주소</string>
+    <string name="title_style_link_image">이미지로 삽입</string>
+    <string name="title_style_link_title">제목</string>
+    <string name="title_style_link_metadata">제목 가져오기</string>
+    <string name="title_style_link_metadata_remark">입력한 주소의 제목을 가져옵니다</string>
+    <string name="title_style_link_send_dlimit">다운로드 제한 (%1$s)</string>
+    <string name="title_style_link_send_tlimit">기간 제한 (%1$s)</string>
+    <string name="title_add_image">사진 추가</string>
+    <string name="title_add_image_inline">삽입</string>
+    <string name="title_add_image_attach">첨부</string>
+    <string name="title_add_image_resize">크기 조정</string>
+    <string name="title_add_image_resize_width_only">너비만 제한</string>
+    <string name="title_add_image_privacy">민감 개인정보 데이터 제거</string>
+    <string name="title_add_image_privacy_remark">지리적 위치, 일련번호, 파일명 등</string>
+    <string name="title_add_resize_pixels">&lt; %1$d 픽셀</string>
+    <string name="title_add_image_resize_remark">크기 조정이 지원되는 파일 형식: %1$s</string>
+    <string name="title_add_image_select_remark">Android photo picker가 더 이상 파일명을 전달하지 않습니다</string>
+    <string name="title_add_image_select">파일 선택</string>
+    <string name="title_add_attachment">첨부파일 추가</string>
+    <string name="title_attachment_file">파일 첨부</string>
+    <string name="title_attachment_photo">사진 촬영</string>
+    <string name="title_attachment_audio">음성 녹음</string>
+    <string name="title_show_addresses">참조/숨은 참조 표시</string>
+    <string name="title_save_drafts">임시저장 메일을 서버에 저장</string>
+    <string name="title_send_dialog">전송 옵션 표시</string>
+    <string name="title_image_dialog">이미지 옵션 표시</string>
+    <string name="title_style_toolbar">스타일 툴바</string>
+    <string name="title_media_toolbar">미디어 도구모음</string>
+    <string name="title_manage_android_contacts">Android 연락처 관리</string>
+    <string name="title_manage_local_contacts">로컬 연락처 관리</string>
+    <string name="title_insert_contact_group">연락처 그룹 삽입</string>
+    <string name="title_insert_template">템플릿 삽입</string>
+    <string name="title_create_template">템플릿 생성</string>
+    <string name="title_select_default_identity">기본 주소 선택</string>
+    <string name="title_translate">번역</string>
+    <string name="title_summarize">요약</string>
+    <string name="title_translate_configure">&#8230; 설정</string>
+    <string name="title_translate_key">키 입력</string>
+    <string name="title_translating">%1$s로 번역 중&#8230;</string>
+    <string name="title_translate_formal">공식적인 문체 사용</string>
+    <string name="title_translate_small">원문을 작은 글씨로 표시</string>
+    <string name="title_translate_replace">원본을 번역된 텍스트로 대체</string>
+    <string name="title_translate_highlight">번역 중인 텍스트를 강조 표시</string>
+    <string name="title_translate_html">형식 유지</string>
+    <string name="title_translate_html_hint">더 많은 글자 수를 사용합니다</string>
+    <string name="title_translate_usage">사용량: %1$s / %2$s (%3$d %%)</string>
+    <string name="title_translate_tap">번역할 텍스트를 탭하세요</string>
+    <string name="title_suggestions_check">&#8230; 확인 중</string>
+    <string name="title_suggestions_none">제안 사항 없음</string>
+    <string name="title_edit_plain_text">일반 텍스트로 수정</string>
+    <string name="title_edit_formatted_text">재구성된 텍스트로 수정</string>
+    <string name="title_select_certificate">공개 키 선택</string>
+    <string name="title_certificate_missing">%1$s의 공개 키 없음</string>
+    <string name="title_certificate_invalid">%1$s의 공개 키가 유효하지 않습니다</string>
+    <string name="title_no_key">개인 키 없음</string>
+    <string name="title_invalid_key">유효하지 않은 개인 키</string>
+    <string name="title_unknown_key">개인 키가 암호화 키와 일치하지 않습니다</string>
+    <string name="title_key_missing">%1$s의 키 없음</string>
+    <string name="title_send_reminder_remark">알림은 전송 설정에서 다시 활성화할 수 있습니다</string>
+    <string name="title_send_plain_text">일반 텍스트만 사용</string>
+    <string name="title_send_dsn">상태 보고서</string>
+    <string name="title_send_receipt">수신 확인서 요청</string>
+    <string name="title_send_receipt_remark">대부분의 제공업체 및 이메일 클라이언트는 수신 확인서 요청을 무시함</string>
+    <string name="title_vt_unknown">이 파일은 VirusTotal에 아직 알려지지 않은 파일입니다</string>
+    <string name="title_vt_summary">%1$s 바이러스 스캐너가 이 파일을 악성으로 보고합니다</string>
+    <string name="title_vt_report">전체 보고서</string>
+    <string name="title_vt_upload">업로드</string>
+    <string name="title_vt_analyzing">VirusTotal이 파일을 분석 중입니다, 다소 시간이 걸릴 수 있습니다&#8230;</string>
+    <string name="title_from_missing">보낸사람을 찾을 수 없음</string>
+    <string name="title_pgp_reminder">PGP 키 사용 가능</string>
+    <string name="title_smime_reminder">S/MIME 키 사용 가능</string>
+    <string name="title_to_missing">받는사람을 입력해 주세요</string>
+    <string name="title_extra_missing">사용자 이름을 입력해 주세요</string>
+    <string name="title_noreply_reminder">\'답장 불가\' 주소로 전송합니다</string>
+    <string name="title_external_reminder">외부 주소로 전송</string>
+    <string name="title_subject_reminder">제목 비어 있음</string>
+    <string name="title_text_reminder">메시지가 비어 있습니다</string>
+    <string name="title_attachment_reminder">첨부파일 추가를 시도하셨습니까?</string>
+    <string name="title_attachment_warning">잠재적 위험: %1$s</string>
+    <string name="title_attachment_filename">일부 메일 클라이언트는 60자보다 긴 파일 이름을 처리할 수 없습니다</string>
+    <string name="title_plain_reminder">모든 형식이 손실됩니다</string>
+    <string name="title_dsn_reminder">하드 바운스는 기존 보낸사람의 이메일 평판을 손상시킵니다!</string>
+    <string name="title_attachments_missing">일부 첨부 파일이 다운로드되지 않았습니다.</string>
+    <string name="title_download_attachments">첨부파일 다운로드</string>
+    <string name="title_attachments_download">첨부파일 다운로드됨: %1$s</string>
+    <string name="title_dialog_hint">이 대화 상자는 상단 작업 표시줄의 점 세 개 메뉴를 통해 다시 활성화할 수 있습니다</string>
+    <string name="title_draft_deleted">작성 중인 글 취소됨</string>
+    <string name="title_draft_saved">임시 보관함에 저장했습니다</string>
+    <string name="title_ask_send_via">%2$s를 통해 %1$s에게 메시지를 보내시겠습니까?</string>
+    <string name="title_queued">메일 전송 중</string>
+    <string name="title_sign">서명</string>
+    <string name="title_verify">확인</string>
+    <string name="title_encrypt">암호화</string>
+    <string name="title_decrypt">복호화</string>
+    <string name="title_resync">재동기화</string>
+    <string name="title_charset">인코딩</string>
+    <string name="title_charset_auto">자동</string>
+    <string name="title_alternative_text">일반 텍스트 불러오기</string>
+    <string name="title_alternative_html">HTML 불러오기</string>
+    <string name="title_no_openpgp">OpenKeychain 없음</string>
+    <string name="title_no_openpgp_remark">PGP 엔드 투 엔드 암호화를 먼저 설정해야 함</string>
+    <string name="title_user_interaction">OpenKeychain으로 이전</string>
+    <string name="title_not_encrypted">메시지가 서명 또는 암호화되지 않았습니다</string>
+    <string name="title_no_sign_key">선택된 서명 키 없음</string>
+    <string name="title_reset_sign_key">서명 키 초기화</string>
+    <string name="title_reset_selected_keys">선택된 키 재설정</string>
+    <string name="title_reset_selected_keys_hint">신규 인증서 등의 경우에 사용할 수 있습니다</string>
+    <string name="title_signature_none">서명되지 않은 메시지</string>
+    <string name="title_signature_valid">메시지 서명 유효함</string>
+    <string name="title_signature_valid_from">메시지 서명 유효함: %1$s</string>
+    <string name="title_signature_unconfirmed">메시지 서명은 유효하지만 승인되지 않음</string>
+    <string name="title_signature_unconfirmed_from">메시지 서명은 유효하지만 승인되지 않음: %1$s</string>
+    <string name="title_signature_invalid">메시지 서명 유효하지 않음</string>
+    <string name="title_signature_invalid_reason">메시지 서명 유효하지 않음: %1$s</string>
+    <string name="title_signature_key_missing">서명 확인을 위한 키가 없습니다</string>
+    <string name="title_signature_certificate_invalid">인증서 체인 유효하지 않음</string>
+    <string name="title_signature_sender">보낸사람 주소</string>
+    <string name="title_signature_email">서명 주소</string>
+    <string name="title_signature_mismatch">보낸사람의 이메일 주소와 서명이 일치하지 않습니다</string>
+    <string name="title_signature_algorithm">알고리즘</string>
+    <string name="title_signature_public_key">공개 키</string>
+    <string name="title_signature_subject">제목</string>
+    <string name="title_signature_validity">유효성</string>
+    <string name="title_signature_outdated">현재 유효하지 않은 공개 키입니다</string>
+    <string name="title_signature_store">저장</string>
+    <string name="title_search">검색</string>
+    <string name="title_search_for_hint">입력</string>
+    <string name="title_search_hint">        기본적으로 검색은 기기에서 수행됩니다.
+        서버에서도 검색을 수행하려면 \'다시 검색\' 버튼을 누르세요.
+    </string>
+    <string name="title_search_hint_fts">검색 인덱스 사용 시: 온전한 단어만 사용하세요</string>
+    <string name="title_search_index_hint">검색 인덱스를 통해 검색하는 것은 빠르지만 온전한 단어만 찾을 수 있습니다.</string>
+    <string name="title_search_more">설정 더보기</string>
+    <string name="title_search_use_index">검색 인덱스를 사용합니다</string>
+    <string name="title_search_in_senders">보낸사람 (from) 검색</string>
+    <string name="title_search_in_recipients">받는 사람 (To, CC)</string>
+    <string name="title_search_in_subject">제목으로 검색</string>
+    <string name="title_search_in_notes">로컬 노트에서</string>
+    <string name="title_search_in_filenames">파일 이름으로 검색 (기기 내)</string>
+    <string name="title_search_with_unseen">읽지 않음</string>
+    <string name="title_search_with_flagged">즐겨찾기</string>
+    <string name="title_search_with_hidden">숨겨짐 (기기 내)</string>
+    <string name="title_search_with_encrypted">암호화됨 (기기 내)</string>
+    <string name="title_search_with_attachments">첨부파일이 있는 메시지 (기기 내)</string>
+    <string name="title_search_with_range">날짜 범위</string>
+    <string name="title_search_with_before">이전</string>
+    <string name="title_search_with_after">후</string>
+    <string name="title_search_device_first">먼저 기기에서 검색</string>
+    <string name="title_search_flag_unseen">읽지 않음</string>
+    <string name="title_search_flag_flagged">즐겨찾기</string>
+    <string name="title_search_flag_hidden">숨김</string>
+    <string name="title_search_flag_encrypted">암호화됨</string>
+    <string name="title_search_flag_attachments">첨부파일</string>
+    <string name="title_search_flag_notes">노트</string>
+    <string name="title_search_flag_invite">초대</string>
+    <string name="title_search_flag_size">크기 &gt; %1$s</string>
+    <string name="title_search_device">기기에서 검색</string>
+    <string name="title_search_server_wait">서버를 기다리는 중</string>
+    <string name="title_search_in">검색 위치</string>
+    <string name="title_search_sender">보낸사람 검색</string>
+    <string name="title_save_search_name">이름</string>
+    <string name="title_save_search_order">정렬</string>
+    <string name="title_save_search_color">색상</string>
+    <string name="title_sort_on">정렬 기준</string>
+    <string name="title_sort_on_time">시간</string>
+    <string name="title_sort_on_unread">읽지 않음</string>
+    <string name="title_sort_on_starred">즐겨찾기</string>
+    <string name="title_sort_on_priority">우선순위</string>
+    <string name="title_sort_on_sender">보낸사람</string>
+    <string name="title_sort_on_subject">제목</string>
+    <string name="title_sort_on_size">크기</string>
+    <string name="title_sort_on_attachments">첨부파일</string>
+    <string name="title_sort_on_hidden">숨김</string>
+    <string name="title_sort_ascending">오래된 순</string>
+    <string name="title_sort_on_name">이름</string>
+    <string name="title_sort_on_order">정렬</string>
+    <string name="title_sort_on_last_applied">가장 최근 적용됨</string>
+    <string name="title_filter_seen">읽음</string>
+    <string name="title_filter_unseen">읽지 않음</string>
+    <string name="title_filter_flagged">즐겨찾기</string>
+    <string name="title_filter_unflagged">즐겨찾기 해제함</string>
+    <string name="title_filter_unknown">보낸사람 알 수 없음</string>
+    <string name="title_filter_hidden">숨김</string>
+    <string name="title_filter_deleted">삭제됨</string>
+    <string name="title_filter_duplicates">중복</string>
+    <string name="title_filter_sent">보냄</string>
+    <string name="title_compact">간략히 보기</string>
+    <string name="title_zoom">글씨 크기</string>
+    <string name="title_padding">여백 크기</string>
+    <string name="title_large_buttons">더 큰 버튼</string>
+    <string name="title_select_language">언어 선택</string>
+    <string name="title_select_all">모두 선택</string>
+    <string name="title_select_found">결과 모두 선택</string>
+    <string name="title_mark_all_read">모두 읽음으로 표시</string>
+    <string name="title_view_thread">대화 보기</string>
+    <string name="title_force_sync">강제 동기화</string>
+    <string name="title_force_send">강제 전송</string>
+    <string name="title_pwned_remark">비밀번호를 확인하지만, 비밀번호와 이메일을 전송하지 않습니다! (k-익명화 기법 사용)</string>
+    <string name="title_language_all">모두</string>
+    <string name="title_previous">이전</string>
+    <string name="title_next">다음</string>
+    <string name="title_edit_signature">서명 편집</string>
+    <string name="title_edit_signature_remark">Android가 모든 HTML을 표시할 수는 없지만, 있는 그대로 전송됩니다</string>
+    <string name="title_edit_signature_text">서명 문자</string>
+    <string name="title_edit_signature_image">사진 삽입</string>
+    <string name="title_edit_signature_image_hint">        메시지를 보낼 때 선택한 위치에서 메시지로 이미지가 복사됩니다.
+        그러니 이미지 파일을 지우지 마십시오!
+    </string>
+    <string name="title_edit_signature_delete">서명을 삭제하시겠습니까?</string>
+    <string name="title_answer_define_name">이름</string>
+    <string name="title_answer_define_value">값</string>
+    <string name="title_answer_caption">템플릿 수정</string>
+    <string name="title_answer_reply">답장 템플릿</string>
+    <string name="title_answer_name">템플릿 이름</string>
+    <string name="title_answer_group">템플릿 그룹 (선택사항)</string>
+    <string name="title_answer_standard">기본값</string>
+    <string name="title_answer_favorite">즐겨찾기</string>
+    <string name="title_answer_snippet">스니펫</string>
+    <string name="title_answer_receipt">읽음 확인서로 사용</string>
+    <string name="title_answer_hide">메뉴에서 숨기기</string>
+    <string name="title_answer_text">템플릿 내용</string>
+    <string name="title_answer_placeholder">자리표시자</string>
+    <string name="title_answer_placeholder_name">보낸사람의 전체 이름</string>
+    <string name="title_answer_placeholder_email">보낸사람의 이메일 주소</string>
+    <string name="title_answer_placeholder_firstname">보낸사람의 성을 제외한 이름</string>
+    <string name="title_answer_placeholder_lastname">보낸사람의 성씨</string>
+    <string name="title_answer_placeholder_date">현재 날짜</string>
+    <string name="title_rule_noop">동작 없음</string>
+    <string name="title_rule_seen">읽음으로 표시</string>
+    <string name="title_rule_unseen">읽지 않음으로 표시</string>
+    <string name="title_rule_hide">숨김</string>
+    <string name="title_rule_snooze">미루기</string>
+    <string name="title_rule_flag">즐겨찾기</string>
+    <string name="title_rule_importance">중요도 설정</string>
+    <string name="title_rule_keyword_add">추가</string>
+    <string name="title_rule_keyword_delete">삭제</string>
+    <string name="title_rule_notes">로컬 노트</string>
+    <string name="title_rule_move">이동</string>
+    <string name="title_rule_copy">복사 (라벨)</string>
+    <string name="title_rule_answer">답장/전달</string>
+    <string name="title_rule_tts">텍스트 음성 변환</string>
+    <string name="title_rule_automation">자동화</string>
+    <string name="title_rule_delete">영구 삭제</string>
+    <string name="title_rule_sound">소리 재생</string>
+    <string name="title_rule_caption">규칙 수정</string>
+    <string name="title_rule_title">규칙이 여기에 적용됩니다</string>
+    <string name="title_rule_name">이름</string>
+    <string name="title_rule_group">그룹</string>
+    <string name="title_rule_order">정렬</string>
+    <string name="title_rule_enabled">켜짐</string>
+    <string name="title_rule_stop">이 규칙을 실행한 후 규칙 진행을 중지합니다</string>
+    <string name="title_rule_stop_remark">규칙이 그룹의 일부인 경우 이 그룹의 모든 규칙 진행이 중지됩니다</string>
+    <string name="title_rule_sender">보낸사람 포함</string>
+    <string name="title_rule_sender_known">보낸사람이 연락처에 있습니다</string>
+    <string name="title_rule_recipient">받는사람 내용</string>
+    <string name="title_rule_subject">제목에 포함됨</string>
+    <string name="title_rule_attachments">첨부파일</string>
+    <string name="title_rule_header">해더 포함</string>
+    <string name="title_rule_skip_quotes">인용한 텍스트 건너뛰기</string>
+    <string name="title_rule_time_every_day">매일</string>
+    <string name="title_rule_regex">정규표현식</string>
+    <string name="title_rule_and">그리고</string>
+    <string name="title_rule_action">동작</string>
+    <string name="title_rule_hours">시간</string>
+    <string name="title_rule_schedule_end">시간 조건이 끝날 때부터</string>
+    <string name="title_rule_folder">폴더</string>
+    <string name="title_rule_folder_create">하위 폴더 생성</string>
+    <string name="title_rule_identity">사용자 ID</string>
+    <string name="title_rule_template">답장 템플릿</string>
+    <string name="title_rule_answer_subject">템플릿 이름을 제목으로 사용</string>
+    <string name="title_rule_forward_to">전달</string>
+    <string name="title_rule_resend">재전송</string>
+    <string name="title_rule_cc">CC 주소로 답장</string>
+    <string name="title_rule_answer_remark">자동 답장 루프를 피하기 위해 모든 대화에 대해 하나의 답장만 전송됩니다</string>
+    <string name="title_rule_name_missing">규칙 이름을 입력해 주세요</string>
+    <string name="title_rule_condition_missing">조건을 입력해 주세요</string>
+    <string name="title_rule_folder_missing">폴더가 없습니다</string>
+    <string name="title_rule_identity_missing">사용자 ID를 입력해 주세요</string>
+    <string name="title_rule_answer_missing">템플릿이 없습니다</string>
+    <string name="title_rule_keyword_missing">키워드가 없습니다</string>
+    <string name="title_rule_notes_missing">로컬 노트가 없습니다</string>
+    <string name="title_rule_url_missing">URL이 없거나 유효하지 않습니다</string>
+    <string name="title_rule_delete_hint">영구 삭제는 되돌릴 수 없으므로, 규칙 조건이 올바른지 확인하십시오!</string>
+    <string name="title_rule_edit_group">그룹 &#8230; 편집</string>
+    <string name="title_rule_execute">지금 실행</string>
+    <string name="title_rule_check">확인</string>
+    <string name="title_rule_tts_ok">설정 완료</string>
+    <string name="title_rule_tts_setup">설정 확인</string>
+    <string name="title_rule_tts_prefix">새 메시지</string>
+    <string name="title_rule_tts_from">발신인</string>
+    <string name="title_rule_tts_subject">제목</string>
+    <string name="title_rule_tts_content">내용</string>
+    <string name="title_rule_select_sound">소리 선택</string>
+    <string name="title_rule_use_as_alarm">알람으로 사용</string>
+    <string name="title_rule_alarm_hint">알람은 \"방해 금지 모드\"를 무시합니다</string>
+    <string name="title_rule_alarm_duration">최대 알람 시간 (초)</string>
+    <string name="title_code_pretty">서식화</string>
+    <string name="title_legend_section_synchronize">동기화</string>
+    <string name="title_legend_section_folders">폴더</string>
+    <string name="title_legend_section_messages">메시지</string>
+    <string name="title_legend_section_compose">작성</string>
+    <string name="title_legend_section_keyboard">키보드</string>
+    <string name="title_legend_oauth">OAuth 인증</string>
+    <string name="title_legend_folder_connected">폴더 연결됨</string>
+    <string name="title_legend_folder_disconnected">폴더 연결 해제됨</string>
+    <string name="title_legend_download_on">메시지 내용을 자동으로 다운로드</string>
+    <string name="title_legend_download_off">요청할 때 메시지 내용 다운로드</string>
+    <string name="title_legend_synchronize_on">동기화 켬</string>
+    <string name="title_legend_synchronize_off">동기화 끔</string>
+    <string name="title_legend_synchronize_poll">주기적으로 동기화</string>
+    <string name="title_legend_disconnected">연결 끊김</string>
+    <string name="title_legend_connecting">연결 중</string>
+    <string name="title_legend_connected">연결함</string>
+    <string name="title_legend_backoff">실패 후 대기</string>
+    <string name="title_legend_quota">편지함이 거의 가득 찼습니다</string>
+    <string name="title_legend_executing">작업 실행</string>
+    <string name="title_legend_synchronizing">동기화 중</string>
+    <string name="title_legend_downloading">다운로드 중</string>
+    <string name="title_legend_closing">닫기</string>
+    <string name="title_legend_unified">통합 받은메일함 / 주계정</string>
+    <string name="title_legend_inbox">받은메일함</string>
+    <string name="title_legend_outbox">보낸 편지함</string>
+    <string name="title_legend_drafts">임시보관함</string>
+    <string name="title_legend_sent">발신함</string>
+    <string name="title_legend_archive">보관하기</string>
+    <string name="title_legend_trash">휴지통</string>
+    <string name="title_legend_junk">스팸</string>
+    <string name="title_legend_primary">기본</string>
+    <string name="title_legend_subscribed">주시 대상</string>
+    <string name="title_legend_rule">규칙 있음</string>
+    <string name="title_legend_similar">유사한 메시지 검색</string>
+    <string name="title_legend_notify">새 메시지 알림</string>
+    <string name="title_legend_stop">규칙 진행을 중지</string>
+    <string name="title_legend_thread">대화</string>
+    <string name="title_legend_bookmark">마지막으로 연 대화</string>
+    <string name="title_legend_zoom">텍스트 크기 변경</string>
+    <string name="title_legend_draft">임시저장된 메일 있음</string>
+    <string name="title_legend_priority">우선순위 높음</string>
+    <string name="title_legend_priority_low">우선순위 낮음</string>
+    <string name="title_legend_sensitivity_personal">개인적입니다</string>
+    <string name="title_legend_sensitivity_private">비공개입니다</string>
+    <string name="title_legend_sensitivity_confidential">비공개입니다</string>
+    <string name="title_legend_importance">중요</string>
+    <string name="title_legend_signed">서명됨</string>
+    <string name="title_legend_encrypted">암호화됨</string>
+    <string name="title_legend_auth">인증 실패</string>
+    <string name="title_legend_found">찾음</string>
+    <string name="title_legend_classified">자동으로 분류됨</string>
+    <string name="title_legend_snoozed">미뤄짐</string>
+    <string name="title_legend_browsed">스크롤하는 과정 또는 검색하는 과정에서 다운로드됨</string>
+    <string name="title_legend_answered">답장함</string>
+    <string name="title_legend_forwarded">전달함</string>
+    <string name="title_legend_plain_only">일반 텍스트만 사용됨</string>
+    <string name="title_legend_receipt">수신 확인서가 요청됨</string>
+    <string name="title_legend_attachment">첨부파일</string>
+    <string name="title_legend_flagged">즐겨찾기</string>
+    <string name="title_legend_contacts">주소록 관리</string>
+    <string name="title_legend_search">보낸사람을 검색</string>
+    <string name="title_legend_view">내용 보기</string>
+    <string name="title_legend_hide">내용 숨기기</string>
+    <string name="title_legend_download">콘텐츠 다운로드</string>
+    <string name="title_legend_original">원본 메시지 보기</string>
+    <string name="title_legend_reformatted">재구성된 메시지 보기</string>
+    <string name="title_legend_tracking_pixel">사진 추적 중</string>
+    <string name="title_legend_broken_image">깨진 사진</string>
+    <string name="title_legend_open_external">앱 외부에서 열기</string>
+    <string name="title_legend_pick">주소록 선택</string>
+    <string name="title_legend_cc">참조/숨은 참조 표시</string>
+    <string name="title_legend_link">링크 삽입</string>
+    <string name="title_legend_file">파일 첨부</string>
+    <string name="title_legend_picture">사진 삽입</string>
+    <string name="title_legend_photo">사진 촬영</string>
+    <string name="title_legend_audio">음성 녹음</string>
+    <string name="title_legend_bold">글자 굵게</string>
+    <string name="title_legend_underline">글자에 밑줄</string>
+    <string name="title_legend_text_style">글씨 서식 설정</string>
+    <string name="title_legend_roaming">로밍</string>
+    <string name="title_legend_expander">펼치기/접기</string>
+    <string name="title_legend_avatar">아바타</string>
+    <string name="title_legend_show_quotes">인용 표시</string>
+    <string name="title_legend_show_junk">스팸으로 처리</string>
+    <string name="title_legend_create_rule">규칙 생성</string>
+    <string name="title_legend_show_images">사진 표시</string>
+    <string name="title_legend_hide_images">이미지 숨기기</string>
+    <string name="title_legend_show_full">원본 메시지 보기</string>
+    <string name="title_legend_show_reformatted">재구성된 메시지 표시</string>
+    <string name="title_legend_edit">편집</string>
+    <string name="title_legend_default_color">기본 색상</string>
+    <string name="title_legend_close_hint">힌트 닫기</string>
+    <string name="title_legend_connection_state">연결 상태</string>
+    <string name="title_legend_sync_state">동기화 상태</string>
+    <string name="title_legend_download_state">다운로드 상태</string>
+    <string name="title_legend_save">저장</string>
+    <string name="title_legend_delete">삭제</string>
+    <string name="title_legend_count">카운트</string>
+    <string name="title_legend_folder_type">폴더 유형</string>
+    <string name="title_legend_enter">열기</string>
+    <string name="title_legend_a">보관합니다</string>
+    <string name="title_legend_c">작성</string>
+    <string name="title_legend_d">휴지통 (삭제)</string>
+    <string name="title_legend_m">메뉴 (복수 선택)</string>
+    <string name="title_legend_n">다음</string>
+    <string name="title_legend_p">이전</string>
+    <string name="title_legend_r">답장</string>
+    <string name="title_legend_s">선택/선택 해제</string>
+    <string name="title_legend_t">글자에 포커스</string>
+    <string name="title_hint_folder_actions">빠른 액세스를 위해 탐색 메뉴에 폴더를 추가하는 등의 옵션을 위해 폴더 길게 누르기</string>
+    <string name="title_hint_folder_sync">배터리 및 네트워크 사용량을 제한하기 위해 자동으로 일부 폴더와 메시지를 동기화하지 않습니다</string>
+    <string name="title_hint_airplane">비행기 모드 사용 중</string>
+    <string name="title_hint_vpn_active">VPN 사용 중</string>
+    <string name="title_hint_notifications">알림 권한 없음</string>
+    <string name="title_hint_notifications_remark">(계정) 알림에도 알림 권한이 필요합니다. 새 메시지 알림은 설정에서 끌 수 있습니다.</string>
+    <string name="title_hint_battery_optimizations">배터리 최적화 기능이 계속 활성화되어 있습니다</string>
+    <string name="title_hint_data_saver">데이터 절약 모드가 활성화된 경우, 백그라운드에서 동기화되지 않으며 연결 오류가 발생할 수 있습니다.</string>
+    <string name="title_hint_vpn">메일 서버는 때때로 VPN 연결을 차단합니다. 이 경우 메일 제공 업체만이 문제를 해결할 수 있습니다.</string>
+    <string name="title_hint_dismiss">이 대화 상자를 닫으면 알림이 제거됩니다.</string>
+    <string name="title_hint_message_actions">삭제하려면 왼쪽으로 스와이프; 보관하려면 오른쪽으로 스와이프 (가능한 경우); 계정 설정에서 스와이프 작업을 설정할 수 있습니다</string>
+    <string name="title_hint_message_junk">        이메일 클라이언트는 기본적으로 이메일 서버에 메시지를 표시합니다.
+        스팸 필터링을 담당하는 것은 이메일 클라이언트가 아니라 이메일 서버입니다.
+        스팸을 많이 받는다면 이메일 제공업체에 연락하시고 앱을 탓하지 마세요!
+    </string>
+    <string name="title_hint_important">중요</string>
+    <string name="title_hint_sync">메시지 다운로드는 제공업체의 속도, 인터넷 연결, 기기 및 메시지 수에 따라 다소 시간이 걸릴 수 있습니다. 메시지를 다운로드하는 동안 앱의 반응이 느려질 수 있습니다.</string>
+    <string name="title_hint_sync_note">기본적으로 저장 공간과 배터리 및 데이터 사용량을 제한하기 위해 일부 메시지가 다운로드되지 않습니다. 폴더 목록에서 폴더를 길게 누르고 \'더 많은 메시지 가져오기\'를 선택하면 변경할 수 있습니다.</string>
+    <string name="title_hint_battery">기본적으로 FairEmail은 항상 메시지를 받기 때문에 Android는 FairEmail이 항상 활성 상태라고 보고할 것입니다. 따라서 FairEmail이 항상 배터리 전력을 소비하는 것처럼 보일 수 있지만 사실 그렇지 않습니다.</string>
+    <string name="title_hint_reformat">기본적으로 FairEmail은 개인 정보 보호 및 보안상의 이유로 메시지를 재구성합니다. 원본 메시지를 보려면 메시지 텍스트 위의 \'전체 화면\' 아이콘을 누르세요.</string>
+    <string name="title_hint_junk">스팸 필터링은 이메일 서버에서 수행해야 하며 제한된 기능을 가진 배터리 전원 장치에서는 이를 신뢰성 있게 수행할 수 없습니다.</string>
+    <string name="title_open_link">링크 열기</string>
+    <string name="title_image_link">이미지 링크</string>
+    <string name="title_suspicious_link">신뢰할 수 없는 링크입니다</string>
+    <string name="title_link_http">트래픽이 암호화되지 않습니다</string>
+    <string name="title_link_https">트래픽이 암호화됩니다</string>
+    <string name="title_check_owner">소유자 확인</string>
+    <string name="title_remark_owner"><a href="https://ipinfo.io/">ipinfo.io</a>에서 정보를 검색합니다</string>
+    <string name="title_default_apps">기본 앱</string>
+    <string name="title_reset_open">기본 앱 설정 또는 초기화</string>
+    <string name="title_select_app">앱 선택</string>
+    <string name="title_updated">버전 %1$s으로의 업데이트가 가능합니다</string>
+    <string name="title_no_update">최신 버전입니다</string>
+    <string name="title_yes">네</string>
+    <string name="title_no">아니오</string>
+    <string name="title_later">나중에</string>
+    <string name="title_paste_plain">일반 텍스트로 붙여넣기</string>
+    <string name="title_undo">되돌리기</string>
+    <string name="title_redo">재실행</string>
+    <string name="title_add">추가</string>
+    <string name="title_browse">연결 프로그램</string>
+    <string name="title_info">정보</string>
+    <string name="title_download">다운로드</string>
+    <string name="title_report">신고</string>
+    <string name="title_fix">수정</string>
+    <string name="title_show">표시</string>
+    <string name="title_enable">사용</string>
+    <string name="title_enabled">켜짐</string>
+    <string name="title_disable">사용 안 함</string>
+    <string name="title_keep_current">현재 상태 유지</string>
+    <string name="title_executing">실행 중</string>
+    <string name="title_completed">완료함</string>
+    <string name="title_default_changed">기본값 변경됨</string>
+    <string name="title_clipboard_copy">클립보드에 복사</string>
+    <string name="title_clipboard_copied">클립보드에 복사됨</string>
+    <string name="title_ask_what">할 일 물어보기</string>
+    <string name="title_no_ask_for_again">%1$s 에 대해 다시 묻지 않음</string>
+    <string name="title_large_body">이 메시지는 매우 커서 문제가 발생할 수 있습니다!</string>
+    <string name="title_1hour">1시간</string>
+    <string name="title_1day">1일</string>
+    <string name="title_now">지금</string>
+    <string name="title_after">%1$s 후</string>
+    <string name="title_reset">초기화</string>
+    <string name="title_hours">시간</string>
+    <string name="title_minutes">분</string>
+    <string name="title_dismiss">다시 보지 않기</string>
+    <string name="title_snooze_now">미루기</string>
+    <string name="title_loading">&#8230; 불러오는 중</string>
+    <string name="title_go_back">뒤로 가기</string>
+    <string name="title_not_existing">해당 메시지는 더 이상 메일 서버에 존재하지 않습니다</string>
+    <string name="title_conversation_actions">동작</string>
+    <string name="title_conversation_action_reply">추천된 텍스트로 답장: %1$s</string>
+    <string name="title_conversation_action_copy">복사: \'%1$s\'</string>
+    <string name="title_icalendar_accept">수락</string>
+    <string name="title_icalendar_decline">거부</string>
+    <string name="title_icalendar_maybe">아마</string>
+    <string name="title_icalendar_calendar">달력</string>
+    <string name="title_pro_feature">PRO 기능입니다</string>
+    <string name="title_pro_list">Pro 기능 목록</string>
+    <string name="title_pro_purchase">구매</string>
+    <string name="title_pro_one_time">%1$s (1회 구매)</string>
+    <string name="title_pro_no_play">Play 스토어를 찾을 수 없음</string>
+    <string name="title_pro_info">        FairEmail을 개발하는 데 말 그대로 수천 시간을 들였지만, 그럼에도 대부분의 기능을 무료로 사용하실 수 있습니다.
+        FairEmail은 사용자의 개인정보를 중요하게 생각하며 광고를 표시하지 않고, 수익을 위해 사용자를 추적하거나 분석하지 않습니다.
+        FairEmail을 장기적으로 유지하기 위하여, 일부 편의성과 고급 기능은 유료로 사용해야 하도록 했습니다.
+        FairEmail은 이에 대한 알림을 표시하며, Pro 기능을 구매하면 사라집니다.
+    </string>
+    <string name="title_pro_whichever">어떤 기능을 유료 기능으로 선택하든, 기능이 무료여야 한다고 불평하는 사람은 항상 존재합니다. 그런 사람이 되지 말아 주세요.</string>
+    <string name="title_pro_google">FairEmail에서 Play 스토어 결제가 시작되는 건 맞으나, 전체 결제 과정은 Google에서 관리합니다. 문제가 발생하더라도 앱을 비난하지 말아주세요!</string>
+    <string name="title_pro_price">프로 기능들이 왜 이렇게 비싼가요?</string>
+    <string name="title_pro_family">Google Play 가족 콘텐츠 라이브러리를 사용할 수 있나요?</string>
+    <string name="title_pro_restore">(다른 기기에서) 구매한 제품을 복구하려면 어떻게 해야 하나요?</string>
+    <string name="title_pro_activated">모든 pro 기능이 활성화되었습니다</string>
+    <string name="title_pro_valid">모든 pro 기능 활성화됨</string>
+    <string name="title_pro_invalid">유효하지 않은 응답</string>
+    <string name="title_boundary_error">메일 서버에서 메시지를 다운로드하는 중 오류가 발생했습니다</string>
+    <string name="title_boundary_retry">재시도</string>
+    <string name="title_unexpected_error">예기치 않은 오류</string>
+    <string name="title_log">기록</string>
+    <string name="title_log_clear">지우기</string>
+    <string name="title_rules_export">규칙 내보내기</string>
+    <string name="title_rules_import">규칙 불러오기</string>
+    <string name="title_rules_delete_all">모든 규칙을 삭제합니다</string>
+    <string name="title_rules_delete_all_confirm">모든 규칙을 삭제할까요?</string>
+    <string name="title_debug_info">디버그 정보</string>
+    <string name="title_debug_info_remark">문제와 문제 발생 시점에 대해 설명해주십시오:</string>
+    <string name="title_crash_info_remark">앱이 충돌했을 때 무엇을 하고 있으셨는지 설명해 주십시오:</string>
+    <string name="title_debug_info_issue">문제 상황 설명 (필수)</string>
+    <string name="title_debug_info_issue_remark">문제 발생 시간, 정확한 오류 메시지 등의 세부 정보는 문제 해결에 중요합니다</string>
+    <string name="title_debug_info_send_remark">보통 디버깅 정보는 임시저장 메시지로 먼저 저장되므로 어떤 내용이 전송될지 확인할 수 있습니다</string>
+    <string name="title_unexpected_info_remark">오류가 발생했을 때 무엇을 하고 있으셨는지 설명해 주십시오:</string>
+    <string name="title_widget_title_count">새 메시지 수</string>
+    <string name="title_widget_title_list">메시지 목록</string>
+    <string name="title_widget_title_sync">동기화 켬/끔</string>
+    <string name="title_power_menu_sync">동기화</string>
+    <string name="title_power_menu_on">켜기</string>
+    <string name="title_power_menu_off">끄기</string>
+    <string name="title_power_menu_on_off">켜기/끄기</string>
+    <string name="title_widget_account">계정</string>
+    <string name="title_widget_account_all">모두</string>
+    <string name="title_widget_folder">폴더</string>
+    <string name="title_widget_folder_unified">통합 받은메일함 폴더</string>
+    <string name="title_widget_folder_notifying">새 메시지 알림이 있는 폴더</string>
+    <string name="title_widget_unseen">읽지 않은 메시지만</string>
+    <string name="title_widget_show_unseen">읽지 않은 상태로 표시</string>
+    <string name="title_widget_flagged">별 표시된 메시지만</string>
+    <string name="title_widget_show_flagged">즐겨찾기 보기</string>
+    <string name="title_widget_font_size">글씨 크기</string>
+    <string name="title_widget_padding">여백 크기</string>
+    <string name="title_widget_separator_lines">구분선 표시</string>
+    <string name="title_widget_semi_transparent">반투명 배경</string>
+    <string name="title_widget_subject_lines">제목의 최대 줄 수</string>
+    <string name="title_widget_avatars">연락처 아바타 표시</string>
+    <string name="title_widget_refresh">메시지 새로고침 버튼 표시</string>
+    <string name="title_widget_background">배경 색</string>
+    <string name="title_widget_day_night">시스템의 어두운 테마 설정 사용</string>
+    <string name="title_compat_dark">Google은 Android 10 이전 버전에서 다크 모드를 제거했습니다</string>
+    <!-- Thunderbird -->
+    <string name="title_keyword_label1">중요</string>
+    <string name="title_keyword_label2">업무</string>
+    <string name="title_keyword_label3">개인</string>
+    <string name="title_keyword_label4">할 일</string>
+    <string name="title_keyword_label5">나중에</string>
+    <plurals name="title_accessibility_messages">
+        <item quantity="other">메시지 %1$d건</item>
+    </plurals>
+    <string name="title_accessibility_accounts">계정</string>
+    <string name="title_accessibility_folders">폴더</string>
+    <string name="title_accessibility_searches">검색 기록</string>
+    <string name="title_accessibility_menus">메뉴</string>
+    <string name="title_accessibility_extras">기타</string>
+    <string name="title_accessibility_collapsed">접음</string>
+    <string name="title_accessibility_expanded">펼쳐짐</string>
+    <string name="title_accessibility_seen">읽음</string>
+    <string name="title_accessibility_unseen">읽지 않음</string>
+    <string name="title_accessibility_flagged">즐겨찾기에 추가함</string>
+    <string name="title_accessibility_unflagged">즐겨찾기 해제함</string>
+    <string name="title_accessibility_collapse">접음</string>
+    <string name="title_accessibility_expand">펼치기</string>
+    <string name="title_accessibility_view_contact">주소록 보기</string>
+    <string name="title_accessibility_view_help">도움말 보기</string>
+    <string name="title_accessibility_selected">선택함</string>
+    <string name="title_accessibility_answered">답장함</string>
+    <string name="title_accessibility_scroll_down">아래로 스크롤</string>
+    <string name="title_accessibility_scroll_up">위로 스크롤</string>
+    <string name="title_accessibility_edit">수정</string>
+    <string name="title_accessibility_show_addresses">주소 표시</string>
+    <string name="title_accessibility_hide_addresses">주소 숨김</string>
+    <string name="title_accessibility_attachment">첨부파일</string>
+    <string name="title_accessibility_from">보낸사람</string>
+    <string name="title_accessibility_to">받는사람</string>
+    <string-array name="pollIntervalNames">
+        <item>항상</item>
+        <item>Every minute</item>
+        <item>Every 2 minutes</item>
+        <item>Every 5 minutes</item>
+        <item>Every 10 minutes</item>
+        <item>매 15분</item>
+        <item>매 30분</item>
+        <item>매시간</item>
+        <item>매 2시간</item>
+        <item>매 4시간</item>
+        <item>매 8시간</item>
+        <item>매일</item>
+    </string-array>
+    <string-array name="sendDelayedNames">
+        <item>없음</item>
+        <item>5 seconds</item>
+        <item>10 seconds</item>
+        <item>15초</item>
+        <item>30초</item>
+        <item>1분</item>
+        <item>2분</item>
+        <item>5분</item>
+        <item>10분</item>
+    </string-array>
+    <string-array name="startupNames">
+        <item>통합 받은메일함</item>
+        <item>통합된 폴더</item>
+        <item>주계정 폴더</item>
+        <item>계정</item>
+        <item>Primary inbox</item>
+    </string-array>
+    <string-array name="downloadNames">
+        <item>16 KB</item>
+        <item>32 KB</item>
+        <item>64 KB</item>
+        <item>128 KB</item>
+        <item>256 KB</item>
+        <item>512 KB</item>
+        <item>1 MB</item>
+        <item>2 MB</item>
+        <item>4 MB</item>
+        <item>8 MB</item>
+        <item>16 MB</item>
+        <item>∞</item>
+    </string-array>
+    <string-array name="onCloseNames">
+        <item>아무것도 하지 않음</item>
+        <item>이전 대화로 이동</item>
+        <item>다음 대화로 이동</item>
+    </string-array>
+    <string-array name="resizeNames">
+        <item>매우 작음</item>
+        <item>매우 작게</item>
+        <item>작게</item>
+        <item>보통</item>
+        <item>크게</item>
+        <item>매우 크게</item>
+    </string-array>
+    <!-- https://en.wikipedia.org/wiki/Display_resolution -->
+    <!-- https://en.wikipedia.org/wiki/Comparison_of_high-definition_smartphone_displays -->
+    <string-array name="targetNames">
+        <item>수신</item>
+        <item>참조</item>
+        <item>숨은 참조</item>
+    </string-array>
+    <string-array name="biometricsTimeoutNames">
+        <item>1분</item>
+        <item>2분</item>
+        <item>5분</item>
+        <item>10분</item>
+        <item>20분</item>
+    </string-array>
+    <string-array name="ellipsizeNames">
+        <item>처음에</item>
+        <item>가운데에</item>
+        <item>끝에</item>
+        <item>자세히 보기</item>
+    </string-array>
+    <string-array name="priorityNames">
+        <item>낮음</item>
+        <item>보통</item>
+        <item>높음</item>
+    </string-array>
+    <string-array name="sensitivityNames">
+        <item>보통</item>
+        <item>개인적</item>
+        <item>비공개</item>
+        <item>비공개</item>
+    </string-array>
+    <string-array name="fontSizeNames">
+        <item>기본</item>
+        <item>작게</item>
+        <item>보통</item>
+        <item>크게</item>
+    </string-array>
+    <string-array name="spacingNames">
+        <item>Compact</item>
+        <item>보통</item>
+        <item>Roomy</item>
+    </string-array>
+    <string name="title_size_tiny">매우 작음</string>
+    <string-array name="receiptNames">
+        <item>오직 읽음 확인서만</item>
+        <item>오직 전달 확인서만</item>
+        <item>읽음+전달 확인서</item>
+    </string-array>
+    <string-array name="signatureNames">
+        <item>본문 위에</item>
+        <item>본문 밑에</item>
+        <item>하단에</item>
+    </string-array>
+    <string-array name="encryptNames">
+        <item>없음</item>
+        <item>PGP 서명만</item>
+        <item>PGP 암호화만</item>
+        <item>PGP 서명+암호화</item>
+        <item>S/MIME 서명만</item>
+        <item>S/MIME 암호화만</item>
+        <item>S/MIME 사인+암호화</item>
+    </string-array>
+    <string-array name="sizeNames">
+        <item>0 B</item>
+        <item>256 KB</item>
+        <item>512 KB</item>
+        <item>1 MB</item>
+        <item>2 MB</item>
+        <item>5 MB</item>
+        <item>10 MB</item>
+        <item>20 MB</item>
+        <item>50 MB</item>
+    </string-array>
+    <string-array name="undoNames">
+        <item>끄기</item>
+        <item>1.25초</item>
+        <item>2.5초</item>
+        <item>5초</item>
+        <item>7.5초</item>
+        <item>10초</item>
+        <item>15초</item>
+        <item>30초</item>
+        <item>60초</item>
+    </string-array>
+    <string-array name="fontNameNames">
+        <item>필기체</item>
+        <item>명조체</item>
+        <item>고딕체</item>
+        <item>고정폭</item>
+        <item>Fantasy</item>
+    </string-array>
+    <!-- https://www.w3.org/TR/css-fonts-4/#generic-font-families -->
+    <string-array name="addressFormatNames">
+        <item>이름만</item>
+        <item>이메일만</item>
+        <item>이름 및 이메일</item>
+    </string-array>
+    <!-- https://www.bouncycastle.org/specifications.html -->
+    <!-- https://datatracker.ietf.org/doc/html/rfc5751#page-29 -->
+    <!-- https://datatracker.ietf.org/doc/html/rfc5751#section-2.7 -->
+    <string-array name="minScreenSizes">
+        <item>작게</item>
+        <item>보통</item>
+        <item>크게</item>
+        <item>매우 크게</item>
+    </string-array>
+    <string-array name="accountColorNames">
+        <item>없음</item>
+        <item>Stripe</item>
+        <item>Dot</item>
+    </string-array>
+    <string-array name="accountColorSizes">
+        <item>Narrow</item>
+        <item>보통</item>
+        <item>Wide</item>
+    </string-array>
+    <string-array name="contactTypes">
+        <item>받는사람</item>
+        <item>보낸사람</item>
+        <item>차단됨</item>
+        <item>차단되지 않음</item>
+    </string-array>
+    <string-array name="contactGroupTypes">
+        <item>모두</item>
+        <item>집</item>
+        <item>업무</item>
+        <item>기타</item>
+        <item>휴대전화</item>
+    </string-array>
+</resources>

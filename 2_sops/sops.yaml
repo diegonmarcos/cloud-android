@@ -1,0 +1,27 @@
+# SOPS configuration for cloud-u-android secrets
+# Uses age encryption with Diego's key
+
+keys:
+  - &diego age1u575hx8h4t5cgle2uznmyfy75e7cgd02h9t5dax506luz9e05vlqxtd7pq
+
+creation_rules:
+  # Per-solution secrets files
+  - path_regex: (^|.*/)secrets\.yaml$
+    key_groups:
+      - age:
+          - *diego
+  # Backup secrets files
+  - path_regex: (^|.*/)secrets_backup\.yaml$
+    key_groups:
+      - age:
+          - *diego
+  # Signing keystores (encrypted)
+  - path_regex: (^|.*/).*\.keystore\.enc$
+    key_groups:
+      - age:
+          - *diego
+  # Play Store / upload credentials
+  - path_regex: (^|.*/)play-credentials\.json\.enc$
+    key_groups:
+      - age:
+          - *diego

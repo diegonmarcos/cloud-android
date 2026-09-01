@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Phone default: single-pane push navigation. The sw600dp qualifier
+     override (values-sw600dp/bools.xml) flips this to true on tablets /
+     unfolded foldables, where MainActivity renders sections as a
+     master (section grid, left) + detail (opened page, right) split.
+     Read in code via resources.getBoolean(R.bool.two_pane) — the
+     breakpoint stays declarative in the resource qualifier, never a
+     hardcoded dp comparison in Kotlin. -->
+<resources>
+    <bool name="two_pane">false</bool>
+</resources>

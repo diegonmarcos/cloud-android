@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="system_accent1_100">#cbe2ff</color>
+
+    <color name="system_neutral1_100">#dde2e9</color>
+    <color name="system_neutral1_900">#181c1f</color>
+
+    <color name="unselected_option_bg">#2d3034</color>
+    <color name="appbar">#77000000</color>
+
+    <color name="self_illumination_light">#ffe8cf</color>
+
+    <color name="z_yellow">#ffdf00</color>
+
+    <color name="qr_result_background">#E1E3E5</color>
+
+    <color name="red">#ff0000</color>
+</resources>

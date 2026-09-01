@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Material Symbols: water_drop — droplet (cycle / hydration symbol). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="?attr/colorOnSurface">
+    <path
+        android:fillColor="@android:color/white"
+        android:pathData="M12,2C8.13,5.42 6,8.74 6,12c0,3.31 2.69,6 6,6s6,-2.69 6,-6c0,-3.26 -2.13,-6.58 -6,-10zM12,16c-2.21,0 -4,-1.79 -4,-4 0,-2.21 1.59,-4.72 4,-7.36C14.41,7.28 16,9.79 16,12c0,2.21 -1.79,4 -4,4z"/>
+</vector>

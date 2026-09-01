@@ -1,0 +1,40 @@
+// Settings — gradle module graph.
+// Data-driven from build.json::modules (FIRE RULE #6: never hardcode lists).
+// Adding a new feature module = one entry in build.json + mkdir.
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        // JitPack — libadb-android (com.github.MuntashirAkon). FAIL_ON_PROJECT_REPOS
+        // forbids per-module repos, so the central declaration lives here.
+        maven { url 'https://jitpack.io' }
+        // Prebuilt firestack netstack aar (`build.sh firestack` → ab_cloud-libs-shared/libs/firewall/firestack/
+        // firestack.aar), consumed by :libs:firewall. Central for the same
+        // FAIL_ON_PROJECT_REPOS reason. See ab_cloud-libs-shared/libs/firewall/firestack/README.md.
+        flatDir { dirs "${rootDir}/../ab_cloud-libs-shared/libs/firewall/firestack" }
+    }
+}
+
+rootProject.name = "cloud-superapp"
+
+def buildJson = new groovy.json.JsonSlurper().parse(file('build.json'))
+buildJson.modules.each { name, _spec ->
+    if (name.startsWith('_')) return  // skip _doc keys
+    include ":${name}"
+    // Map gradle path :libs:foo → libs/foo/  (vs. :app → app/), unless the
+    // module declares a `dir` in build.json. `dir` is how a module is SHARED by
+    // reference instead of copy-pasted: libs:core and libs:updater live once in
+    // ab_cloud-libs-shared/libs/ and every app points at that one directory, so a
+    // fix lands in all of them at build time and copies cannot drift.
+    def path = _spec?.dir ?: name.replace(':', '/')
+    project(":${name}").projectDir = file(path)
+}

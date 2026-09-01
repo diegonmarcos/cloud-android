@@ -1,0 +1,17 @@
+{
+  "_doc": "SSH targets for cloud-ide's terminal \u2014 it SSHes into the selected phone env's sshd on localhost (Android shares 127.0.0.1 across app sandboxes, so no cross-UID barrier). The Configs 'Terminal backend' switcher (IdePrefs.terminalBackend) picks which env per session. EDIT host/port/user to match your real sshd: termux sshd default is 8022 (the 'phone' ssh alias uses 8023); nix-on-droid sshd is 8024 on this fleet's phone (its sshd_config sets Port 8024) \u2014 verified, not assumed. Auth is KEY-based: the hub generates its OWN ssh key on first use \u2014 add the public key (Configs \u2192 'Terminal SSH key') to ~/.ssh/authorized_keys in EACH env. No secrets here.",
+  "backends": {
+    "termux": {
+      "label": "Termux",
+      "host": "127.0.0.1",
+      "port": 8023,
+      "user": "termux"
+    },
+    "nix-on-droid": {
+      "label": "Nix-on-Droid",
+      "host": "127.0.0.1",
+      "port": 8024,
+      "user": "nix-on-droid"
+    }
+  }
+}

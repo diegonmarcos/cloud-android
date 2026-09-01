@@ -1,0 +1,353 @@
+plugins {
+    id "com.android.application"
+}
+
+android {
+
+    compileSdkVersion project.properties.compileSdkVersion.toInteger()
+    ndkVersion = System.getenv("JITPACK_NDK_VERSION") ?: project.properties.ndkVersion
+    def appVersionName = System.getenv("TERMUX_APP_VERSION_NAME") ?: ""
+    def apkVersionTag = System.getenv("TERMUX_APK_VERSION_TAG") ?: ""
+    def splitAPKsForDebugBuilds = System.getenv("TERMUX_SPLIT_APKS_FOR_DEBUG_BUILDS") ?: "1"
+    def splitAPKsForReleaseBuilds = System.getenv("TERMUX_SPLIT_APKS_FOR_RELEASE_BUILDS") ?: "0" // F-Droid does not support split APKs #1904
+
+    dependencies {
+        implementation "androidx.annotation:annotation:1.3.0"
+        implementation "androidx.core:core:1.6.0"
+        implementation "androidx.drawerlayout:drawerlayout:1.1.1"
+        implementation "androidx.preference:preference:1.1.1"
+        implementation "androidx.viewpager:viewpager:1.0.0"
+        implementation "com.google.guava:guava:24.1-jre"
+        implementation "io.noties.markwon:core:$markwonVersion"
+        implementation "io.noties.markwon:ext-strikethrough:$markwonVersion"
+        implementation "io.noties.markwon:linkify:$markwonVersion"
+        implementation "io.noties.markwon:recycler:$markwonVersion"
+
+        implementation project(":terminal-view")
+        implementation project(":termux-shared")
+    }
+
+    defaultConfig {
+        applicationId "cld.termux"
+        minSdkVersion project.properties.minSdkVersion.toInteger()
+        targetSdkVersion project.properties.targetSdkVersion.toInteger()
+        versionCode 1002
+        versionName "0.118.3"
+
+        if (appVersionName) versionName = appVersionName
+        validateVersionName(versionName)
+
+        manifestPlaceholders.TERMUX_PACKAGE_NAME = "cld.termux"
+        manifestPlaceholders.TERMUX_APP_NAME = "Cloud Terminal (Termux)"
+        manifestPlaceholders.TERMUX_API_APP_NAME = "Termux:API"
+        manifestPlaceholders.TERMUX_BOOT_APP_NAME = "Termux:Boot"
+        manifestPlaceholders.TERMUX_FLOAT_APP_NAME = "Termux:Float"
+        manifestPlaceholders.TERMUX_STYLING_APP_NAME = "Termux:Styling"
+        manifestPlaceholders.TERMUX_TASKER_APP_NAME = "Termux:Tasker"
+        manifestPlaceholders.TERMUX_WIDGET_APP_NAME = "Termux:Widget"
+
+        // ABI, from the active release.variants[] entry. Same hook as
+        // ac_cloud-nav: the engine exports CLOUDNAV_ABIS from the variant it
+        // was asked to build, so one matrix job produces the arm64 APK and the
+        // other the x86_64 one.
+        //
+        // Upstream's own `splits` block stays off (F-Droid cannot take split
+        // APKs, so it defaults to a single universal build). Filtering here
+        // instead is what every other app in this constellation does, and it
+        // is why the first build shipped one 115MB APK carrying all four ABIs.
+        ndk {
+            def abiOverride = System.getenv('CLOUDNAV_ABIS')
+            def abis = (abiOverride?.trim()) \
+                ? abiOverride.split(',').collect { it.trim() }.findAll { it } \
+                : ['arm64-v8a']
+            abiFilters.addAll(abis as List)
+        }
+
+        externalNativeBuild {
+            ndkBuild {
+                cFlags "-std=c11", "-Wall", "-Wextra", "-Werror", "-Os", "-fno-stack-protector", "-Wl,--gc-sections"
+            }
+        }
+
+        splits {
+            abi {
+                enable ((gradle.startParameter.taskNames.any { it.contains("Debug") } && splitAPKsForDebugBuilds == "1") ||
+                    (gradle.startParameter.taskNames.any { it.contains("Release") } && splitAPKsForReleaseBuilds == "1"))
+                reset ()
+                include 'x86', 'x86_64', 'armeabi-v7a', 'arm64-v8a'
+                universalApk true
+            }
+        }
+    }
+
+
+    signingConfigs {
+        // Release signing, from the ONE shared constellation keystore.
+        //
+        // Upstream ships only a debug config, so assembleRelease produced an
+        // unsigned APK. Ours must carry the same key as every other app here,
+        // because CLOUD_EXEC is a signature-level permission: a build signed
+        // with anything else is refused the bind exactly as if it were not
+        // installed — a silent failure indistinguishable from "not there".
+        //
+        // Values come from the environment the fork engine writes
+        // (signing=vault_jks_env, see build.json::forks.*.build.signing_env),
+        // never from a file in the tree and never a literal here.
+        release {
+            def ksPath = System.getenv('TERMUX_KEYSTORE_PATH')
+            if (ksPath) {
+                storeFile file(ksPath)
+                storePassword System.getenv('TERMUX_KEYSTORE_PASSWORD')
+                keyAlias System.getenv('TERMUX_KEY_ALIAS')
+                keyPassword System.getenv('TERMUX_KEY_PASSWORD')
+            }
+        }
+
+        debug {
+            storeFile file('dev_keystore.jks')
+            keyAlias 'alias'
+            storePassword 'xrj45yWGLbsO7W0v'
+            keyPassword 'xrj45yWGLbsO7W0v'
+        }
+    }
+
+    buildTypes {
+        release {
+            // Only when the engine supplied a key: an IDE build with no vault
+            // signs debug-style rather than failing, and a CI build without it
+            // would produce an unsigned APK that cannot bind — which is worth
+            // noticing at install time, not at first use.
+            if (System.getenv('TERMUX_KEYSTORE_PATH')) signingConfig signingConfigs.release
+            minifyEnabled true
+            shrinkResources false // Reproducible builds
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+
+        debug {
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    externalNativeBuild {
+        ndkBuild {
+            path "src/main/cpp/Android.mk"
+        }
+    }
+
+    lintOptions {
+        disable 'ProtectedPermissions'
+    }
+
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+        }
+    }
+
+    // Upstream sets this for its own bootstrap; it is now also what makes the
+    // fleet binaries runnable. Without it they are page-mapped from inside the
+    // APK, nativeLibraryDir is a path within the archive, and CloudExecService
+    // has nothing on disk to exec.
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging true
+        }
+    }
+
+    applicationVariants.all { variant ->
+        variant.outputs.all { output ->
+            if (variant.buildType.name == "debug") {
+                def abi = output.getFilter(com.android.build.OutputFile.ABI)
+                outputFileName = new File("termux-app_" + (apkVersionTag ? apkVersionTag : "debug") + "_" + (abi ? abi : "universal") + ".apk")
+            } else if (variant.buildType.name == "release") {
+                def abi = output.getFilter(com.android.build.OutputFile.ABI)
+                outputFileName = new File("termux-app_" + (apkVersionTag ? apkVersionTag : "release") + "_" + (abi ? abi : "universal") + ".apk")
+            }
+        }
+    }
+
+}
+
+dependencies {
+    testImplementation "junit:junit:4.13.2"
+    testImplementation "org.robolectric:robolectric:4.4"
+}
+
+task versionName {
+    doLast {
+        print android.defaultConfig.versionName
+    }
+}
+
+def validateVersionName(String versionName) {
+    // https://semver.org/spec/v2.0.0.html#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
+    // ^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$
+    if (!java.util.regex.Pattern.matches("^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?\$", versionName))
+        throw new GradleException("The versionName '"  + versionName + "' is not a valid version as per semantic version '2.0.0' spec in the format 'major.minor.patch(-prerelease)(+buildmetadata)'. https://semver.org/spec/v2.0.0.html.")
+}
+
+def downloadBootstrap(String arch, String expectedChecksum, String version) {
+    def digest = java.security.MessageDigest.getInstance("SHA-256")
+
+    def localUrl = "src/main/cpp/bootstrap-" + arch + ".zip"
+    def file = new File(projectDir, localUrl)
+    if (file.exists()) {
+        def buffer = new byte[8192]
+        def input = new FileInputStream(file)
+        while (true) {
+            def readBytes = input.read(buffer)
+            if (readBytes < 0) break
+            digest.update(buffer, 0, readBytes)
+        }
+        def checksum = new BigInteger(1, digest.digest()).toString(16)
+        while (checksum.length() < 64) { checksum = "0" + checksum }
+        if (checksum == expectedChecksum) {
+            return
+        } else {
+            logger.quiet("Deleting old local file with wrong hash: " + localUrl)
+            file.delete()
+        }
+    }
+
+    def remoteUrl = "https://github.com/termux/termux-packages/releases/download/bootstrap-" + version + "/bootstrap-" + arch + ".zip"
+    logger.quiet("Downloading " + remoteUrl + " ...")
+
+    file.parentFile.mkdirs()
+    def out = new BufferedOutputStream(new FileOutputStream(file))
+
+    def connection = new URL(remoteUrl).openConnection()
+    connection.setInstanceFollowRedirects(true)
+    def digestStream = new java.security.DigestInputStream(connection.inputStream, digest)
+    out << digestStream
+    out.close()
+
+    def checksum = new BigInteger(1, digest.digest()).toString(16)
+    while (checksum.length() < 64) { checksum = "0" + checksum }
+    if (checksum != expectedChecksum) {
+        file.delete()
+        throw new GradleException("Wrong checksum for " + remoteUrl + ": expected: " + expectedChecksum + ", actual: " + checksum)
+    }
+}
+
+clean {
+    doLast {
+        def tree = fileTree(new File(projectDir, 'src/main/cpp'))
+        tree.include 'bootstrap-*.zip'
+        tree.each { it.delete() }
+    }
+}
+
+task downloadBootstraps() {
+    doLast {
+        def version = "2025.03.28-r1+apt-android-7"
+        downloadBootstrap("aarch64", "c8d702b6f742935001c37cda81b8ac69504a95d5cf28f2899532dd8cd4b057eb", version)
+        downloadBootstrap("arm",     "f3bb9d1b32552b34fff41861dbf193ec5ba2848d67d779ac1c7256da6640f85d", version)
+        downloadBootstrap("i686",    "36db3e1ac3547f9a174fd763bd9a484fa1a3449cdd81e1cf2408ff0454f839c6", version)
+        downloadBootstrap("x86_64",  "1c124ec2396ee70a51b0b0a574f29aa659526aa2b9f558f993b2fb05d1e51855", version)
+    }
+}
+
+// This fork renames applicationId com.termux -> cld.termux (same byte
+// length, see TermuxConstants.TERMUX_PACKAGE_NAME). The bootstrap zips
+// downloaded above are upstream's, still built for com.termux, and contain
+// ELF binaries with that path baked in as a fixed-length string. This task
+// derives a patched copy (bootstrap-<arch>-cld.zip) next to each original,
+// leaving the original (and its checksum pin above) untouched so the
+// download cache keeps working. See patch_bootstrap_ids.py for the
+// byte-for-byte replacement + hard verification gate.
+task patchBootstraps() {
+    dependsOn downloadBootstraps
+    doLast {
+        def cppDir = new File(projectDir, "src/main/cpp")
+        def script = new File(cppDir, "patch_bootstrap_ids.py")
+        ["aarch64", "arm", "i686", "x86_64"].each { arch ->
+            def input = new File(cppDir, "bootstrap-" + arch + ".zip")
+            def output = new File(cppDir, "bootstrap-" + arch + "-cld.zip")
+            def result = exec {
+                commandLine "python3", script.absolutePath, input.absolutePath, output.absolutePath, "com.termux=cld.termux"
+                ignoreExitValue = true
+            }
+            if (result.exitValue != 0) {
+                throw new GradleException("patch_bootstrap_ids.py failed for " + input + " (exit " + result.exitValue + "); see log above")
+            }
+        }
+    }
+}
+
+afterEvaluate {
+    android.applicationVariants.all { variant ->
+        variant.javaCompileProvider.get().dependsOn(patchBootstraps)
+    }
+}
+
+// The debug keystore is GENERATED, not committed.
+//
+// Upstream ships it as a binary blob with its password in this file, which is
+// harmless — it signs debug builds and nothing trusts it — but *.jks is
+// ignored repo-wide here, so vendoring dropped it and left a build.gradle
+// pointing at a file that is not there. Committing a key to defeat the rule
+// that ignores keys is the wrong way round; making it reproducible is not.
+//
+// Release builds never reach this: AGP validates a signingConfig only where
+// it is used, and release is signed with the constellation keystore.
+tasks.register('devKeystore') {
+    description = 'Create the throwaway debug keystore if it is absent.'
+    def ks = file('dev_keystore.jks')
+    outputs.file ks
+    onlyIf { !ks.exists() }
+    doLast {
+        exec {
+            commandLine 'keytool', '-genkeypair', '-keystore', ks.absolutePath,
+                '-alias', 'alias', '-storepass', 'xrj45yWGLbsO7W0v', '-keypass', 'xrj45yWGLbsO7W0v',
+                '-keyalg', 'RSA', '-keysize', '2048', '-validity', '10000',
+                '-dname', 'CN=debug, OU=cloud, O=cloud, C=US'
+        }
+    }
+}
+tasks.matching { it.name.toLowerCase().contains('debug') && it.name.startsWith('validateSigning') }
+     .configureEach { dependsOn 'devKeystore' }
+
+// ── the fleet binaries this terminal carries ───────────────────────────────
+// The watchdog app asks this terminal to run them (see CloudExecService), and
+// a caller in another sandbox cannot write into this app's files — so they
+// ship here rather than being pushed in at runtime over ssh, which is the
+// dependency the exec service exists to remove. Shipping them together also
+// means the panel and the app driving it can never be different builds.
+//
+// jniLibs and not assets: nativeLibraryDir is the only directory an app can
+// both ship into and exec from. Nothing dlopens these.
+// Per ABI, matching the variant being built. The binaries are static musl
+// executables the exec service runs, so an x86_64 APK carrying aarch64 ones
+// would ship a terminal that cannot start the panel it was given.
+def fleetAbi   = (System.getenv('CLOUDNAV_ABIS') ?: 'arm64-v8a').split(',')[0].trim()
+def fleetArch  = fleetAbi == 'x86_64' ? 'x86_64' : 'aarch64'
+def fleetToolsDir = file("$projectDir/src/main/jniLibs/$fleetAbi")
+tasks.register('fetchFleetTools') {
+    description = 'Download the watchdog sampler + panel this terminal runs for the fleet.'
+    outputs.dir fleetToolsDir
+    doLast {
+        fleetToolsDir.mkdirs()
+        [["my-watchdog-${fleetArch}", 'libmywatchdog.so'],
+         ["my-watchdog-tui-${fleetArch}", 'libmywatchdogtui.so']].each { asset, name ->
+            def out = new File(fleetToolsDir, name)
+            if (out.exists() && out.length() > 100_000) {
+                logger.lifecycle("fleet tool: ${name} cached (${out.length()} bytes)")
+                return
+            }
+            def p = ['gh', 'release', 'download', 'my-watchdog-latest',
+                     '--repo', 'diegonmarcos/cloud-u-linux',
+                     '--pattern', asset, '--output', out.absolutePath, '--clobber'].execute()
+            p.waitForProcessOutput(System.out, System.err)
+            if (p.exitValue() != 0 || !out.exists()) {
+                throw new GradleException("could not fetch ${asset} — this terminal ships the fleet tools")
+            }
+            logger.lifecycle("fleet tool: ${name} (${out.length()} bytes)")
+        }
+    }
+}
+preBuild.dependsOn tasks.named('fetchFleetTools')

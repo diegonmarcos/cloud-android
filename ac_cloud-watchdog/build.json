@@ -1,0 +1,158 @@
+{
+  "name": "cloud-watchdog",
+  "description": "The my-watchdog panel as an Android app: a WebView showing the REAL dashboard, drawn by my-watchdog-tui inside nix-on-droid and transcribed to HTML.",
+  "category": "android",
+  "build": {
+    "type": "gradle",
+    "entry": "build.sh",
+    "external_inputs": [
+      {
+        "repo": "diegonmarcos/cloud-u-linux",
+        "tag": "my-watchdog-latest",
+        "asset": "my-watchdog-aarch64"
+      },
+      {
+        "repo": "diegonmarcos/cloud-u-linux",
+        "tag": "my-watchdog-latest",
+        "asset": "my-watchdog-tui-aarch64"
+      },
+      {
+        "repo": "diegonmarcos/cloud-u-linux",
+        "tag": "my-watchdog-latest",
+        "asset": "watchdog-app.html"
+      }
+    ],
+    "external_inputs_doc": "Artifacts this APK bakes in from ANOTHER repo, so the publish gate can see them. The gate hashes git objects and none of these are in this repo: the panel binary was rebuilt with fixes, this app's own source had not moved, and the gate skipped publishing forever while every rebuild agreed the APK was current."
+  },
+  "_doc": "The app owns no layout. It asks the terminal for a screen at the grid this device actually has and injects what comes back. Every previous attempt to re-draw that dashboard outside the panel diverged on frames, alignment and colour, so nothing here reproduces any of it.",
+  "watchdog": {
+    "_doc": "Baked into libs:watchdog as WATCHDOG_TARGETS_JSON_B64 / _CMD. Host, port, user and the command are DATA, never Kotlin constants \u2014 the same rule cloud-ide's terminal-targets.json follows. Loopback because Android shares 127.0.0.1 across app sandboxes. Auth is key-based and the key is generated in-app: add the public line (Setup screen) to ~/.ssh/authorized_keys in the env. The app pushes its own panel and sampler into the env's cache at connect time and runs them from there, so a bare nix-on-droid needs nothing installed \u2014 only the ssh key, which the env's own installer provisions.",
+    "backend_default": "nix-on-droid",
+    "targets": {
+      "backends": {
+        "nix-on-droid": {
+          "label": "Nix-on-Droid",
+          "host": "127.0.0.1",
+          "port": 8024,
+          "user": "nix-on-droid",
+          "_doc": "8024, read off the device, not the 8022 that was assumed: nix-on-droid's sshd_config sets Port 8024 on this phone. Data, so a phone that differs is a one-line change here."
+        },
+        "termux": {
+          "label": "Termux",
+          "host": "127.0.0.1",
+          "port": 8023,
+          "user": "termux"
+        }
+      }
+    },
+    "tools": {
+      "_doc": "Where libs:watchdog fetches the binaries it SHIPS. The APK carries them; nothing is ever installed on the phone. aarch64 static musl, because that is every Android device this decade and musl does not care which libc the environment has \u2014 or whether it has one.",
+      "repo": "diegonmarcos/cloud-u-linux",
+      "tag": "my-watchdog-latest"
+    }
+  },
+  "android": {
+    "application_id": "com.diegonmarcos.watchdog",
+    "compile_sdk": 36,
+    "min_sdk": 26,
+    "target_sdk": 34,
+    "version_code": 1,
+    "version_name": "0.1.0-dev",
+    "abi_filters": [
+      "arm64-v8a"
+    ]
+  },
+  "modules": {
+    "_doc": "settings.gradle iterates this (FIRE rule 6: never hardcode the list). `dir` is how a module is SHARED by reference rather than copied: the lib lives once in ab_cloud-libs-shared/libs and every app points at that one directory, so a fix lands in all of them at build time.",
+    "app": {
+      "type": "application",
+      "depends_on": [
+        "libs:watchdog"
+      ]
+    },
+    "libs:watchdog": {
+      "type": "library",
+      "dir": "../ab_cloud-libs-shared/libs/watchdog"
+    }
+  },
+  "toolchain": {
+    "_doc": "Pinned for reproducibility \u2014 all derived in flake.nix. Mirrors aa_cloud-superapp / ea_cloud-comms pins so all the Android projects share one toolchain story. Node is added for the Acode (Cordova) fork's JS/plugin build.",
+    "agp": "8.7.3",
+    "gradle": "8.10.2",
+    "kotlin": "1.9.24",
+    "jdk": "17",
+    "node": "20"
+  },
+  "signing": {
+    "_doc": "ONE shared Cloud-constellation signing key for ALL Android apps (Cloud-Comms hub+forks, Cloud-Nav, Cloud-IDE, Cloud-SuperApp). The SAME key signs every app so cross-app signature-IPC + the in-app fleet updater never hit a signature mismatch. KEY LOCATION (raw credential + sops passwords live ONLY in the vault repo): A0_keys/providers/android/release.jks (OU=Cloud Constellation) + A0_keys/providers/android/signing.secrets.yaml. build.sh::_resolve_signing resolves $VAULT_DIR (default ~/git/cloud-vault) + sops-decrypts the passwords, exporting ANDROID_KEYSTORE_FILE/ANDROID_KEYSTORE_PASSWORD/ANDROID_KEY_ALIAS/ANDROID_KEY_PASSWORD which the gradle signingConfig reads. CI does the same via a vault checkout + the SOPS_AGE_KEY secret. THERE IS NO FALLBACK: if the key is unavailable the build FAILS LOUD telling you to use the one shared key \u2014 it never generates or substitutes a random/legacy key.",
+    "vault_keystore": "A0_keys/providers/android/release.jks",
+    "vault_secrets": "A0_keys/providers/android/signing.secrets.yaml",
+    "vault_ssh_key": "A0_keys/providers/android/ssh.secrets.yaml",
+    "_doc_ssh": "The ONE declared ssh key every constellation app uses to reach a phone terminal, resolved exactly like the ONE signing key: from the vault, sops-decrypted by build.sh::_resolve_ssh_key, baked to BuildConfig.CLOUD_SSH_KEY_B64, never hardcoded and never generated. The public half is committed in the open at cloud-u-linux/da__my-konsole/termux/authorized_keys, which is what the env provisions \u2014 so a phone trusts the key before any app is installed and there is no paste-this-line setup step. NO FALLBACK: a build without the vault fails rather than shipping an app that mints a key the phone has never heard of."
+  },
+  "release": {
+    "_doc": "Per-APK distribution, the same data-driven block every app here has. build.sh oras-push + gh-release read it; the workflow only invokes those engine commands and hardcodes no registry or tag. This block is ALSO what makes the app discoverable: aa_cloud-superapp/data/regen.sh admits a sibling on .android.application_id + .release.ghcr, so registering in the constellation is a property of the app rather than a list to edit. {sha} -> git short sha, {version_name} -> android.version_name.",
+    "artifact": {
+      "debug": "Cloud-Watchdog.apk",
+      "release": "Cloud-Watchdog-release.apk"
+    },
+    "ghcr": {
+      "_doc": "ENABLED. It was disabled when packages came out private \u2014 the cause was the login preferring secrets.GHCR_TOKEN, a PAT, which creates an ACCOUNT-owned package that is born private and cannot be patched. Every workflow here logs in with GITHUB_TOKEN now, which creates the package FOR THE REPOSITORY and takes the repository's visibility; verified on cloud-u-linux, whose first GITHUB_TOKEN push produced a public package. The workflow checks after every push and says so if it ever regresses.",
+      "enabled": true,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-watchdog",
+      "media_type": "application/vnd.android.package-archive",
+      "tags": [
+        "latest",
+        "sha-{sha}",
+        "v{version_name}"
+      ]
+    },
+    "auto_update": {
+      "_doc": "The in-app updater reads release_url first (libs:updater Fleet.kt) and only falls back to GHCR, which this app no longer publishes \u2014 so updates come off the release asset, which follows repo visibility. NOTE: version_code is 1 and never bumped, so this channel is inert until it is.",
+      "enabled": true,
+      "tag": "latest",
+      "interval_hours": 6,
+      "max_installs_per_pass": 3
+    },
+    "gh_release": {
+      "_doc": "rolling_tag is canonical: one release the ship workflow overwrites on every main push, so /releases/latest/download/Cloud-Watchdog.apk is a stable URL.",
+      "enabled": true,
+      "rolling_tag": "latest",
+      "tag_pattern": "ac_cloud-watchdog-v*",
+      "asset_name": "Cloud-Watchdog.apk"
+    },
+    "variants": [
+      {
+        "_doc": "The same shape ac_cloud-browser and every other per-ABI app declares. Without it both matrix legs uploaded ONE asset name to the rolling release and raced: the second leg's --clobber deleted the first's asset mid-upload, which surfaced as HTTP 404 on the assets endpoint. Worse than the error, the winner was arbitrary \u2014 an x86_64 APK could land as Cloud-Watchdog.apk and be installed on an arm64 phone.",
+        "id": "arm64",
+        "abis": [
+          "arm64-v8a"
+        ],
+        "supported_abis": [
+          "arm64-v8a",
+          "armeabi-v7a"
+        ],
+        "artifact_debug": "Cloud-Watchdog.apk",
+        "gh_asset": "Cloud-Watchdog.apk",
+        "ghcr_tag_suffix": "",
+        "update_tag": "latest"
+      },
+      {
+        "id": "x86_64",
+        "abis": [
+          "x86_64"
+        ],
+        "supported_abis": [
+          "x86_64",
+          "x86"
+        ],
+        "artifact_debug": "Cloud-Watchdog-x86_64.apk",
+        "gh_asset": "Cloud-Watchdog-x86_64.apk",
+        "ghcr_tag_suffix": "-x86_64",
+        "update_tag": "latest-x86_64"
+      }
+    ]
+  }
+}

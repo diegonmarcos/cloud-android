@@ -1,0 +1,23 @@
+What's new in 5.0.3:
+
+• Richer video metadata for iPhone HEVC .MOV files (camera make, model, lens, dates)
+• Private folders now load progressively instead of a long blank wait
+• New "Fix black video on hide" toggle to stop video blackouts on some devices
+• "View all metadata" row is hidden when there's nothing to show
+
+Improvements:
+
+• Faster, progressive private folder loading
+• Cleaner metadata UI
+
+Bug fixes:
+
+• Paddings, info sheet and video controls now adapt correctly on rotation
+• Timeline keeps its scroll position when returning from the viewer
+• Info panel no longer auto-hides mid-drag or gets stuck invisible
+• Switching material navigation no longer flashes the whole screen
+• Fixed hiding items to a vault from the selection sheet
+• "View all metadata" works for images opened from other apps
+• Pull-to-refresh spinner no longer gets stuck
+• Editor: crop no longer zooms when out of bounds; markup hang, undo and rotate fixes
+• Secure camera reviews open correctly over the lockscreen

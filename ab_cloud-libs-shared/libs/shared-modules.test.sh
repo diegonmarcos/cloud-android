@@ -1,0 +1,528 @@
+#!/usr/bin/env bash
+# Guards the shared-module invariant across the whole constellation.
+#
+# Library modules used to be copy-pasted per app and they drifted: 6 apps sat
+# 228 source lines behind superapp's updater, and browser existed as three
+# byte-identical trees that nothing kept in step. Now a module is shared by
+# giving it a `dir` in the consuming app's build.json::modules, and
+# settings.gradle points that gradle path at the one canonical directory.
+#
+# Nothing here is hardcoded — the module list, the apps and the expected
+# directories are all read from the build.json files, so adding a shared module
+# needs no edit to this tester.
+#
+# Run from anywhere:  bash ab_cloud-libs-shared/libs/shared-modules.test.sh
+set -uo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")/../.." || exit 1
+
+fail=0
+note() { printf '%-6s %s\n' "$1" "$2"; [ "$1" = FAIL ] && fail=1; return 0; }
+
+# 1..3. Every `dir` resolves, points at a real module, and the consuming app
+#       does NOT also carry a local copy at the default path.
+while IFS='|' read -r app mod dir; do
+    [ -z "$app" ] && continue
+    local_path="$app/${mod//://}"
+    target=$(cd "$app" 2>/dev/null && cd "$dir" 2>/dev/null && pwd -P)
+    if [ -z "$target" ]; then
+        note FAIL "$app/build.json: $mod dir=$dir does not exist"
+    elif [ ! -f "$target/build.gradle" ]; then
+        note FAIL "$app $mod -> $dir has no build.gradle — not a gradle module"
+    else
+        note ok "$app $mod -> $dir"
+    fi
+    [ -e "$local_path" ] && note FAIL "$local_path is a local copy shadowing the shared $dir — delete it"
+done < <(python3 - <<'PY'
+import json,glob
+for bj in sorted(glob.glob('ac_cloud-*/build.json')):
+    app=bj.split('/')[0]
+    for k,v in json.load(open(bj)).get('modules',{}).items():
+        if k.startswith('libs:') and isinstance(v,dict) and v.get('dir'):
+            print(f"{app}|{k}|{v['dir']}")
+PY
+)
+
+# 4. settings.gradle must actually honour `dir`, or every entry above is inert.
+while read -r sg; do
+    command grep -q '_spec?.dir' "$sg" \
+        && note ok "$sg honours dir" \
+        || note FAIL "$sg ignores build.json::modules.dir"
+done < <(python3 - <<'PYSG'
+import json, glob, os
+# Only repos that actually declare modules in build.json. A repo with no
+# build.json (or no modules map) has no `dir` to honour, so demanding the
+# data-driven loop there reports a failure that cannot be fixed by fixing
+# anything. Kept scoped rather than universal because a repo can legitimately
+# ship a gradle project with no build.json.
+for sg in sorted(glob.glob('ac_cloud-*/settings.gradle')):
+    bj = os.path.join(os.path.dirname(sg), 'build.json')
+    if not os.path.isfile(bj):
+        continue
+    try:
+        if not json.load(open(bj)).get('modules'):
+            continue
+    except ValueError:
+        continue
+    print(sg)
+PYSG
+)
+
+# 5. No two apps may hold their own copy of the same module name — that is the
+#    exact shape the drift came in. One name, one directory, everywhere.
+while read -r line; do
+    note FAIL "duplicated module tree: $line"
+done < <(python3 - <<'PY'
+import os,collections
+seen=collections.defaultdict(list)
+for app in sorted(d for d in os.listdir('.') if d.startswith('ac_cloud-')):
+    L=os.path.join(app,'libs')
+    if os.path.isdir(L):
+        for m in sorted(os.listdir(L)):
+            if os.path.isdir(os.path.join(L,m)): seen[m].append(os.path.join(L,m))
+for m,ps in seen.items():
+    if len(ps)>1: print(f"{m} lives in {len(ps)} places: {', '.join(ps)}")
+PY
+)
+note ok "no module name owns more than one directory"
+
+# 6. A shared module must read the CONSUMING app's build.json. A module-relative
+#    path resolves to superapp's, so cloud-browser would take superapp's GHCR
+#    image (updater) or superapp's log stream (devtools).
+while read -r bg; do
+    # Only actual parses count — a mention of build.json in a comment is fine.
+    command grep -q 'parse(file(' "$bg" || continue
+    # A module MAY additionally fall back to its own repo for a key the consumer
+    # does not define (libs/voice does), but the FIRST read must be the app's.
+    command grep -q 'parse(file("${rootDir}/build.json"))' "$bg" \
+        && note ok "$bg reads \${rootDir}/build.json" \
+        || note FAIL "$bg parses build.json by a module-relative path — must be \${rootDir}/build.json"
+done < <(python3 - <<'PY'
+import json,glob,os
+dirs={os.path.normpath(os.path.join(bj.split('/')[0],v['dir']))
+      for bj in glob.glob('ac_cloud-*/build.json')
+      for k,v in json.load(open(bj)).get('modules',{}).items()
+      if k.startswith('libs:') and isinstance(v,dict) and v.get('dir')}
+for d in sorted(dirs):
+    p=os.path.join(d,'build.gradle')
+    if os.path.exists(p): print(p)
+PY
+)
+
+# 7. The constellation permission is declared once, in the shared core, so it
+#    merges into every app. That is what makes Cloud Perms on-by-default.
+CORE_MANIFEST=ab_cloud-libs-shared/libs/core/src/main/AndroidManifest.xml
+PERM=com.diegonmarcos.cloud.permission.CONSTELLATION_DATA
+if command grep -q "$PERM" "$CORE_MANIFEST" 2>/dev/null; then
+    command grep -q 'android:protectionLevel="signature"' "$CORE_MANIFEST" \
+        && note ok "CONSTELLATION_DATA declared signature-level in libs:core" \
+        || note FAIL "$CORE_MANIFEST: CONSTELLATION_DATA must be protectionLevel=\"signature\""
+    command grep -q "<uses-permission android:name=\"$PERM\"" "$CORE_MANIFEST" \
+        && note ok "CONSTELLATION_DATA also requested (uses-permission)" \
+        || note FAIL "$CORE_MANIFEST: declaring the permission without <uses-permission> makes the app readable but unable to read"
+else
+    note FAIL "$CORE_MANIFEST does not declare $PERM"
+fi
+
+# 8. The UI constant and the manifest must name the same permission string.
+# The store moved out of the app into libs:appstore. Located by NAME rather
+# than a fixed path, so the next move does not silently skip this check -
+# a rule that points at a file which no longer exists passes by default.
+UI=$(command find . -name ConstellationFragment.kt -not -path "*/build/*" -not -path "./z_archive/*" 2>/dev/null | command head -1)
+command grep -q "\"$PERM\"" "$UI" \
+    && note ok "Constellation UI uses the same permission string" \
+    || note FAIL "$UI: CONSTELLATION_PERM does not match the manifest ($PERM)"
+
+# 9. A declared module must have source. An empty one is build cost and a dead
+#    feature slot pretending to be a feature.
+while read -r line; do note FAIL "$line"; done < <(python3 - <<'PY'
+import json,glob,os
+for bj in sorted(glob.glob('ac_cloud-*/build.json')):
+    app=bj.split('/')[0]
+    for k,v in json.load(open(bj)).get('modules',{}).items():
+        if not k.startswith('libs:'): continue
+        d=v.get('dir') if isinstance(v,dict) else None
+        p=os.path.normpath(os.path.join(app,d)) if d else os.path.join(app,k.replace(':','/'))
+        if not os.path.isdir(p): continue
+        n=sum(sum(1 for _ in open(os.path.join(dp,f),'rb'))
+              for dp,dns,fs in os.walk(p) if '/build' not in dp
+              for f in fs if f.endswith(('.kt','.java')))
+        if n==0: print(f"{app} declares {k} but {p} has no source — drop the declaration or fill it")
+PY
+)
+note ok "every declared module has source"
+
+# 10. Every project(':libs:x') dependency must name a module the build declares.
+#     Dropping a dead module from build.json leaves the dependency line behind,
+#     and gradle only says "Project with path ':libs:x' could not be found".
+while read -r line; do note FAIL "$line"; done < <(python3 - <<'PY'
+import json,glob,re,os
+for bj in sorted(glob.glob('ac_cloud-*/build.json')):
+    app=bj.split('/')[0]
+    declared=set(json.load(open(bj)).get('modules',{}))
+    for bg in glob.glob(f'{app}/*/build.gradle'):
+        # Strip // comments first: a commented-out dependency is not a
+        # dependency, and demanding a build.json entry for one is a failure
+        # that no correct edit can clear.
+        src = '\n'.join(re.sub(r'//.*', '', ln)
+                        for ln in open(bg).read().splitlines())
+        for m in re.findall(r"project\(':([\w:-]+)'\)", src):
+            if m not in declared:
+                print(f"{bg} depends on :{m}, which {bj} does not declare")
+PY
+)
+note ok "every project() dependency names a declared module"
+
+# 11. ab_cloud-libs-shared/lib-apks ships one APK per library module. Three places derive that
+#     set from build.json::lib_apks — settings.gradle (the gradle modules),
+#     build.sh (the asset names) and data/regen.sh (the Libs tab). They must
+#     agree, or the store lists an APK the build never produced and the install
+#     button 404s on the release asset.
+LIBS_BJ=ab_cloud-libs-shared/lib-apks/build.json
+if [ -f "$LIBS_BJ" ]; then
+    # LC_ALL=C: python sorts by byte, GNU sort by locale, and they disagree on
+    # '-' vs '.' (Cloud-Lib-Voice-Vosk.apk vs Cloud-Lib-Voice.apk).
+    shipped=$(bash ab_cloud-libs-shared/lib-apks/build.sh list 2>/dev/null | command awk '{print $3}' | LC_ALL=C sort)
+    fleeted=$(python3 - <<'PY'
+import json
+d=json.load(open('aa_cloud-superapp/data/constellation-fleet.json'))
+a=d['apps'] if isinstance(d,dict) else d
+print('\n'.join(sorted(x['asset'] for x in a
+                       if x.get('kind')=='lib' and x.get('id','').startswith('lib-'))))
+PY
+)
+    if [ "$shipped" = "$fleeted" ]; then
+        note ok "ab_cloud-libs-shared/lib-apks: $(printf '%s\n' "$shipped" | command grep -c . ) lib APKs, build and fleet agree"
+    else
+        note FAIL "ab_cloud-libs-shared/lib-apks: build.sh and constellation-fleet.json disagree — rerun aa_cloud-superapp/data/regen.sh"
+        diff <(printf '%s\n' "$shipped") <(printf '%s\n' "$fleeted") | command head -10
+    fi
+    # The CI trigger has to repeat the scan roots, because GitHub Actions cannot
+    # read a path list out of build.json. Drift is silent and expensive: a lib
+    # module changes, no workflow matches, and no APK is ever rebuilt.
+    root_drift=$(python3 - <<'PYROOTS'
+import json, os, re
+BASE  = 'ab_cloud-libs-shared/lib-apks'
+cfg   = json.load(open(BASE + '/build.json'))['lib_apks']
+roots = cfg['scan'] if isinstance(cfg['scan'], list) else [cfg['scan']]
+# Resolve each root against the project dir, then make it repo-relative.
+# Stripping '../' textually only worked while every scan root happened to sit
+# at the repo root; once lib-apks moved INSIDE ab_cloud-libs-shared, '../libs'
+# stripped to 'libs' and this rule demanded a CI trigger for a path that does
+# not exist - failing on the one layout that is actually correct.
+want  = {os.path.normpath(os.path.join(BASE, r)).rstrip('/') + '/**'
+         for r in roots}
+yml   = open('1_cicd/src/cicd/ship-cloud-libs.yml').read()
+have  = set(re.findall(r'^\s*-\s*"([^"]+/\*\*)"', yml, re.M))
+for m in sorted(want - have):
+    print(f"ship-cloud-libs.yml has no trigger for {m} - changes there would ship no APK")
+PYROOTS
+)
+    if [ -z "$root_drift" ]; then
+        note ok "ship-cloud-libs.yml triggers on every lib_apks.scan root"
+    else
+        while read -r line; do note FAIL "$line"; done <<< "$root_drift"
+    fi
+
+    # An excluded module must say why. A bare exclusion is indistinguishable from
+    # a module someone silently dropped because it would not build.
+    while read -r line; do note FAIL "$line"; done < <(python3 - <<'PY'
+import json
+for k,v in json.load(open('ab_cloud-libs-shared/lib-apks/build.json'))['lib_apks'].get('exclude',{}).items():
+    if not isinstance(v,str) or len(v) < 20:
+        print(f"ab_cloud-libs-shared/lib-apks excludes {k} without a reason — say why it cannot ship")
+PY
+)
+fi
+
+# 11b. The same trigger drift, one level up. An APP repo compiles shared modules
+#      BY REFERENCE out of ab_cloud-libs-shared/libs/ (settings.gradle re-points
+#      projectDir there), so those sources sit OUTSIDE the repo's own path
+#      filter. Miss one and the workflow simply never fires for a shared-lib
+#      change: the app keeps shipping whatever APK was last built for an
+#      unrelated reason, and the fix you just pushed is absent from the device
+#      while CI is green. All seven app workflows were missing every entry —
+#      caught 2026-08-22, when libs/devtools reached nothing but superapp.
+app_root_drift=$(python3 - <<'PYAPPROOTS'
+import json, os, re, glob
+# aa_/ab_ too, not just ac_: the prefix is not the invariant, "compiles a
+# module from outside its own tree" is. Scoping this to ac_cloud-* left
+# aa_cloud-superapp unchecked, and when the consolidation moved 16 of its 21
+# shared modules out of aa_cloud-superapp/libs/ into ab_cloud-libs-shared/,
+# every one of them fell outside the workflow's aa_cloud-superapp/** filter
+# with nothing to notice. A change to libs:appstore shipped no new SuperApp
+# APK while CI stayed green.
+for bj in sorted(glob.glob('a[abc]_cloud-*/build.json')):
+    repo = bj.split('/')[0]
+    try:
+        mods_cfg = (json.load(open(bj)).get('modules') or {})
+    except Exception:
+        continue  # build.json validity is rule 1's job, not this one.
+    # Derive the shared roots from the DATA. Hardcoding 'aa_cloud-superapp/libs'
+    # here made this rule pass vacuously the moment the modules moved to
+    # ab_cloud-libs-shared: the set came out empty and nothing was checked.
+    # A rule that names a path which no longer exists passes by default.
+    mods = sorted({os.path.normpath(os.path.join(repo, v['dir']))
+                   for v in mods_cfg.values()
+                   if isinstance(v, dict) and v.get('dir')})
+    # Only modules OUTSIDE this repo need their own trigger; the repo's own
+    # "<repo>/**" filter already covers anything in-tree.
+    mods = [m for m in mods if not m.startswith(repo + '/')]
+    # Strip whichever a?_cloud- prefix this repo carries.
+    wf = '1_cicd/src/cicd/ship-cloud-%s.yml' % repo.split('_cloud-', 1)[1]
+    if not mods or not os.path.exists(wf):
+        continue
+    have = set(re.findall(r'^\s*-\s*"([^"]+)/\*\*"', open(wf).read(), re.M))
+    for m in mods:
+        # a wildcard on the parent root covers every module under it
+        if m in have or os.path.dirname(m) in have:
+            continue
+        print(f"{os.path.basename(wf)} has no trigger for {m}/** — "
+              f"{repo} compiles it, so a change there ships no new {repo} APK")
+PYAPPROOTS
+)
+if [ -z "$app_root_drift" ]; then
+    note ok "every app workflow triggers on the shared libs it compiles"
+else
+    while read -r line; do note FAIL "$line"; done <<< "$app_root_drift"
+fi
+
+# 11d. No install entry point may take a bare File. Verification used to be a
+#      convention each path re-implemented — four downloads, three installers,
+#      four different rules — and one of them guarded its only check with
+#      `if (total > 0 …)`, so a missing Content-Length turned the check off and
+#      an unverified 383 kB fragment of a 29 MB APK reached PackageInstaller.
+#      VerifiedApk exists so that is a compile error; this rule exists so nobody
+#      quietly adds a File overload back.
+#      PUBLIC entry points only: installLocked(apk: File) is the internal
+#      unwrap that runs AFTER install(VerifiedApk) has done the checking, and
+#      it is private precisely so no caller can reach it.
+inst_file=$(command grep -rnE "^ *fun install[A-Za-z]*\(([a-zA-Z]+: Context, )?apk: File" \
+    ab_cloud-libs-shared/libs/updater/src/main/java 2>/dev/null || true)
+if [ -z "$inst_file" ]; then
+    note ok "no install entry point takes a bare File (VerifiedApk only)"
+else
+    while read -r line; do
+        note FAIL "$line — install must take VerifiedApk, not File"
+    done <<< "$inst_file"
+fi
+
+# 11e. ONE sha256 in the updater. There were three, byte-identical apart from
+#      one using `n < 0` where the others used `n <= 0`.
+sha_copies=$(command grep -rc "MessageDigest.getInstance(\"SHA-256\")" \
+    ab_cloud-libs-shared/libs/updater/src/main/java --include=*.kt 2>/dev/null \
+    | command grep -v ':0$' | command wc -l)
+if [ "$sha_copies" -le 1 ]; then
+    note ok "one sha256 implementation in libs:updater ($sha_copies file)"
+else
+    note FAIL "$sha_copies files implement sha256 in libs:updater — ApkIntegrity is the one"
+fi
+
+# 12. Every PackageInstaller.createSession must have an abandonSession on the
+#     failure path IN THE SAME FILE. A session that is neither committed nor
+#     abandoned stays alive in the system across reboots and permanently burns
+#     one of the 50 slots Android gives an installer without INSTALL_PACKAGES
+#     (which is signature|privileged, so a sideloaded APK can never hold it).
+#     The whole constellation had one createSession and zero abandonSession,
+#     and the fleet install died with "Too many active sessions for UID <uid>".
+while read -r f; do
+    command grep -q 'abandonSession' "$f" \
+        && note ok "$(basename "$f") abandons install sessions" \
+        || note FAIL "$f calls createSession but never abandonSession — every failed install leaks a session slot forever"
+done < <(python3 - <<'PYSESS'
+import os, re
+# Only PackageInstaller sessions. 'createSession' is a common name - ONNX Runtime
+# (media-center's vision search) and the spell-checker API both have one - so the
+# file must actually touch PackageInstaller to be in scope.
+for root, dirs, files in os.walk('.'):
+    dirs[:] = [d for d in dirs if d not in ('build', '.git', 'z_archive')]
+    rel = root.lstrip('./')
+    if not rel.startswith('ac_cloud-'):
+        continue
+    for f in files:
+        if not f.endswith(('.kt', '.java')):
+            continue
+        p = os.path.join(root, f)
+        try:
+            src = open(p, encoding='utf-8', errors='ignore').read()
+        except OSError:
+            continue
+        if 'PackageInstaller' in src and re.search(r'\bcreateSession\s*\(', src):
+            print(p[2:] if p.startswith('./') else p)
+PYSESS
+)
+
+# 13. Every repo that declares release.auto_update must also declare
+#     max_installs_per_pass. An unattended pass cannot show the install dialog,
+#     so each install it starts holds a PackageInstaller session until the user
+#     answers a notification; uncapped, one pass over the fleet exhausts
+#     Android's 50-session limit and NOTHING installs until they are reclaimed.
+while read -r line; do note FAIL "$line"; done < <(python3 - <<'PYCAP'
+import json, glob
+for bj in sorted(glob.glob('ac_cloud-*/build.json')):
+    try:
+        au = (json.load(open(bj)).get('release') or {}).get('auto_update')
+    except Exception:
+        continue
+    if isinstance(au, dict) and 'max_installs_per_pass' not in au:
+        print(f"{bj} declares release.auto_update without max_installs_per_pass "
+              f"- an uncapped background pass exhausts the install-session limit")
+PYCAP
+)
+note ok "every auto_update declares a per-pass install cap"
+
+# 14. The unattended pass must actually PASS that cap to installAll. The
+#     parameter defaults to unlimited (correct for the user-initiated
+#     "Update all"), so a worker that forgets it silently reverts to uncapped.
+WORKER=$(command find . -name ConstellationWorker.kt -not -path "*/build/*" -not -path "./z_archive/*" 2>/dev/null | command head -1)
+# A missing file must FAIL, never skip. This rule was silently disarmed for the
+# whole 2026-08 libs-shared move: it named app/configs/ConstellationWorker.kt,
+# the file moved to libs/appstore/, and `[ -f ]` turned the check into a no-op
+# that reported nothing. Located by NAME now, like rule 8.
+if [ -z "$WORKER" ]; then
+    note FAIL "ConstellationWorker.kt not found — cannot verify the background pass is capped"
+else
+    command grep -q 'limit = AuConfig.AU_MAX_PER_PASS' "$WORKER" \
+        && note ok "background fleet pass is capped" \
+        || note FAIL "$WORKER calls installAll without limit= - the background pass is uncapped"
+fi
+
+echo
+# 15. The libs:net / libs:net-wg split is the whole 8.5MB saving, and it is one
+#     careless `implementation project(':libs:net-wg')` away from being undone
+#     without anything failing - the app would just quietly grow libwg-go.so
+#     back. Two invariants: the contract carries no native build, and no app
+#     links the engine (only ab_cloud-libs-shared/lib-apks, which turns it into its own APK).
+# The directory is DERIVED, never named: hardcoding it is what silently
+# disarmed this whole rule when the modules moved to ab_cloud-libs-shared -
+# `[ -d <vanished path> ]` is false, so all four assertions below simply
+# stopped running and the suite still said PASS. Same trap rule 11b documents.
+NET_DIR=$(python3 - <<'PYNET'
+import json, os
+cfg = json.load(open('ab_cloud-libs-shared/lib-apks/build.json'))['lib_apks']
+roots = cfg['scan'] if isinstance(cfg['scan'], list) else [cfg['scan']]
+for r in roots:
+    d = os.path.normpath(os.path.join('ab_cloud-libs-shared/lib-apks', r, 'net'))
+    if os.path.isfile(os.path.join(d, 'build.gradle')):
+        print(d)
+        break
+PYNET
+)
+if [ -z "$NET_DIR" ]; then
+    note FAIL "libs:net not found under any lib_apks.scan root - this rule cannot run, and a rule that cannot run is not a passing rule"
+else
+    if command grep -qE 'externalNativeBuild|ndkVersion|cmake' "$NET_DIR/build.gradle"; then
+        note FAIL "libs:net declares a native build - the engine belongs in libs:net-wg, or every consumer carries libwg-go.so again"
+    else
+        note ok "libs:net is contract-only (no NDK/CMake)"
+    fi
+    engine_consumers=$(command grep -rln "project(':libs:net-wg')" --include=build.gradle . 2>/dev/null \
+        | command grep -v '/build/' | command grep -v 'libs/net-wg/build.gradle' || true)
+    if [ -z "$engine_consumers" ]; then
+        note ok "no app links libs:net-wg directly"
+    else
+        while read -r f; do
+            [ -n "$f" ] && note FAIL "$f links :libs:net-wg - that re-embeds the 8.5MB engine; link :libs:net and bind AidlBackend instead"
+        done <<< "$engine_consumers"
+    fi
+fi
+
+# 15b. AidlBackend must implement EVERY Backend member. Backend is re-synced
+#      from upstream WireGuard, so a new method appears there without anyone
+#      touching our code, and the failure lands in CI five minutes later. This
+#      is exactly how the split first broke: isAlwaysOn/isLockdownEnabled were
+#      missed because the interface was grepped instead of read.
+#      Paths derive from LIBS_ROOT: hardcoding aa_cloud-superapp/libs/net meant
+#      that after the consolidation both files were simply "not found" and the
+#      [ -f ] guard below skipped the whole rule in silence. A guard that turns
+#      a moved path into zero assertions is worse than no rule, so a missing
+#      file is now a FAIL, not a shrug.
+LIBS_ROOT=ab_cloud-libs-shared/libs
+BACKEND_JAVA=$LIBS_ROOT/net/src/main/java/com/wireguard/android/backend/Backend.java
+AIDL_CLIENT=$LIBS_ROOT/net/src/main/java/com/diegonmarcos/superapp/net/AidlBackend.kt
+if [ ! -f "$BACKEND_JAVA" ] || [ ! -f "$AIDL_CLIENT" ]; then
+    note FAIL "rule 15b cannot run: $BACKEND_JAVA or $AIDL_CLIENT is missing — a moved path silently disarms this check"
+fi
+if [ -f "$BACKEND_JAVA" ] && [ -f "$AIDL_CLIENT" ]; then
+    missing=""
+    while read -r m; do
+        [ -z "$m" ] && continue
+        command grep -q "override fun ${m}(" "$AIDL_CLIENT" || missing="$missing $m"
+    done < <(command sed -nE 's/^[[:space:]]+[A-Za-z<>,.[:space:]]+ ([a-zA-Z]+)\(.*;$/\1/p' "$BACKEND_JAVA")
+    if [ -z "$missing" ]; then
+        note ok "AidlBackend implements every Backend member"
+    else
+        note FAIL "AidlBackend does not implement:$missing — libs:net will not compile"
+    fi
+fi
+
+# 16. EVERY install path must be serialised, not just the fleet batch.
+#     PackageInstaller.commit() hands the session over and returns, so any two
+#     callers that start installs on their own threads run concurrently:
+#     colliding sessions, stacked confirm dialogs, and sessions piling up
+#     against Android's 50-session cap. The Constellation list's per-row button
+#     spawns a thread per tap and never went through the batch, which is how
+#     three taps started three installs at once.
+#     The guarantee therefore lives in UpdateInstaller.install - the one place
+#     every caller passes through - so a new call site cannot forget it.
+# Scoped by PACKAGE path, not bare filename: cloud-ide has its own
+# UpdateInstaller.kt and the Fossify dialer fork vendors another, so
+# `find -name` + head -1 picks whichever the walk hits first. The constellation
+# installer is the one in com/diegonmarcos/superapp/updater/. Every match is
+# checked, so a vendored copy reappearing is caught rather than masked. A miss
+# FAILS — this rule sat disarmed through the 2026-08 libs-shared move because a
+# `[ -f <stale path> ]` guard turned it into a no-op.
+ui_n=0
+while read -r UI_KT; do
+    [ -z "$UI_KT" ] && continue
+    ui_n=$((ui_n+1))
+    command grep -q 'InstallGate.serialised' "$UI_KT" \
+        && note ok "every install is serialised at UpdateInstaller.install" \
+        || note FAIL "$UI_KT does not go through InstallGate.serialised — concurrent callers will race and can exhaust install sessions"
+# The updater's internals are grouped into apk/ source/ install/ subpackages,
+# so UpdateInstaller.kt sits at .../updater/install/. Match on the package
+# ROOT rather than the exact directory: pinning the full path is what turns
+# a file move into a silently disarmed test (0 assertions, still green).
+done < <(command find . -path "*/com/diegonmarcos/superapp/updater/*UpdateInstaller.kt" -not -path "*/build/*" -not -path "./z_archive/*" 2>/dev/null)
+[ "$ui_n" -gt 0 ] || note FAIL "no constellation UpdateInstaller.kt found — cannot verify installs are serialised"
+
+# 17. A buildConfigField that interpolates ${x} needs a `def x` in the same
+#     build.gradle. Gradle only fails at CONFIGURATION time with "Could not get
+#     unknown property", which no local check catches and which costs a full CI
+#     round trip - exactly how libs:contacts shipped a field referencing a
+#     variable that was never added.
+while read -r bg; do
+    [ -z "$bg" ] && continue
+    while read -r var; do
+        [ -z "$var" ] && continue
+        command grep -qE "^[[:space:]]*def[[:space:]]+${var}[[:space:]]*=" "$bg" \
+            || note FAIL "$bg interpolates \${${var}} in a buildConfigField but never defines it — gradle fails at configuration time"
+    done < <(command grep -o 'buildConfigField[^\n]*\${[A-Za-z_][A-Za-z0-9_]*}' "$bg" \
+             | command sed -E 's/.*\$\{([A-Za-z_][A-Za-z0-9_]*)\}.*/\1/' | command sort -u)
+done < <(command find . -name build.gradle -not -path '*/build/*' -not -path './.git/*' 2>/dev/null)
+note ok "every interpolated buildConfigField variable is defined"
+
+# 18. Any file that builds PackageInstaller.SessionParams must claim update
+#     ownership. UPDATE_PACKAGES_WITHOUT_USER_ACTION only silences the confirm
+#     dialog while we are the installer of record; without
+#     setRequestUpdateOwnership, ownership sits with whatever installed the app
+#     last (Files, adb, another store) and every update prompts again. There is
+#     more than one installer in this tree - ac_cloud-ide keeps its own copy
+#     instead of linking libs:updater - so this must hold in each.
+while read -r f; do
+    [ -z "$f" ] && continue
+    command grep -q 'setRequestUpdateOwnership' "$f" \
+        && note ok "$(basename "$f") claims update ownership" \
+        || note FAIL "$f builds SessionParams without setRequestUpdateOwnership — its updates will keep prompting"
+done < <(command grep -rl 'PackageInstaller.SessionParams(' --include=*.kt --include=*.java . 2>/dev/null \
+         | command grep -v '/build/' \
+         | command grep -v '^./z_archive/' \
+         | command grep -v '^./ac_upstreams-sources/' \
+         | command sort)
+# z_archive is retired; ac_upstreams-sources holds the fork TRACKER clones,
+# which are regenerated from upstream + patches - editing them is reverted on
+# the next sync (feedback: submodules/forks, edit the source).
+
+[ "$fail" -eq 0 ] && echo "PASS — shared modules wired, no duplicated trees." \
+                  || echo "FAIL — see above."
+exit "$fail"

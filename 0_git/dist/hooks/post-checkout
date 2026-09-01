@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# post-checkout — refresh submodule HEADs after branch switch
+set -uo pipefail
+git submodule update --init --recursive >/dev/null 2>&1 || true
+exit 0

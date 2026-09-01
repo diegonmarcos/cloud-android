@@ -1,0 +1,27 @@
+name: sync-submodules
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '23 */12 * * *'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Update submodules to upstream HEAD
+        run: |
+          git submodule update --init --recursive --remote --rebase || true
+          if ! git diff --quiet; then
+            git config user.name  "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add -u
+            git commit -m "chore: sync submodules" || true
+            git push || true
+          fi

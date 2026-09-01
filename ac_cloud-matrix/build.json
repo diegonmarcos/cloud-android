@@ -1,0 +1,70 @@
+{
+  "vendored_engine": "cloud-matrix-fork-engine.sh",
+  "_doc_vendored_engine": "CI does NOT run the engine source in 1_cicd/src/scripts — it runs the VENDORED COPY at ./build.sh, from this directory. This key DECLARES that copy relationship so the workflow generator can enforce byte-identity (cloud-android-ship-repo-workflow-engine.sh, step 'verify engine ↔ vendored build.sh parity') and go red on drift. Editing the engine alone used to change nothing at ship time, silently — which is how the ABI gate and the GHCR auto-delete gate came to exist only in the file nobody executes. Re-sync with: cp 1_cicd/src/scripts/<engine> ./build.sh",
+  "forks": {
+    "matrix": {
+      "app_id": "com.diegonmarcos.comms.matrix",
+      "_alt_id_doc": "Real installed package of the resigned STOCK Element X APK (io.element.android.x, extracted from the fdroid release manifest). Detection + install use this, never app_id.",
+      "alt_id": "io.element.android.x",
+      "label": "Messenger (Element)",
+      "image": "cloud-comms-matrix",
+      "upstream_repo": "https://github.com/element-hq/element-x-android.git",
+      "tracker_dir": "ac_cloud-matrix",
+      "pinned_tag": "v26.06.2",
+      "license": "AGPL-3.0",
+      "primary_lang": "Kotlin",
+      "runtime": "native",
+      "priority": 3,
+      "blocked_on": null,
+      "_blocked_on_history": "Was 'matrix-chat-bridge-stack-ship' (continuwuity + mautrix-whatsapp + element stack). Unblocked 2026-07-09 to publish the standalone GHCR APK for the Constellation AppStore — the resigned upstream Element X APK installs independent of the homeserver; the app is non-functional until the Matrix backend stack is deployed.",
+      "comment": "Element X Android (Kotlin + Rust matrix-sdk FFI). Exporter reads via the Rust-SDK Kotlin BINDINGS, never raw store files. Push via UnifiedPush with our ntfy (rss.diegonmarcos.com) as distributor — Element X supports it natively.",
+      "upstream_apk": {
+        "_doc": "Pinned UPSTREAM RELEASE APK — bundle fallback (owner directive 2026-06-12: ALL apps ship inside the hub NOW). bundle-forks embeds this sha256-verified APK whenever our own fork image isn't on GHCR yet; the patched fork replaces it the moment its CI lands. resign=true → the engine zipalign+apksigner's it with the constellation key (Mattermost publishes unsigned APKs — unsigned can't install; our key also makes it IPC-compatible). NOTE: blocked_on gates OUR fork build (homeserver work), not stock-client bundling — Element X is a generic Matrix client.",
+        "url": "https://github.com/element-hq/element-x-android/releases/download/v26.06.2/app-fdroid-arm64-v8a-release-signed.apk",
+        "sha256": "7735b5193d4bea1b350de2616f9faecb21c01cfdb9effb6ac5be4668783d5889",
+        "resign": true,
+        "package": "io.element.android.x",
+        "abi_variants": {
+          "_doc": "Per-ABI upstream assets. bundle-forks picks abi_variants[$COMMS_BUNDLE_ABI] when set (default arm64-v8a uses the top-level url/sha256). x86_64 = Waydroid debug builds.",
+          "x86_64": {
+            "url": "https://github.com/element-hq/element-x-android/releases/download/v26.06.2/app-fdroid-x86_64-release-signed.apk",
+            "sha256": "a2b626ec067ecfb199a5129ef419db945388a3cf966e415ca798bcdf504f1a16",
+            "_doc_sha256": "Re-pinned 2026-08-20. element-hq REPLACED this release asset in place: the URL now serves a2b626ec... where the pin said 33f8baf3..., and every ship-cloud-matrix run since 2026-08-18 died on the mismatch. Re-pinned only after checking provenance, not to make CI pass: the arm64-v8a asset from the SAME tag still matches its pin byte-for-byte (so the release was not wholesale re-uploaded); the new file carries the same upstream git revision 337528bce386f1731701f9ac2d0cbc190e244e02 and versionName 26.06.2 as that known-good arm64 APK; and both are signed by the same certificate, New Vector Ltd./element.io, SHA-256 6A:2F:DC:31:48:04:9C:E0:D5:C6:E8:50:10:72:3B:83:FB:20:7D:20:C7:47:7F:5C:22:AC:53:C8:77:E9:2D:47. If a future mismatch does NOT satisfy all four checks, do not re-pin - investigate."
+          }
+        }
+      },
+      "_doc_vendored": "Vendored in-repo 2026-08-30: the full Element X Android source lives at this repo's root, patched and committed, so nothing is cloned at build time. materialize-fork takes the vendored path (tracker_dir exists and holds no .git), patches/ is historical record only. To move to a newer upstream tag, bump pinned_tag, delete the vendored tree and let the clone+patch path re-vendor it.",
+      "build": {
+        "_doc": "Module `app`, flavor `fdroid` (dimension `store`) - the Google-free flavor, matching the release asset upstream_apk used to pin. The Rust matrix-sdk is consumed as a PREBUILT maven artifact (org.matrix.rustcomponents:sdk-android, gradle/libs.versions.toml), so this is a plain gradle build with no Rust toolchain and no cargo/NDK cross-compilation step.",
+        "gradle_task": ":app:assembleFdroidRelease",
+        "apk_glob": "app/build/outputs/apk/fdroid/release/*.apk",
+        "gradle_props": {},
+        "_doc_signing": "app/build.gradle.kts's own 'release' buildType hardcodes signingConfig = signingConfigs.debug (never reads keystore.properties), and that debug signingConfig points at a repo-local ./signature/debug.keystore that *.keystore's repo-wide .gitignore keeps out of the vendored tree — so it never exists on a fresh checkout. signing=debug_keystore generates the STANDARD, well-known, non-secret Android debug keystore (androiddebugkey/android, matches signingConfigs.debug exactly) at keystore_dest so the fdroid-release build has something to sign with at all. Because the resulting APK is therefore only debug-signed, resign_unsigned strips that and re-signs with the ONE shared constellation key afterward — same as every other fork's real release artifact.",
+        "signing": "debug_keystore",
+        "keystore_dest": "app/signature/debug.keystore",
+        "resign_unsigned": true
+      },
+      "_doc_rebrand": "Rebranded in the vendored tree (patches/0001, historical record): BuildTimeConfig.APPLICATION_ID is now app_id and APPLICATION_NAME is 'Cloud Matrix', so the from-source build ships under our identity rather than upstream's. alt_id stays: Fleet.installedId checks app_id FIRST and falls back to alt_id, which is what still detects a previously installed resigned STOCK build so it can be replaced. Launcher artwork in appicon/element/ is NOT yet replaced - see NOTICE.md."
+    }
+  },
+  "signing": {
+    "vault_keystore": "A0_keys/providers/android/release.jks",
+    "vault_secrets": "A0_keys/providers/android/signing.secrets.yaml"
+  },
+  "release": {
+    "ghcr": {
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "media_type": "application/vnd.android.package-archive"
+    },
+    "gh_release": {
+      "_doc": "Rolling GH release 'latest' (shared across the ea_cloud-* apps; each contributes a distinctly-named APK asset), overwritten every main push so https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/cloud-comms-matrix.apk stays stable. Published by `build.sh gh-release-fork matrix` (ship-cloud-matrix.yml), which uploads dist/cloud-comms-matrix.apk with --clobber. Consumed by aa_cloud-superapp ui.external_apps[cloud-matrix].install_apk_url. The immutable timestamped per-build release (RSS notification) is separate and stays --latest=false.",
+      "enabled": true,
+      "rolling_tag": "latest",
+      "asset_name": "cloud-comms-matrix.apk",
+      "draft": false,
+      "prerelease": false,
+      "generate_release_notes": false
+    }
+  }
+}

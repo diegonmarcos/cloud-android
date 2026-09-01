@@ -1,0 +1,123 @@
+// Copyright (c) 2015-present Mattermost, Inc. All Rights Reserved.
+// See LICENSE.txt for license information.
+
+import React, {useCallback, useState} from 'react';
+import {defineMessage, useIntl} from 'react-intl';
+import {View} from 'react-native';
+
+import {fetchStatusInBatch, updateMe} from '@actions/remote/user';
+import FloatingTextInput from '@components/floating_input/floating_text_input_label';
+import FormattedText from '@components/formatted_text';
+import SettingContainer from '@components/settings/container';
+import SettingOption from '@components/settings/option';
+import SettingSeparator from '@components/settings/separator';
+import {General} from '@constants';
+import {useServerUrl} from '@context/server';
+import {useTheme} from '@context/theme';
+import useAndroidHardwareBackHandler from '@hooks/android_back_handler';
+import useBackNavigation from '@hooks/navigate_back';
+import {popTopScreen} from '@screens/navigation';
+import {changeOpacity, makeStyleSheetFromTheme} from '@utils/theme';
+import {typography} from '@utils/typography';
+import {getNotificationProps} from '@utils/user';
+
+import type UserModel from '@typings/database/models/servers/user';
+import type {AvailableScreens} from '@typings/screens/navigation';
+
+const label = defineMessage({
+    id: 'notification_settings.auto_responder.message',
+    defaultMessage: 'Message',
+});
+
+const OOO = defineMessage({
+    id: 'notification_settings.auto_responder.default_message',
+    defaultMessage: 'Hello, I am out of office and unable to respond to messages.',
+});
+
+const getStyleSheet = makeStyleSheetFromTheme((theme: Theme) => {
+    return {
+        footer: {
+            color: changeOpacity(theme.centerChannelColor, 0.5),
+            ...typography('Body', 75, 'Regular'),
+        },
+        container: {
+            gap: 20,
+        },
+    };
+});
+
+type NotificationAutoResponderProps = {
+    componentId: AvailableScreens;
+    currentUser?: UserModel;
+}
+const NotificationAutoResponder = ({currentUser, componentId}: NotificationAutoResponderProps) => {
+    const theme = useTheme();
+    const serverUrl = useServerUrl();
+    const intl = useIntl();
+    const [notifyProps] = useState(() => getNotificationProps(currentUser));
+
+    const [initialAutoResponderActive] = useState(() => Boolean(currentUser?.status === General.OUT_OF_OFFICE && notifyProps.auto_responder_active === 'true'));
+    const [autoResponderActive, setAutoResponderActive] = useState<boolean>(initialAutoResponderActive);
+
+    const [initialOOOMsg] = useState(() => notifyProps.auto_responder_message || intl.formatMessage(OOO));
+    const [autoResponderMessage, setAutoResponderMessage] = useState<string>(initialOOOMsg);
+
+    const styles = getStyleSheet(theme);
+
+    const saveAutoResponder = useCallback(() => {
+        const canSaveSetting = initialAutoResponderActive !== autoResponderActive || initialOOOMsg !== autoResponderMessage;
+
+        if (canSaveSetting) {
+            updateMe(serverUrl, {
+                notify_props: {
+                    ...notifyProps,
+                    auto_responder_active: `${autoResponderActive}`,
+                    auto_responder_message: autoResponderMessage,
+                },
+            });
+            if (currentUser) {
+                fetchStatusInBatch(serverUrl, currentUser.id);
+            }
+        }
+        popTopScreen(componentId);
+    }, [componentId, initialAutoResponderActive, autoResponderActive, initialOOOMsg, autoResponderMessage, serverUrl, notifyProps, currentUser]);
+
+    useBackNavigation(saveAutoResponder);
+
+    useAndroidHardwareBackHandler(componentId, saveAutoResponder);
+
+    return (
+        <SettingContainer testID='auto_responder_notification_settings'>
+            <View style={styles.container}>
+                <SettingOption
+                    label={intl.formatMessage({id: 'notification_settings.auto_responder.to.enable', defaultMessage: 'Enable automatic replies'})}
+                    action={setAutoResponderActive}
+                    testID='auto_responder_notification_settings.enable_automatic_replies.option'
+                    type='toggle'
+                    selected={autoResponderActive}
+                />
+                <SettingSeparator/>
+                {autoResponderActive && (
+                    <FloatingTextInput
+                        label={intl.formatMessage(label)}
+                        multiline={true}
+                        multilineInputHeight={154}
+                        onChangeText={setAutoResponderMessage}
+                        placeholder={intl.formatMessage(label)}
+                        testID='auto_responder_notification_settings.message.input'
+                        theme={theme}
+                        value={autoResponderMessage || ''}
+                    />
+                )}
+                <FormattedText
+                    id={'notification_settings.auto_responder.footer.message'}
+                    defaultMessage={'Set a custom message that is automatically sent in response to direct messages, such as an out of office or vacation reply. Enabling this setting changes your status to Out of Office and disables notifications.'}
+                    style={styles.footer}
+                    testID='auto_responder_notification_settings.message.input.description'
+                />
+            </View>
+        </SettingContainer>
+    );
+};
+
+export default NotificationAutoResponder;

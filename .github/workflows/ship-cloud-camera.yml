@@ -1,0 +1,214 @@
+name: "Ship → Cloud Camera APK (build + push to GHCR via ORAS + attach to GH Release)"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ac_cloud-camera — our own signed build of GrapheneOS Camera.
+#
+# Upstream: https://github.com/GrapheneOS/Camera, pinned to tag 93
+# (80ff01a955d3fa5a4f0cfa4cc6c47ee986962b8b), MIT. The tree is VENDORED at the
+# app root with the package identity renamed app.grapheneos.camera → cld.camera
+# so this APK coexists with an officially-signed GrapheneOS Camera install.
+#
+# Shape is ship-cloud-media-center.yml minus the ABI matrix: GrapheneOS Camera
+# has NO native code (no externalNativeBuild, no JNI, no NDK), so one universal
+# APK covers every device and a build matrix would just publish duplicates.
+#
+# Every step delegates to the engine (ac_cloud-camera/build.sh) — this file
+# carries no app knowledge beyond WORK_DIR; the fork key is read out of
+# build.json so the workflow never hardcodes an app name.
+# ─────────────────────────────────────────────────────────────────────────────
+
+on:
+  workflow_dispatch:
+    inputs:
+      variant:
+        description: "Build variant"
+        type: choice
+        default: release
+        options: [debug, release]
+      push_oras:
+        description: "Push APK to GHCR via ORAS"
+        type: boolean
+        default: true
+      create_release:
+        description: "Attach APK to the rolling GitHub Release"
+        type: boolean
+        default: true
+  push:
+    branches: [main]
+    paths:
+      # MANAGED by cloud-android-ship-repo-workflow-engine.sh: every dir
+      # ac_cloud-camera/build.json::modules declares is added automatically, dead
+      # entries are dropped, and cloud-android-source-identity.sh hashes
+      # exactly this list — so nothing can trigger a build the publish
+      # gate does not weigh. Extra entries no module map can express
+      # (settings.gradle.kts references, scan roots) are kept: add them
+      # here and they stay.
+      - "1_cicd/src/cicd/ship-cloud-camera.yml"
+      - "ac_cloud-camera/**"
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: ship-cloud-camera-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  WORK_DIR: ac_cloud-camera
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Publish-if-changed gate. Android builds are not byte-reproducible, so a
+      # rebuild of unchanged source published different bytes, a different
+      # sha256 sidecar and a different OCI digest — and the Constellation store
+      # compares exactly those, so every cascade rebuild showed up on every
+      # phone as an update with nothing in it. The gate hashes this app's build
+      # INPUTS (git tree shas of the app dir, the shared lib dirs its build.json
+      # module map declares, and this workflow) and compares that identity to
+      # the <asset>.source sidecar already on the release. Equal → the whole
+      # rest of this job is skipped and the release asset is left untouched.
+      - name: Publish gate (skip when source unchanged)
+        id: gate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: sh 1_cicd/dist/scripts/cloud-android-publish-gate.sh check "$WORK_DIR" ""
+
+      # JDK 21 runs the Gradle 9.6.1 daemon / AGP 9.3.1; JDK 17 has to be
+      # present too because upstream pins the java toolchain to
+      # JavaLanguageVersion.of(17) and Gradle resolves that from the installed
+      # JDKs rather than from JAVA_HOME.
+      - name: Set up JDK 17 + 21
+        if: steps.gate.outputs.skip != 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: |
+            17
+            21
+
+      - name: Set up Android SDK
+        if: steps.gate.outputs.skip != 'true'
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        if: steps.gate.outputs.skip != 'true'
+        run: |
+          # compileSdk 37 + buildToolsVersion 37.0.0 (upstream
+          # app/build.gradle.kts). NO ndk/cmake entries — unlike ReFra this app
+          # never invokes the NDK, and installing one just burns runner minutes.
+          sdkmanager --install "platforms;android-37.1" "platforms;android-37.0" \
+                               "platforms;android-29" \
+                               "build-tools;37.0.0" "platform-tools"
+
+      - name: Set up Gradle (cached)
+        if: steps.gate.outputs.skip != 'true'
+        uses: gradle/actions/setup-gradle@v3
+        # No gradle-version pin: the engine invokes the fork's OWN ./gradlew
+        # (9.6.1), which is the toolchain upstream tests against.
+
+      # ── ONE shared Cloud-constellation signing key (vault) ──────────────
+      # ALL constellation apps sign with the SAME key so cross-app
+      # signature-IPC + the in-app fleet updater never hit a signature
+      # mismatch. The raw keystore + its sops-encrypted passwords live ONLY in
+      # the private vault repo. build.sh::_resolve_signing reads $VAULT_DIR +
+      # sops-decrypts (SOPS_AGE_KEY); _enforce_signature then zipaligns and
+      # apksigner-signs whatever gradle emitted. NO fallback: no key → exit 1.
+      - name: Checkout vault (shared Android signing key)
+        if: steps.gate.outputs.skip != 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: diegonmarcos/cloud-vault
+          token: ${{ secrets.ANDROID_SIGNING_VAULT_TOKEN }}
+          path: .vault
+
+      - name: Install ORAS + sops + jq
+        if: steps.gate.outputs.skip != 'true'
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y jq
+          curl -fsSL https://github.com/oras-project/oras/releases/download/v1.2.0/oras_1.2.0_linux_amd64.tar.gz \
+            | sudo tar -C /usr/local/bin -xzf - oras
+          oras version
+          curl -fsSL https://github.com/getsops/sops/releases/download/v3.9.4/sops-v3.9.4.linux.amd64 \
+            | sudo tee /usr/local/bin/sops >/dev/null
+          sudo chmod +x /usr/local/bin/sops
+          sops --version
+
+      - name: Determine variant
+        if: steps.gate.outputs.skip != 'true'
+        id: variant
+        run: |
+          if   [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "variant=${{ inputs.variant }}" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            echo "variant=release" >> "$GITHUB_OUTPUT"
+          else
+            echo "variant=release" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ── Build via build.sh (engine) ─────────────────────────────────
+      - name: Build APK (engine)
+        if: steps.gate.outputs.skip != 'true'
+        working-directory: ${{ env.WORK_DIR }}
+        env:
+          BYPASS_NIX: "1"
+          VAULT_DIR: ${{ github.workspace }}/.vault
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+        run: |
+          chmod +x build.sh
+          # materialize-fork is a no-op for a vendored tree (no .git inside
+          # ac_cloud-camera) but is kept so re-vendoring a newer pinned_tag
+          # needs no workflow change. The fork key is read from build.json —
+          # data-driven, no app name in the workflow.
+          FORK="$(jq -r '.forks | keys[0]' build.json)"
+          echo "fork key: $FORK"
+          ./build.sh materialize-fork "$FORK"
+          ./build.sh build-fork "$FORK"
+          ls -la dist/
+
+      - name: Upload APK as workflow artifact
+        if: steps.gate.outputs.skip != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Cloud-Camera-${{ steps.variant.outputs.variant }}-${{ github.sha }}
+          path: ${{ env.WORK_DIR }}/dist/*.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      # ── ORAS push to GHCR (engine reads build.json::release.ghcr) ──
+      - name: Login to GHCR
+        if: ${{ steps.gate.outputs.skip != 'true' && (github.event_name != 'workflow_dispatch' || inputs.push_oras) }}
+        run: |
+          echo "${{ secrets.GHCR_TOKEN || secrets.GITHUB_TOKEN }}" \
+            | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Push APK to GHCR via ORAS
+        if: ${{ steps.gate.outputs.skip != 'true' && (github.event_name != 'workflow_dispatch' || inputs.push_oras) }}
+        working-directory: ${{ env.WORK_DIR }}
+        env:
+          BYPASS_NIX: "1"
+          GITHUB_SHA: ${{ github.sha }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_CREATE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./build.sh publish-fork "$(jq -r '.forks | keys[0]' build.json)"
+
+      # ── GitHub Release (engine reads build.json::release.gh_release) ──
+      - name: Publish to GitHub Releases
+        if: ${{ steps.gate.outputs.skip != 'true' && (github.event_name != 'workflow_dispatch' || inputs.create_release) }}
+        working-directory: ${{ env.WORK_DIR }}
+        env:
+          BYPASS_NIX: "1"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_REF: ${{ github.ref }}
+        run: ./build.sh gh-release-fork "$(jq -r '.forks | keys[0]' build.json)"
+
+      - name: Stamp source identity on the published assets
+        if: steps.gate.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: sh 1_cicd/dist/scripts/cloud-android-publish-gate.sh stamp "$WORK_DIR" ""

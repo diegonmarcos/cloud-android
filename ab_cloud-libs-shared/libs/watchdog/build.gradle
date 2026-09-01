@@ -1,0 +1,173 @@
+apply plugin: 'com.android.library'
+apply plugin: 'org.jetbrains.kotlin.android'
+
+// rootDir, NOT '../../': this module is shared by reference (projectDir) into
+// every constellation app, so it reads the CONSUMING app's build.json. A
+// module-relative path would resolve to this repo's config in every app and
+// every app would talk to the same terminal.
+//
+// Falls back to ab_cloud-libs-shared/build.json when the consumer declares
+// nothing of its own, the same two-step libs/voice uses.
+def cfgFile   = file("${rootDir}/build.json").isFile()
+                  ? file("${rootDir}/build.json")
+                  : file("${projectDir}/../../build.json")
+def buildJson = new groovy.json.JsonSlurper().parse(cfgFile)
+
+// The terminal this app talks to, baked — never hardcoded in Kotlin, the same
+// rule cloud-ide's TERMINAL_TARGETS_JSON_B64 follows. Defaults are
+// nix-on-droid's sshd as cloud-ide already declares it: loopback, because
+// Android shares 127.0.0.1 across app sandboxes and there is no cross-UID
+// barrier to cross.
+def wd        = buildJson.watchdog ?: [:]
+def targets   = wd.targets ?: [
+    backends: [
+        'nix-on-droid': [label: 'Nix-on-Droid', host: '127.0.0.1', port: 8022, user: 'nix-on-droid'],
+        'termux'      : [label: 'Termux',       host: '127.0.0.1', port: 8023, user: 'termux'],
+    ]
+]
+def targetsB64 = groovy.json.JsonOutput.toJson(targets).bytes.encodeBase64().toString()
+
+android {
+    namespace 'com.diegonmarcos.superapp.watchdog'
+    compileSdk 36
+
+    defaultConfig {
+        minSdk 26
+        buildConfigField "String", "WATCHDOG_TARGETS_JSON_B64", "\"${targetsB64}\""
+        buildConfigField "String", "WATCHDOG_BACKEND_DEFAULT",  "\"${wd.backend_default ?: 'nix-on-droid'}\""
+        // No WATCHDOG_CMD any more: the binary is not looked up on the env's
+        // PATH, it is one this APK carries and places itself. Its path is a
+        // fact about this app, so it lives in the code beside the code that
+        // puts it there (WatchdogSsh.REMOTE_DIR).
+        // The DECLARED constellation key, resolved from the vault by build.sh
+        // (_resolve_ssh_key) and handed here through the environment. Base64
+        // because a PEM has newlines and a BuildConfig string does not.
+        //
+        // Empty in an IDE build with no vault: the app then SAYS so rather than
+        // generating a key the phone has never authorized, which is the exact
+        // failure this replaced.
+        buildConfigField "String", "CLOUD_SSH_KEY_B64", "\"${System.getenv('CLOUD_SSH_KEY_B64') ?: ''}\""
+    }
+
+    // The libs must land on disk as real files. With the AGP default they are
+    // stored uncompressed inside the APK and nativeLibraryDir points at a path
+    // *within* it — fine for dlopen, useless for exec, which is the only thing
+    // these are for. Legacy packaging is extractNativeLibs=true.
+    packagingOptions { jniLibs { useLegacyPackaging = true } }
+
+    // aidl = true is REQUIRED, not a preference: AGP 8 defaults it to false,
+    // so the ICloudExec interface simply is not generated and every reference
+    // to it fails as "Unresolved reference" — with no hint that a build
+    // feature is off. The Termux fork gets away without it only because it is
+    // still on AGP 4.2, where the default is the other way round.
+    buildFeatures {
+        buildConfig = true
+        aidl = true
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = '17' }
+}
+
+// ── the tools this library carries ─────────────────────────────────────────
+// THE APP IS SELF-CONTAINED. nix-on-droid and Termux are where a command RUNS;
+// they are not somewhere anything gets installed. The only thing that ever
+// reaches a phone is the ssh public key, and the env's own installer puts that
+// there — not this app.
+//
+// So the binaries ride INSIDE the library, get merged into whichever APK
+// consumes it, and are pushed into the terminal's scratch directory at connect
+// time. A bare nix-on-droid on a fresh phone then works with nothing to fetch,
+// nothing to add to PATH, and no way for the panel to drift from the app
+// driving it — they ship as one artifact.
+//
+// They live HERE and not in the app because this module is the logic: the ssh
+// channel, the protocol and the tools it speaks to. ac_cloud-watchdog is the
+// UI on top.
+//
+// aarch64 static musl: every Android device this decade, and musl means it
+// does not care which libc the environment has, or whether it has one.
+// jniLibs, NOT assets. Android will not execute a file the app unpacked
+// itself — W^X since API 29 — so an asset can only ever be streamed somewhere
+// else to run, which is why the panel needed a working ssh before it could
+// draw anything at all. nativeLibraryDir is the one directory an app can both
+// ship into and exec from, and the way in is jniLibs. Nothing dlopens these;
+// the `lib*.so` naming is the price of admission, and it is the same trick
+// Termux uses for its bootstrap.
+def toolsDir = file("$projectDir/src/main/jniLibs/arm64-v8a")
+def toolsRepo = wd.tools?.repo ?: 'diegonmarcos/cloud-u-linux'
+def toolsTag  = wd.tools?.tag  ?: 'my-watchdog-latest'
+
+// The UI itself, generated by `my-watchdog-tui app-shell` and published beside
+// the binaries. It is fetched rather than hand-written here because it is the
+// SAME page the report renders — one template, so the phone and the desktop
+// cannot drift apart on palette, box order or which tabs exist. A second copy
+// maintained in this repo would be exactly that drift.
+//
+// Library assets merge into the consuming APK, so shipping it here puts it in
+// every app that takes this library.
+def uiDir  = file("$projectDir/src/main/assets")
+tasks.register('fetchWatchdogUi') {
+    description = 'Download the app shell — the watchdog UI with no machine in it.'
+    outputs.file new File(uiDir, 'watchdog-app.html')
+    doLast {
+        uiDir.mkdirs()
+        def out = new File(uiDir, 'watchdog-app.html')
+        if (out.exists() && out.length() > 10_000) {
+            logger.lifecycle("ui: watchdog-app.html cached (${out.length()} bytes)")
+            return
+        }
+        def p = ['gh', 'release', 'download', toolsTag, '--repo', toolsRepo,
+                 '--pattern', 'watchdog-app.html', '--output', out.absolutePath, '--clobber'].execute()
+        p.waitForProcessOutput(System.out, System.err)
+        if (p.exitValue() != 0 || !out.exists()) {
+            // No fallback: an APK with no UI cannot open, and shipping one
+            // would move the failure onto the phone, which is where this
+            // whole class of bug has been living.
+            throw new GradleException(
+                "could not fetch watchdog-app.html from ${toolsRepo}@${toolsTag} — " +
+                "the app ships its interface rather than drawing one of its own")
+        }
+        logger.lifecycle("ui: watchdog-app.html (${out.length()} bytes)")
+    }
+}
+
+tasks.register('fetchWatchdogTools') {
+    description = 'Download the aarch64 panel + sampler this library ships inside the APK.'
+    outputs.dir toolsDir
+    doLast {
+        toolsDir.mkdirs()
+        [['my-watchdog-aarch64', 'libmywatchdog.so'],
+         ['my-watchdog-tui-aarch64', 'libmywatchdogtui.so']].each { asset, name ->
+            def out = new File(toolsDir, name)
+            // Skip a good copy: CI runs this on every build and the release
+            // only moves when the watchdog does.
+            if (out.exists() && out.length() > 100_000) {
+                logger.lifecycle("tool: ${name} cached (${out.length()} bytes)")
+                return
+            }
+            def p = ['gh', 'release', 'download', toolsTag, '--repo', toolsRepo,
+                     '--pattern', asset, '--output', out.absolutePath, '--clobber'].execute()
+            p.waitForProcessOutput(System.out, System.err)
+            if (p.exitValue() != 0 || !out.exists()) {
+                // No fallback: an APK without its tools cannot work at all, and
+                // shipping one would move the failure to the user's phone.
+                throw new GradleException(
+                    "could not fetch ${asset} from ${toolsRepo}@${toolsTag} — " +
+                    "this library ships the binaries rather than installing them on the device")
+            }
+            logger.lifecycle("tool: ${name} (${out.length()} bytes)")
+        }
+    }
+}
+preBuild.dependsOn tasks.named('fetchWatchdogTools'), tasks.named('fetchWatchdogUi')
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.13.1'
+    // The same ssh engine cloud-ide uses. One fork of JSch in the
+    // constellation, not two: a second would be a second key format, a second
+    // set of host-key rules and a second thing to audit.
+    implementation 'com.github.mwiede:jsch:0.2.17'
+}

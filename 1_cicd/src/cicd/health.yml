@@ -1,0 +1,19 @@
+name: health
+
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { submodules: recursive }
+      - uses: ./.github/actions/setup-deps
+      - name: Run repo-level validations
+        run: |
+          ./build.sh config
+          ./build.sh workflow
+          echo "Declarative framework sanity ✓"

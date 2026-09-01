@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# pre-push — rebase submodules onto their upstream HEAD before pushing parent
+set -uo pipefail
+
+if [ -t 2 ]; then
+  printf '\033[33m\n┌─ git push ─ tip ──────────────────────────────────────────────┐\n' >&2
+  printf   '│ Prefer `git sync` — safer: auto-stash + rebase + submodules.  │\n' >&2
+  printf   '│   git sync remote   (origin wins on conflict, default)        │\n' >&2
+  printf   '│   git sync local    (local commits win on conflict)           │\n' >&2
+  printf   '└───────────────────────────────────────────────────────────────┘\033[0m\n' >&2
+fi
+
+# Skip during rebase/merge/bisect
+if [ -d "$(git rev-parse --git-path rebase-merge 2>/dev/null)" ] \
+   || [ -d "$(git rev-parse --git-path rebase-apply 2>/dev/null)" ] \
+   || [ -f "$(git rev-parse --git-path MERGE_HEAD   2>/dev/null)" ] \
+   || [ -f "$(git rev-parse --git-path BISECT_LOG   2>/dev/null)" ]; then
+    exit 0
+fi
+
+# Fast-sync each submodule to its upstream HEAD (non-fatal)
+git submodule foreach --quiet '
+    b=$(git symbolic-ref --short HEAD 2>/dev/null || echo main)
+    git fetch --quiet origin "$b" 2>/dev/null || true
+    git rebase --quiet "origin/$b" 2>/dev/null || true
+' || true
+
+exit 0

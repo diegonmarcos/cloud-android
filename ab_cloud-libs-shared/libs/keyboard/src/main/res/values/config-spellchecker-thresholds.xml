@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Copyright (C) 2013 The Android Open Source Project
+    SPDX-License-Identifier: Apache-2.0
+-->
+
+<resources>
+    <!-- Threshold of the normalized score of the best suggestion for the spell checker to declare
+         a word to be "recommended" -->
+    <string name="spellchecker_recommended_threshold_value" translatable="false">0.11</string>
+</resources>

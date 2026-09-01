@@ -1,0 +1,20 @@
+{
+  "name": "manifest-stubs",
+  "description": "Pre-declared stub Activity/Service/Provider pool + runtime class-loader swap. Lets the workspace launch arbitrary guest components without declaring them at install time.",
+  "category": "lib",
+  "type": "library",
+  "pillar": "manifest-stubs",
+  "tech": {
+    "language": "kotlin",
+    "stubs_count": 100,
+    "classloader": "dalvik.system.PathClassLoader (delegated)",
+    "min_sdk": 26,
+    "target_sdk": 35
+  },
+  "depends_on": ["hooking-core", "system-server-stubs"],
+  "build": {
+    "gradle_task": ":library:assembleRelease",
+    "output": "build/outputs/aar/manifest-stubs-release.aar"
+  },
+  "deploy": { "device": null, "method": "artifact" }
+}

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Cloud Me shell. Three pieces and no more: the hamburger drawer on the
+     start edge, a toolbar whose only action is the Configs gear, and a
+     content host above a bottom bar.
+
+     Neither menu is declared in XML. The bottom bar's five items and the
+     drawer's list are both built at runtime from build.json::ui.sections
+     (see Sections.kt), which is why there is no res/menu here — a static
+     menu file would be a second list to keep in step with the JSON, and
+     that is exactly how the SuperApp's bottom-nav icons went stale. -->
+<androidx.drawerlayout.widget.DrawerLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/drawer_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/me_bg"
+    android:fitsSystemWindows="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:background="@color/me_bg">
+
+        <com.google.android.material.appbar.MaterialToolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="@color/me_bg"
+            app:titleTextColor="@color/me_text"
+            app:navigationIcon="@drawable/ic_hamburger_asymmetric"
+            app:navigationContentDescription="@string/drawer_open" />
+
+        <FrameLayout
+            android:id="@+id/fragment_container"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1" />
+
+        <com.google.android.material.bottomnavigation.BottomNavigationView
+            android:id="@+id/bottom_nav"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/me_surface"
+            app:labelVisibilityMode="labeled"
+            app:itemIconTint="@color/nav_item_tint"
+            app:itemTextColor="@color/nav_item_tint" />
+    </LinearLayout>
+
+    <com.google.android.material.navigation.NavigationView
+        android:id="@+id/nav_drawer"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        android:background="@color/me_surface"
+        app:headerLayout="@layout/nav_header"
+        app:itemIconTint="@color/nav_item_tint"
+        app:itemTextColor="@color/nav_item_tint" />
+</androidx.drawerlayout.widget.DrawerLayout>

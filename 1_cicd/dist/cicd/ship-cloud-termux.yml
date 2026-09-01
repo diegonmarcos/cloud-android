@@ -1,0 +1,158 @@
+name: "Ship → Cloud Terminal (build + attach to GH Release)"
+
+# Independent per-app workflow for Cloud Terminal — our fork of termux-app.
+# Engine: 1_cicd/src/scripts/cloud-termux-fork-engine.sh (copied as ac_cloud-termux/build.sh).
+# Per-app build.json at ac_cloud-termux/build.json.
+#
+# NO GHCR STEP, unlike the comms forks. A GHCR package is owned by the account
+# rather than the repository and is created private whatever it was pushed
+# from, so publishing here would put a private APK in a public repo. The GH
+# Release asset IS the repo, so it is public by construction.
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths:
+      # MANAGED by cloud-android-ship-repo-workflow-engine.sh: every dir
+      # ac_cloud-termux/build.json::modules declares is added automatically, dead
+      # entries are dropped, and cloud-android-source-identity.sh hashes
+      # exactly this list — so nothing can trigger a build the publish
+      # gate does not weigh. Extra entries no module map can express
+      # (settings.gradle.kts references, scan roots) are kept: add them
+      # here and they stay.
+      - "1_cicd/src/cicd/ship-cloud-termux.yml"
+      - "1_cicd/src/scripts/cloud-termux-fork-engine.sh"
+      - "ac_cloud-termux/**"
+permissions:
+  contents: write   # gh release upload
+
+concurrency:
+  group: ship-cloud-termux-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  WORK_DIR: ac_cloud-termux
+  FORK: termux
+
+jobs:
+  build_and_publish:
+    name: "Build + publish (${{ matrix.abi }})"
+    strategy:
+      fail-fast: false
+      matrix:
+        # One job per release.variants[] entry, like every other per-ABI app
+        # here. Without this the fork's own build emits ONE universal APK
+        # carrying all four ABIs.
+        abi: [arm64, x86_64]
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      # Selects the release.variants[] entry: the engine exports its .abis as
+      # CLOUDNAV_ABIS for gradle and names the artifact from its .gh_asset.
+      CLOUDNAV_VARIANT: ${{ matrix.abi }}
+      COMMS_BUNDLE_ABI: ${{ matrix.abi == 'arm64' && 'arm64-v8a' || 'x86_64' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Publish-if-changed gate. Android builds are not byte-reproducible, so a
+      # rebuild of unchanged source published different bytes, a different
+      # sha256 sidecar and a different OCI digest — and the Constellation store
+      # compares exactly those, so every cascade rebuild showed up on every
+      # phone as an update with nothing in it. The gate hashes this app's build
+      # INPUTS (git tree shas of the app dir, the shared lib dirs its build.json
+      # module map declares, and this workflow) and compares that identity to
+      # the <asset>.source sidecar already on the release. Equal → the whole
+      # rest of this job is skipped and the release asset is left untouched.
+      - name: Publish gate (skip when source unchanged)
+        id: gate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: sh 1_cicd/dist/scripts/cloud-android-publish-gate.sh check "$WORK_DIR" "${{ matrix.abi }}"
+
+      # Upstream pins its own Gradle and AGP; the wrapper in the vendored tree
+      # is used, never a toolchain from here.
+      - name: Set up JDK 17
+        if: steps.gate.outputs.skip != 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Checkout vault (shared Android signing key)
+        if: steps.gate.outputs.skip != 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: diegonmarcos/cloud-vault
+          token: ${{ secrets.ANDROID_SIGNING_VAULT_TOKEN }}
+          path: .vault
+
+      - name: Install sops + jq
+        if: steps.gate.outputs.skip != 'true'
+        run: |
+          sudo apt-get update -y && sudo apt-get install -y jq
+          curl -fsSL https://github.com/getsops/sops/releases/download/v3.9.4/sops-v3.9.4.linux.amd64 \
+            | sudo tee /usr/local/bin/sops >/dev/null
+          sudo chmod +x /usr/local/bin/sops
+          sops --version
+
+      # Vendored in-repo: the tree is committed and has no .git, so the engine
+      # reads it straight from here and never clones.
+      - name: Materialize fork (vendored in-repo tree)
+        if: steps.gate.outputs.skip != 'true'
+        working-directory: ${{ env.WORK_DIR }}
+        env:
+          BYPASS_NIX: "1"
+        run: |
+          chmod +x build.sh
+          ./build.sh materialize-fork "$FORK"
+
+      - name: Generate build stamp
+        if: steps.gate.outputs.skip != 'true'
+        run: echo "COMMS_BUILD_TIMESTAMP=$(date -u '+%Y%m%d.%H%M%S')" >> "$GITHUB_ENV"
+
+      # Signed with the ONE shared constellation key. That is not cosmetic:
+      # CLOUD_EXEC is a signature-level permission, so an APK signed with
+      # anything else is refused the bind by every app in the fleet.
+      - name: Build fork APK (upstream wrapper + constellation signing)
+        if: steps.gate.outputs.skip != 'true'
+        working-directory: ${{ env.WORK_DIR }}
+        env:
+          BYPASS_NIX: "1"
+          VAULT_DIR: ${{ github.workspace }}/.vault
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+          COMMS_BUILD_TIMESTAMP: ${{ env.COMMS_BUILD_TIMESTAMP }}
+        run: |
+          ./build.sh build-fork "$FORK"
+          ls -la dist/
+
+      - name: Upload APK as workflow artifact
+        if: steps.gate.outputs.skip != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloud-terminal-${{ matrix.abi }}-${{ github.sha }}
+          path: ${{ env.WORK_DIR }}/dist/*.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      # Rolling 'latest': /releases/latest/download/cloud-terminal.apk is the
+      # stable install URL the constellation points at.
+      - name: Publish APK to rolling 'latest' release (stable install URL)
+        if: ${{ steps.gate.outputs.skip != 'true' && success() }}
+        working-directory: ${{ env.WORK_DIR }}
+        env:
+          BYPASS_NIX: "1"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_SHA: ${{ github.sha }}
+        run: ./build.sh gh-release-fork "$FORK"
+
+      - name: Stamp source identity on the published assets
+        if: steps.gate.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: sh 1_cicd/dist/scripts/cloud-android-publish-gate.sh stamp "$WORK_DIR" "${{ matrix.abi }}"

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Accessibility-service config for the home-screen double-tap-to-
+    lock feature. Locks via AccessibilityService.GLOBAL_ACTION_LOCK_SCREEN
+    (API 28+) so Smart Lock + biometric stay alive, instead of
+    DevicePolicyManager.lockNow() which trips the strong-auth bit.
+
+    Scope is *minimum*:
+      • accessibilityEventTypes=""  → receive ZERO events from the
+        system. The bind only exists so performGlobalAction has a
+        valid service token; we don't observe app activity.
+      • canRetrieveWindowContent="false" → no UI scraping.
+      • canPerformGestures="false" → no synthesized touches.
+      • notificationTimeout="0" → no polling cost.
+
+    The Settings → Accessibility detail screen will show the
+    description string and reflect "no events observed" — what a
+    privacy-conscious user wants to read.
+-->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes=""
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags=""
+    android:canPerformGestures="false"
+    android:canRetrieveWindowContent="false"
+    android:description="@string/accessibility_lock_screen_description"
+    android:notificationTimeout="0"
+    android:summary="@string/accessibility_lock_screen_summary" />

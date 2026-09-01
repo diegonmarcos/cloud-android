@@ -1,0 +1,168 @@
+{
+  "_description": "Single source of truth: contact data + vCard file outputs + QR code outputs. The generator (src/typescript/qrcode/qr-code-generator.ts) reads this file and emits (1) every entry in 'vcfFiles' as a vCard 3.0 text file under src/public/, and (2) every entry in 'qrcodes' as a styled PNG. qrcode.html fetches this same JSON at runtime and renders the card grid from 'qrcodes'. NO vCard data lives anywhere else; the .vcf files in src/public/ are generated artifacts.",
+  "page": {
+    "title": "QR Codes",
+    "subtitle": "Diego Coelho Marcos",
+    "publicDir": "public",
+    "backHref": "index.html",
+    "backText": "Back to Main Page"
+  },
+  "_doc_links": "Single source of truth for every URL the manifest references. Both contact.urls (vCard URL fields) and qrcodes[].source ref entries by id. Edit a value here once and it propagates to BOTH the .vcf files AND the matching QR PNG.",
+  "links": {
+    "socials":             { "type": "Socials",       "value": "@diegonmarcos" },
+    "linktree":            { "type": "Linktree",      "value": "https://linktree.diegonmarcos.com" },
+    "landpage":            { "type": "Website",       "value": "https://diegonmarcos.com" },
+    "telegram":            { "type": "Telegram",      "value": "https://t.me/diegonmarcos" },
+    "whatsapp":            { "type": "WhatsApp",      "value": "https://api.whatsapp.com/send?phone=34634769833" },
+    "vcard_photo_landing": { "type": "VcardDownload", "value": "https://linktree.diegonmarcos.com/qrcode.html?vcard=photo" }
+  },
+  "contact": {
+    "given": "Diego",
+    "family": "Coelho Marcos",
+    "displayName": "Diego Coelho Marcos",
+    "email": "me@diegonmarcos.com",
+    "emailType": "personal",
+    "tel": "+34 634 76 98 33",
+    "telType": "mobile",
+    "address": {
+      "type": "home",
+      "street": "Harzer Straße 42",
+      "city": "Berlin",
+      "region": "Berlin",
+      "postalCode": "12059",
+      "country": "Germany"
+    },
+    "_doc_urls": "Each entry refs a key in top-level 'links'. Order here is the order URLs appear in the rendered vCard.",
+    "urls": [
+      { "ref": "socials" },
+      { "ref": "linktree" },
+      { "ref": "telegram" },
+      { "ref": "whatsapp" },
+      { "ref": "landpage" }
+    ],
+    "birthday": "1987-07-18",
+    "photoFile": "src/public/diegonmarcos-photo.jpg"
+  },
+  "vcfFiles": [
+    {
+      "id": "plain",
+      "output": "src/public/diegonmarcos-contact.vcf",
+      "includePhoto": false
+    },
+    {
+      "id": "photo",
+      "output": "src/public/diegonmarcos-contact_photo.vcf",
+      "includePhoto": true
+    }
+  ],
+  "defaults": {
+    "outputDir": "src/public",
+    "size": 800,
+    "margin": 4,
+    "errorCorrectionLevel": "H",
+    "_doc_style": "Shared traits for every QR: same brand image, same background, same image-cutout sizing. Category-specific overrides (palette + eye colors) live in 'styleByCategory'.",
+    "style": {
+      "image": "src/public/linktree-brand.svg",
+      "imageOptions": { "imageSize": 0.32, "margin": 6, "hideBackgroundDots": true, "crossOrigin": "anonymous" },
+      "backgroundOptions": { "color": "#ffffff" }
+    },
+    "_doc_styleByCategory": "Per-category palettes — looked up via each qrcode's 'category' field. Merged on top of defaults.style; per-entry 'style' overrides on top of that.",
+    "styleByCategory": {
+      "vcard": {
+        "_doc": "Obsidian magenta range — warm / personal (contact card).",
+        "dotsOptions": {
+          "type": "rounded",
+          "gradient": {
+            "type": "linear",
+            "rotation": 0.785,
+            "colorStops": [
+              { "offset": 0,   "color": "#f5d0fe" },
+              { "offset": 0.5, "color": "#e879f9" },
+              { "offset": 1,   "color": "#86198f" }
+            ]
+          }
+        },
+        "cornersSquareOptions": { "type": "extra-rounded", "color": "#86198f" },
+        "cornersDotOptions":    { "type": "dot",            "color": "#e879f9" }
+      },
+      "web": {
+        "_doc": "Obsidian purple range — owned web destinations (linktree, landing page).",
+        "dotsOptions": {
+          "type": "rounded",
+          "gradient": {
+            "type": "linear",
+            "rotation": 0.785,
+            "colorStops": [
+              { "offset": 0,   "color": "#a78bfa" },
+              { "offset": 0.5, "color": "#7f6df2" },
+              { "offset": 1,   "color": "#34208c" }
+            ]
+          }
+        },
+        "cornersSquareOptions": { "type": "extra-rounded", "color": "#34208c" },
+        "cornersDotOptions":    { "type": "dot",            "color": "#7f6df2" }
+      },
+      "social": {
+        "_doc": "Obsidian indigo range — cool / messaging-oriented (WhatsApp, Telegram).",
+        "dotsOptions": {
+          "type": "rounded",
+          "gradient": {
+            "type": "linear",
+            "rotation": 0.785,
+            "colorStops": [
+              { "offset": 0,   "color": "#c7d2fe" },
+              { "offset": 0.5, "color": "#818cf8" },
+              { "offset": 1,   "color": "#1e1b4b" }
+            ]
+          }
+        },
+        "cornersSquareOptions": { "type": "extra-rounded", "color": "#1e1b4b" },
+        "cornersDotOptions":    { "type": "dot",            "color": "#818cf8" }
+      }
+    }
+  },
+  "qrcodes": [
+    {
+      "id": "vcf",
+      "category": "vcard",
+      "title": "vCard",
+      "output": "qr-code-diegonmarcos-vcf.png",
+      "source": { "type": "vcard", "includePhoto": false }
+    },
+    {
+      "id": "vcf-photo",
+      "category": "vcard",
+      "title": "vCard-M",
+      "output": "qr-code-diegonmarcos-vcf-photo.png",
+      "source": { "type": "url", "ref": "vcard_photo_landing" }
+    },
+    {
+      "id": "linktree",
+      "category": "web",
+      "title": "Linktree",
+      "output": "qr-code-diegonmarcos-linktree.png",
+      "source": { "type": "url", "ref": "linktree" }
+    },
+    {
+      "id": "landpage",
+      "category": "web",
+      "title": "Landing Page",
+      "output": "qr-code-diegonmarcos-landpage.png",
+      "source": { "type": "url", "ref": "landpage" }
+    },
+    {
+      "id": "telegram",
+      "category": "social",
+      "title": "Telegram",
+      "output": "qr-code-diegonmarcos-telegram.png",
+      "source": { "type": "url", "ref": "telegram" }
+    },
+    {
+      "id": "whatsapp",
+      "category": "social",
+      "title": "WhatsApp",
+      "output": "qr-code-diegonmarcos-whatsapp.png",
+      "source": { "type": "url", "ref": "whatsapp" }
+    }
+  ]
+}

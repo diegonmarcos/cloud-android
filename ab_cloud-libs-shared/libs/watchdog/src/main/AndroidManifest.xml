@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Loopback only. The terminal is another app on THIS device, reached
+         over 127.0.0.1, so this needs the internet permission the way any
+         socket does — and nothing else: no host is contacted off-device. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- CLOUD_EXEC IPC with OUR terminal forks (renamed 2026-08-30:
+         com.termux -> cld.termux, com.termux.nix -> cld.termux.nix, see
+         3aba806aa). Declared HERE, in the lib that owns WatchdogTerminal,
+         so every host APK (cloud-watchdog, superapp) inherits the
+         signature-permission and Android 11+ package visibility via
+         manifest-merger instead of each host redeclaring them. -->
+    <uses-permission android:name="cld.termux.permission.CLOUD_EXEC" />
+    <queries>
+        <package android:name="cld.termux" />
+        <package android:name="cld.termux.nix" />
+        <intent>
+            <action android:name="cld.termux.CLOUD_EXEC" />
+        </intent>
+    </queries>
+</manifest>
