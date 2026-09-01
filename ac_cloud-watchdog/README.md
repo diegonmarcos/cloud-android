@@ -100,6 +100,22 @@ fork, same self-generated ECDSA key, same manual `authorized_keys` step.
   (`~/.watchdog/html/index-mobile.html`) is frozen at export time.
 * The journal pages are a 100-line tail per section, cached 30s on the
   measured machine — the panel, reading local disk, keeps its 500.
-* `machines` is read from `cloud-infra/config.json`, which exists on the
-  desktop and not on the phone, so the fleet pages are empty when the phone
-  is the measured machine rather than the reader.
+* `machines` is read from `cloud-infra/config.json` **and** `~/.ssh/config`
+  on the MEASURED machine, so the fleet pages are empty when the phone is
+  what is being measured rather than what is reading.
+
+## What counts as a machine
+
+Eleven, from two sources that each know something the other does not:
+
+| source | gives | machines |
+|---|---|---|
+| `config.json::vms` | provider, public IP, real name | 5 VMs |
+| `config.json::native.wireguard.clients` | the v6, and the runners ssh has never heard of | gha-runner, health-runner, vault-backup |
+| `~/.ssh/config` | which row is **this** machine, and the names you actually type | surface-nixos, phone, gcp-t4 |
+
+The mesh is **four** networks, and a machine is on as many of them as it has
+addresses for — wg0 `10.0.0.0/24` + `fd0c:1d00::/64`, the public tunnel
+`10.1.0.0/24` + `fd0c:1d01::/64`. Every address a machine answers on travels
+with it, so a peer lands on the page for each network it is genuinely on
+rather than on whichever one its single recorded address happened to be.
