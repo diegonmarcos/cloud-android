@@ -75,3 +75,23 @@
 # strings; shrinking one silently drops that metric rather than failing.
 -keep class androidx.health.connect.client.records.** { *; }
 -dontwarn androidx.health.**
+
+# ── JGit (Configs → Profile → "Import GH SSH") ───────────────────────
+# Release builds run R8 with minifyEnabled true. JGit resolves its transport
+# and pack implementations through java.util.ServiceLoader and reflection, so
+# shrinking silently removes classes that are only ever named in META-INF
+# service files — the failure is a NoClassDefFoundError at clone time, in the
+# release build only, which is the worst place to discover it.
+-keep class org.eclipse.jgit.** { *; }
+-keep class com.jcraft.jsch.** { *; }
+-keepclassmembers class org.eclipse.jgit.** { *; }
+-dontwarn org.eclipse.jgit.**
+-dontwarn com.jcraft.jsch.**
+# JGit compiles against SLF4J and ships no binding; Android has none either.
+# Without this, R8 fails the build on the missing logger implementation rather
+# than letting SLF4J fall back to its no-op.
+-dontwarn org.slf4j.**
+-keep class org.slf4j.** { *; }
+# JGit's optional Apache HTTP and JSch-agent-proxy paths are never taken here.
+-dontwarn org.apache.http.**
+-dontwarn com.jcraft.jsch.agentproxy.**

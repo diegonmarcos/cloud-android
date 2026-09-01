@@ -10,15 +10,21 @@ import java.net.URL
  * Configs → Profile → "OWebAuth Authelia Authentication · Auto Import Configs".
  *
  * Engine only: no `R`, no Fragment, no prefs. It does exactly one thing —
- * GET the artifact with a user-supplied bearer and turn every failure mode
- * into a NAMED [Kind] instead of a blank state. The caller (app/) owns the
- * dialog and the apply step.
+ * GET the artifact with a user-supplied credential and turn every failure
+ * mode into a NAMED [Kind] instead of a blank state. The caller (app/) owns
+ * the dialog and the apply step.
  *
- * Auth model is deliberately "paste-a-bearer", NOT an in-app OAuth dance:
- * the pasted Authelia token IS the `Authorization: Bearer …` value, and it
- * is validated server-side by the existing introspect-proxy / `@bearer`
- * gate in front of the endpoint. So there is no client secret here, no
- * redirect URI, and nothing to keep in sync with Authelia's client config.
+ * FOUR IMPORT ROUTES, ONE CLIENT. Configs → Profile offers a pasted Authelia
+ * bearer, an Authelia browser login, a GitHub login and a GitHub SSH key —
+ * but three of those are the same GET with a different header, so they all
+ * land in [request] and inherit one failure taxonomy. Only the SSH route is
+ * genuinely different (it speaks git, not HTTP) and lives in the app module.
+ *
+ * Authelia auth is deliberately credential-in-a-header, NOT an in-app OAuth
+ * dance: the token or session cookie is validated server-side by the existing
+ * introspect-proxy / `@bearer` gate in front of the endpoint. So there is no
+ * client secret here, no redirect URI, and nothing to keep in sync with
+ * Authelia's client config.
  *
  * SECRET HYGIENE — the token must never reach a log or a diagnostic file:
  *  • the Authorization header value is never logged;
@@ -75,11 +81,71 @@ object ConfigSyncClient {
         if (baseUrl.isBlank()) {
             return fail(Kind.MALFORMED, "No config source configured (build.json::ui.config_source.base_url is empty)")
         }
-        if (bearer.isBlank()) {
-            return fail(Kind.UNAUTHORIZED, "No token supplied")
+        return request(
+            url = endpoint(baseUrl, pathTemplate, user),
+            headers = mapOf("Authorization" to "Bearer $bearer"),
+            secret = bearer,
+            authHint = "Paste a current Authelia bearer token and try again.",
+            connectTimeoutMs = connectTimeoutMs,
+            readTimeoutMs = readTimeoutMs,
+        )
+    }
+
+    /**
+     * Same artifact, same route, but authenticated by the session cookie a
+     * browser login already established instead of a pasted token.
+     *
+     * This is the whole difference between the Bearer and the OWebAuth tiles:
+     * Authelia accepts either, so the transport, the failure taxonomy and the
+     * apply step are shared and only the header changes. The cookie is as
+     * sensitive as the token and gets the same treatment — never logged, never
+     * persisted, [redact]ed out of any echoed error body.
+     */
+    fun fetchWithCookie(
+        baseUrl: String,
+        pathTemplate: String,
+        user: String,
+        cookie: String,
+        connectTimeoutMs: Int,
+        readTimeoutMs: Int,
+    ): Outcome {
+        if (baseUrl.isBlank()) {
+            return fail(Kind.MALFORMED, "No config source configured (build.json::ui.config_source.base_url is empty)")
         }
-        val url = endpoint(baseUrl, pathTemplate, user)
-        Log.i(TAG, "GET $url (token ${bearer.length} chars, not logged)")
+        return request(
+            url = endpoint(baseUrl, pathTemplate, user),
+            headers = mapOf("Cookie" to cookie),
+            secret = cookie,
+            authHint = "The browser session carried no Authelia cookie for this route — sign in again.",
+            connectTimeoutMs = connectTimeoutMs,
+            readTimeoutMs = readTimeoutMs,
+        )
+    }
+
+    /**
+     * One GET, arbitrary headers, the same named-failure taxonomy.
+     *
+     * Public because the GitHub importers need it: fetching the artifact out of
+     * a repo is the same problem as fetching it from the config route, and a
+     * second HTTP client with a second set of half-considered error cases is
+     * exactly what this object exists to prevent.
+     *
+     * [secret] is not sent anywhere — it is what [redact] scrubs out of logs
+     * and displayed bodies, so pass whatever credential the headers carry.
+     */
+    fun request(
+        url: String,
+        headers: Map<String, String>,
+        secret: String,
+        authHint: String,
+        connectTimeoutMs: Int,
+        readTimeoutMs: Int,
+        accept: String = "application/json",
+    ): Outcome {
+        if (secret.isBlank()) {
+            return fail(Kind.UNAUTHORIZED, "No credential supplied")
+        }
+        Log.i(TAG, "GET $url (credential ${secret.length} chars, not logged)")
 
         var conn: HttpURLConnection? = null
         val code: Int
@@ -96,9 +162,9 @@ object ConfigSyncClient {
                 // would surface as "malformed JSON" — or worse, look like success.
                 // The redirect itself is the diagnosis, so we keep it.
                 instanceFollowRedirects = false
-                setRequestProperty("Accept", "application/json")
+                setRequestProperty("Accept", accept)
                 setRequestProperty("User-Agent", "Cloud-SuperApp-ConfigSync/1")
-                setRequestProperty("Authorization", "Bearer $bearer")
+                headers.forEach { (k, v) -> setRequestProperty(k, v) }
             }
             code = conn.responseCode
             location = conn.getHeaderField("Location").orEmpty()
@@ -107,16 +173,16 @@ object ConfigSyncClient {
         } catch (t: Throwable) {
             // UnknownHostException / SocketTimeoutException / SSLException /
             // ConnectException all land here — the request never completed.
-            Log.w(TAG, "network failure for $url: ${t.javaClass.simpleName}: ${redact(t.message.orEmpty(), bearer)}")
+            Log.w(TAG, "network failure for $url: ${t.javaClass.simpleName}: ${redact(t.message.orEmpty(), secret)}")
             return fail(
                 Kind.NETWORK,
-                "Could not reach $url — ${t.javaClass.simpleName}: ${redact(t.message ?: "no detail", bearer)}",
+                "Could not reach $url — ${t.javaClass.simpleName}: ${redact(t.message ?: "no detail", secret)}",
             )
         } finally {
             conn?.disconnect()
         }
 
-        val snippet = redact(body.take(300), bearer)
+        val snippet = redact(body.take(300), secret)
         Log.i(TAG, "HTTP $code, ${body.length} bytes" + if (location.isBlank()) "" else ", Location=$location")
 
         return when {
@@ -129,7 +195,7 @@ object ConfigSyncClient {
                 Kind.UNAUTHORIZED,
                 "HTTP $code — token missing or not accepted: the gateway redirected to a login page" +
                     (redirectHost(url, location)?.let { " at $it" } ?: "") +
-                    ". Paste a current Authelia bearer token and try again.",
+                    ". $authHint",
             )
             // Same-host 3xx is not an auth failure — but we did not follow it, so
             // say exactly that rather than reporting an empty body.
@@ -140,7 +206,7 @@ object ConfigSyncClient {
             )
             code == 401 -> fail(
                 Kind.UNAUTHORIZED,
-                "HTTP 401 — token rejected (bad or expired). Get a fresh Authelia token and paste it again.\n$snippet",
+                "HTTP 401 — credential rejected (bad or expired). $authHint\n$snippet",
             )
             code == 403 -> fail(
                 Kind.FORBIDDEN,
@@ -186,9 +252,9 @@ object ConfigSyncClient {
         return target.equals(origin, ignoreCase = true)
     }
 
-    /** Strip the bearer out of anything we are about to log or display. */
-    private fun redact(text: String, bearer: String): String =
-        if (bearer.isBlank()) text else text.replace(bearer, "«token»")
+    /** Strip the credential out of anything we are about to log or display. */
+    private fun redact(text: String, secret: String): String =
+        if (secret.isBlank()) text else text.replace(secret, "«credential»")
 
     private fun fail(kind: Kind, message: String): Outcome.Failed {
         Log.w(TAG, "$kind: ${message.lineSequence().first()}")

@@ -4718,7 +4718,20 @@
       "user": "diego",
       "format_version": 1,
       "connect_timeout_ms": 8000,
-      "read_timeout_ms": 20000
+      "read_timeout_ms": 20000,
+      "_doc_git": "Where the two GitHub import tiles read the artifact from. SAME BYTES as the Authelia route serves — one artifact contract, four ways to authenticate for it, so ConfigAutoImport.apply is reached identically no matter which tile was pressed. The token tile GETs exactly this one path over the contents API; the SSH tile must clone the repo because GitHub speaks only the git protocol over SSH, which is also why the token tile is the cheaper of the two.",
+      "git": {
+        "repo": "diegonmarcos/cloud-vault",
+        "path": "superapp-config.json",
+        "ref": "main"
+      },
+      "_doc_github_oauth": "OAuth device flow for the 'Import GH OWebAuth' tile. client_id is PUBLIC by design — the device grant exists precisely so a native app needs no client secret — so it belongs in build.json as data, not in a secret store. LEFT EMPTY DELIBERATELY: this build has no OAuth App registered yet, and an invented id would fail at the point where the user has already typed a code into a browser. While it is empty the tile says so up front and the flow never starts. Fill it in from github.com/settings/developers (the app must have Device Flow enabled) and rebuild. scope=repo is required because cloud-vault is a private repository.",
+      "github_oauth": {
+        "client_id": "",
+        "scope": "repo",
+        "device_code_url": "https://github.com/login/device/code",
+        "token_url": "https://github.com/login/oauth/access_token"
+      }
     },
     "_doc_import_schema": "Schema shown in ImportConfigsFragment as the placeholder text. Users paste a JSON conforming to this shape; ConfigsPrefs persists the whole blob into EncryptedSharedPreferences (AES-256-GCM, key in Android Keystore). Per-field consumers (JmapPrefs, WireGuard libs:net, ssh-agent for vault clone) pull what they need lazily.",
     "import_schema": {
