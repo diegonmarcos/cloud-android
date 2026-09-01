@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- libs:translate — no components. Translator is a plain object called
-     from libs:keyboard's InputLogic. ML Kit's own manifest merge brings
-     in the play-services translate model downloader. -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" />

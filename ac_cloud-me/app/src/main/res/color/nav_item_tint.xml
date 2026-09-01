@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Selected nav items take the violet accent, the rest sit dimmed. One
-     selector shared by the bottom bar and the drawer so a section looks the
-     same wherever it is reached from. -->
-<selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:color="@color/me_primary" android:state_checked="true" />
-    <item android:color="@color/me_text_dim" />
-</selector>

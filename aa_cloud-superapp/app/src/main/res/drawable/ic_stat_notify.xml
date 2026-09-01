@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Notification small icon — white glyph on transparent, 24dp. -->
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="24dp" android:height="24dp"
-    android:viewportWidth="108" android:viewportHeight="108">
-    <path android:fillColor="#FFFFFFFF"
-        android:pathData="M36,30 L36,78 L56,78 C70.36,78 78,69.04 78,54 C78,38.96 70.36,30 56,30 Z M46,40 L56,40 C64.84,40 68,46.16 68,54 C68,61.84 64.84,68 56,68 L46,68 Z" />
-</vector>

@@ -1,4 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Pure UI library: no components, no permissions. Everything it can reach
-     is reached through the host app's SearchSheet.Host. -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" />

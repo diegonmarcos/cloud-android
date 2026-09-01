@@ -1,5 +1,0 @@
-Changed:
-
-• Dialpad screen now respects the default SIM preference 
-• Updated translations
-

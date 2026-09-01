@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Tablet / unfolded foldable (smallest width ≥ 600dp): enable the
-     master-detail two-pane layout. Pairs with
-     layout-sw600dp/view_content_panes.xml (the split content host). -->
-<resources>
-    <bool name="two_pane">true</bool>
-</resources>

@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- libs:fin — declares no permissions; everything renders from
-     in-process mock data baked into BuildConfig from build.json. -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <application />
-</manifest>

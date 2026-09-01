@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Stylised "chat bubble with check-mark" — represents the Mattermost
-     self-hosted server (chat.diegonmarcos.com). -->
-<vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="24dp" android:height="24dp"
-    android:viewportWidth="24" android:viewportHeight="24">
-    <path android:fillColor="@android:color/white"
-        android:pathData="M20,2 H4 c-1.1,0 -1.99,0.9 -1.99,2 L2,22 l4,-4 h14 c1.1,0 2,-0.9 2,-2 V4 c0,-1.1 -0.9,-2 -2,-2 z M10,13 L7,10 8.41,8.59 10,10.17 15.59,4.58 17,6 z"/>
-</vector>

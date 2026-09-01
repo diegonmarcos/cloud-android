@@ -1,4 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- libs:launcher-apptabs — App Tabs surface. No activities or services;
-     AppTabsFragment is hosted by app/'s MainActivity. -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" />

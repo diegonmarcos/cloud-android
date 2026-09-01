@@ -1,7 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- Avatar circle used in the drawer-header user banner. Vibrant violet
-     so it pops against the user banner's deep-purple/black surface. -->
-<shape xmlns:android="http://schemas.android.com/apk/res/android"
-    android:shape="oval">
-    <solid android:color="@color/drawer_avatar" />
-</shape>

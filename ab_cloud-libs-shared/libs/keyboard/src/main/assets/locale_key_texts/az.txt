@@ -1,9 +1,0 @@
-[popup_keys]
-e ə
-i ı
-ı i
-o ö
-u ü
-s ş
-g ğ
-c ç

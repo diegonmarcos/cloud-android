@@ -1,4 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- No components: the store is Fragments the host inflates, and its
-     background pass is a WorkManager worker the host schedules. -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" />
