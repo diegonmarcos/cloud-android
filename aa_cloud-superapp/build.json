@@ -1409,7 +1409,7 @@
             "kind": "open_link",
             "title": "Dagu · Workflow runs",
             "url": "page:c3/dagu",
-            "icon": "ic_p_c3_workflows",
+            "icon": "ic_robot",
             "_doc": "Was the bare URL — opening the WebView at the live Dagu page bypassed our native DaguFragment entirely. AggregatorStackFragment.openUrlOrTarget handles both URLs AND page:* targets, so the in-app deeplink routes through MainActivity.onTileClicked → SectionPages → OpsPages.fragmentForDagu() to render the native list view instead."
           }
         ],
@@ -1598,6 +1598,16 @@
             "label": "Drive · Connections",
             "icon": "ic_p_sol_cloud",
             "target": "page:drive/connections"
+          },
+          {
+            "label": "Dagu",
+            "icon": "ic_robot",
+            "target": "page:c3/dagu"
+          },
+          {
+            "label": "GHA",
+            "icon": "ic_code",
+            "target": "page:c3/gha"
           }
         ],
         "stack_c3": [
@@ -1970,7 +1980,8 @@
             "title": "Circus",
             "subtitle": "Misc experiments and side quests"
           }
-        ]
+        ],
+        "_doc_tiles_c3": "C3 index — one tile per page the c3 section declares, plus the two cross-section entries (WG mesh, Drive · Connections) that belong to the ops story but live elsewhere. Dagu and GHA were the two c3 pages with no tile: both were wired and reachable only through an open_link block on Projects/Cloud, so the index under-reported what C3 actually has. Icons come from the page declarations in sections[c3].pages[] rather than being restated here, which is why fixing the duplicate glyph was a one-line edit there and not three edits here."
       },
       {
         "id": "phone",
@@ -2774,14 +2785,14 @@
           {
             "id": "dagu",
             "label": "Dagu",
-            "icon": "ic_p_c3_workflows",
+            "icon": "ic_robot",
             "hidden": true,
             "_doc": "Target of the `Dagu events` tile and of the Cloud-RSS stack's `Dagu · Workflow runs` link. SectionPages routes c3/dagu to OpsPages.fragmentForDagu() (the native DAG list), but the page was undeclared, so both entry points landed on the C3 section instead. hidden: it is reached by tile, not from the section's child list."
           },
           {
             "id": "gha",
             "label": "GHA",
-            "icon": "ic_p_c3_workflows",
+            "icon": "ic_code",
             "hidden": true,
             "_doc": "Target of the `GHA events` tile. Declared so the target resolves and the tile lands on PageContentFragment's stub, which is what an un-wired page is supposed to do here. There is NO native fragment yet — libs:ops OpsPages says as much ('future \"gha\" once that lands'); until it does, this is a placeholder, not a working screen."
           }
