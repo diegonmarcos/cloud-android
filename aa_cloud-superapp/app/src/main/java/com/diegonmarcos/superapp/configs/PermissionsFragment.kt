@@ -113,6 +113,33 @@ class PermissionsFragment : Fragment() {
             }
         }
 
+        // ── Privileged plane: pair once (ever), then it self-heals on every boot/launch ──
+        col.addView(small(ctx, "Privileged plane — " + (plane?.let { "connected via ${it.name()}" } ?: "NOT connected") +
+            ". Pair ONCE: phone Settings → Developer options → Wireless debugging → 'Pair device with pairing code', copy IP:port + code here. After that every boot/launch reconnects and self-grants the list above."))
+        val hostIn = android.widget.EditText(ctx).apply { hint = "IP (e.g. 10.0.0.9)"; textSize = 13f }
+        val portIn = android.widget.EditText(ctx).apply { hint = "pair port"; inputType = android.text.InputType.TYPE_CLASS_NUMBER; textSize = 13f }
+        val codeIn = android.widget.EditText(ctx).apply { hint = "6-digit code"; inputType = android.text.InputType.TYPE_CLASS_NUMBER; textSize = 13f }
+        col.addView(LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            addView(hostIn, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 2f))
+            addView(portIn, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            addView(codeIn, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        })
+        col.addView(permButtonRow(ctx,
+            permButton(ctx, "Pair", plane != null) {
+                val host = hostIn.text.toString().trim(); val port = portIn.text.toString().trim().toIntOrNull(); val code = codeIn.text.toString().trim()
+                if (host.isEmpty() || port == null || code.length < 6) { Toast.makeText(ctxAny(), "Need IP, pair port and 6-digit code", Toast.LENGTH_LONG).show(); return@permButton }
+                Thread {
+                    val (ok, msg) = EmbeddedAdbChannel.pair(ctxAny(), host, port, code)
+                    requireActivity().runOnUiThread {
+                        Toast.makeText(ctxAny(), (if (ok) "Paired: " else "Pair failed: ") + msg, Toast.LENGTH_LONG).show()
+                        if (ok) { armPlane(); rebuildFragment() }
+                    }
+                }.start()
+            },
+            permButton(ctx, "Connect plane now", plane != null) { armPlane(); Toast.makeText(ctxAny(), "Connecting + self-granting in background…", Toast.LENGTH_SHORT).show() },
+        ))
+
         // ── B. OPEN A SYSTEM PAGE ─────────────────────────────────────────
         col.addView(sectionHead(ctx, "OPEN A SYSTEM PAGE — Grant-All can NOT reach these"))
         col.addView(small(ctx, "Nothing can grant these for you: each button opens the exact system page, you flip it, come back. Missing ones listed first."))
@@ -191,6 +218,12 @@ class PermissionsFragment : Fragment() {
     }
 
     // ── Reorg helpers (state + button on ONE row; grant-here vs open-a-page) ──
+    /** Enqueue the self-healing worker (connect + pm grant the privileged list). */
+    private fun armPlane() = runCatching {
+        androidx.work.WorkManager.getInstance(ctxAny()).enqueueUniqueWork(
+            "privileged-plane", androidx.work.ExistingWorkPolicy.REPLACE,
+            androidx.work.OneTimeWorkRequestBuilder<com.diegonmarcos.superapp.system.PrivilegedPlaneWorker>().build())
+    }.let { }
     /** One row: "✓/◯ label  state" on the left, its own button on the right. */
     private fun permRow(ctx: Context, host: LinearLayout, label: String, granted: Boolean?, state: String, btn: String, onClick: () -> Unit) {
         val r = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = android.view.Gravity.CENTER_VERTICAL; setPadding(0, dp(4), 0, dp(4)) }

@@ -52,6 +52,15 @@ class App : Application(), WorkManagerConfiguration.Provider {
         // on the very first inflation.
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
         super.onCreate()
+        // Privileged plane re-arm on every launch (unique, KEEP): BOOT_COMPLETED is
+        // delayed or dropped on some OEMs, and the first successful connect right
+        // after the one-time pairing must not wait for a reboot. Cheap when
+        // already connected (autoConnect short-circuits).
+        runCatching {
+            androidx.work.WorkManager.getInstance(this).enqueueUniqueWork(
+                "privileged-plane", androidx.work.ExistingWorkPolicy.KEEP,
+                androidx.work.OneTimeWorkRequestBuilder<com.diegonmarcos.superapp.system.PrivilegedPlaneWorker>().build())
+        }
 
         // Tell libs:appstore what it cannot know: this app's entry Activity,
         // its notification icon, how this launcher routes a tap, and the
