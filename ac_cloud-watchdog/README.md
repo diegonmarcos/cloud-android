@@ -104,6 +104,21 @@ fork, same self-generated ECDSA key, same manual `authorized_keys` step.
   on the MEASURED machine, so the fleet pages are empty when the phone is
   what is being measured rather than what is reading.
 
+## Picking a machine
+
+The drawer's first group, **machine**, lists every one of them and switches
+the page to it — the phone reaches exactly one host, so "measure gcp-proxy"
+means "ask this host to measure gcp-proxy", over the ssh hop only it can make.
+
+A machine with no way in stays inert rather than offering a button that cannot
+work: the host you are already on, and a VM declared with ip `TBD`.
+
+That group shipped **empty** for as long as the app existed. The switcher is
+built at export time as plain `<a href>` links between sibling files, which is
+right for a directory of static reports on a USB stick and meaningless in an
+APK — so the heading was there, the list was not, and the fleet sat one page
+away on `machines`. It is filled from the envelope now.
+
 ## What counts as a machine
 
 Eleven, from two sources that each know something the other does not:
