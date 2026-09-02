@@ -421,9 +421,24 @@ class OneHandFragment : Fragment() {
                 .coerceAtLeast(0)
             col.addView(Spinner(ctx).apply {
                 this.adapter = adapter; setSelection(sel)
+                // Spinner.setSelection POSTS its callback, so a listener attached
+                // here still receives the PROGRAMMATIC selection and used to
+                // persist it. Merely opening this screen therefore wrote an
+                // override for every slot at whatever happened to be displayed —
+                // and for an unmapped slot that is "None", which then shadowed
+                // the build.json default forever. That is why a new default
+                // could be shipped and never appear on a device that had once
+                // visited this screen.
+                //
+                // Our post() is queued AFTER the one setSelection made, so by
+                // the time suppress clears, the programmatic callback has been
+                // and gone. Only real user choices are written.
+                var suppress = true
+                post { suppress = false }
                 onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
                     override fun onNothingSelected(p: AdapterView<*>?) {}
                     override fun onItemSelected(p: AdapterView<*>?, v: View?, pos: Int, id: Long) {
+                        if (suppress) return
                         OneHandPrefs.setAction(ctx, h.id, slot.key, options[pos].action)
                         OneHandController.refresh(ctx)
                     }

@@ -31,6 +31,39 @@ object OneHandPrefs {
         prefs(ctx).edit().remove("$handleId.$slotKey").apply()
     }
 
+    /**
+     * One-time repair of overrides nobody chose.
+     *
+     * The Configs editor attached its spinner listener straight after
+     * setSelection, and setSelection POSTS its callback — so simply opening
+     * that screen persisted an override for every slot at whatever was on
+     * display. Unmapped slots showed "None", so they were written as NONE, and
+     * from then on the stored NONE beat any default later shipped in
+     * build.json. A device that had visited the screen once could never receive
+     * a new default again.
+     *
+     * The editor no longer does that. This clears what it already wrote: every
+     * stored NONE is dropped once, so those slots fall back to the baked
+     * default. A deliberate "None" is lost in the process, which is the honest
+     * trade — the bug means we cannot tell a chosen None from a written one,
+     * and unmapped-by-accident was overwhelmingly the common case. Any real
+     * choice is one spinner tap to restore, and is then respected.
+     *
+     * Guarded by a marker so it happens exactly once per install.
+     */
+    fun pruneSpuriousNones(ctx: Context) {
+        val p = prefs(ctx)
+        if (p.getBoolean(PRUNED_KEY, false)) return
+        val e = p.edit()
+        for ((k, v) in p.all) {
+            // "<handleId>.<slotKey>" entries only — never `enabled` / `trigger`.
+            if (k.contains('.') && v == OneHandAction.NONE.name) e.remove(k)
+        }
+        e.putBoolean(PRUNED_KEY, true).apply()
+    }
+
+    private const val PRUNED_KEY = "spurious_nones_pruned_v1"
+
     fun isEnabled(ctx: Context): Boolean = prefs(ctx).getBoolean("enabled", false)
 
     fun setEnabled(ctx: Context, on: Boolean) {

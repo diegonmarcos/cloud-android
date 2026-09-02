@@ -127,6 +127,9 @@ data class OneHandConfig(
 
         /** Baked defaults with the user's overrides ([OneHandPrefs]) applied. */
         fun effective(ctx: Context): OneHandConfig {
+            // Cheap after the first call (a single boolean read) and it must run
+            // before any override is consulted, so this is the one chokepoint.
+            OneHandPrefs.pruneSpuriousNones(ctx)
             val base = decode(BuildConfig.ONEHAND_CONFIG_B64)
                 .let { it.copy(trigger = OneHandPrefs.trigger(ctx, it.trigger)) }
             return base.copy(handles = base.handles.map { h ->
