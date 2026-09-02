@@ -47,7 +47,11 @@
         android:required="false" />
     <!-- https://developer.android.com/topic/arc -->
 
-    <uses-sdk tools:overrideLibrary="androidx.heifwriter" />
+    <!-- comms: libs:core/devtools declare minSdk 26 (the constellation floor);
+         this app inherits upstream's minSdk 23. The only classes reached from
+         here (Telemetry/LogUpload) use nothing newer than API 1-era HTTP and
+         threads, so the merge override is safe. -->
+    <uses-sdk tools:overrideLibrary="androidx.heifwriter,com.diegonmarcos.superapp.core,com.diegonmarcos.superapp.devtools" />
 
     <!-- Android 11: https://developer.android.com/preview/privacy/package-visibility -->
     <!-- https://developer.android.com/training/package-visibility/use-cases -->
