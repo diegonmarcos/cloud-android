@@ -138,6 +138,13 @@ public class WorkerFeedSync extends Worker {
             try {
                 syncFeed(context, db, folder);
                 db.folder().setFolderLastSync(folder.id, now); // mark polled (drives the due-check)
+                // comms: mirror the IMAP/JMAP account rows so the Accounts card
+                // (tvError/tvLast) reflects RSS state too -- this account never
+                // went through ServiceSynchronize/JmapSync, so nothing else wrote them.
+                if (folder.account != null) {
+                    db.account().setAccountConnected(folder.account, now);
+                    db.account().setAccountError(folder.account, null);
+                }
             } catch (Throwable ex) {
                 if (host != null && isConnectFailure(ex))
                     deadHosts.add(host);
@@ -147,6 +154,8 @@ public class WorkerFeedSync extends Worker {
                         " folder=" + folder.name +
                         " url=" + folder.feed_url +
                         " ex=" + Log.formatThrowable(ex));
+                if (folder.account != null)
+                    db.account().setAccountError(folder.account, Log.formatThrowable(ex));
             }
         }
     }

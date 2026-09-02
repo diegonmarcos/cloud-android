@@ -349,13 +349,52 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/tvError" />
 
+            <Button
+                android:id="@+id/btnSync"
+                style="?android:attr/buttonStyleSmall"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:drawableTop="@drawable/twotone_sync_24"
+                android:text="@string/title_synchronize_now"
+                android:textAllCaps="false"
+                android:textSize="10sp"
+                app:layout_constraintStart_toEndOf="@id/vwColor"
+                app:layout_constraintTop_toBottomOf="@id/btnHelp" />
+
+            <Button
+                android:id="@+id/btnEdit"
+                style="?android:attr/buttonStyleSmall"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:drawableTop="@drawable/twotone_edit_24"
+                android:text="@string/title_edit_account"
+                android:textAllCaps="false"
+                android:textSize="10sp"
+                app:layout_constraintStart_toEndOf="@id/btnSync"
+                app:layout_constraintTop_toTopOf="@id/btnSync" />
+
+            <Button
+                android:id="@+id/btnLog"
+                style="?android:attr/buttonStyleSmall"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:drawableTop="@drawable/twotone_dns_24"
+                android:text="@string/title_log"
+                android:textAllCaps="false"
+                android:textSize="10sp"
+                app:layout_constraintStart_toEndOf="@id/btnEdit"
+                app:layout_constraintTop_toTopOf="@id/btnSync" />
+
             <View
                 android:id="@+id/marginBottom"
                 android:layout_width="0dp"
                 android:layout_height="3dp"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toBottomOf="@id/btnHelp" />
+                app:layout_constraintTop_toBottomOf="@id/btnSync" />
 
             <androidx.constraintlayout.widget.Group
                 android:id="@+id/grpSettings"

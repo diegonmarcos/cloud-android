@@ -60,6 +60,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.snackbar.Snackbar;
+import com.google.android.material.tabs.TabLayout;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -93,6 +94,33 @@ public class FragmentRules extends FragmentBase {
     private ContentLoadingProgressBar pbWait;
     private Group grpReady;
     private FloatingActionButton fab;
+
+    // comms: per-account tabs (all mode only) — narrow the global rules list
+    // down to one account, the way the tabs above FragmentUnread's folder
+    // list narrow that page. Rules live per FOLDER (EntityRule.folder), so
+    // "this account's rules" means "this account's rules across its folders".
+    private TabLayout tabRulesAccount;
+    private List<EntityAccount> ruleAccounts = new ArrayList<>();
+    private long selectedAccount = -1; // -1 = no tab selected yet / no accounts
+    private List<TupleRuleEx> rawRules = new ArrayList<>(); // comms: unfiltered liveRules(), re-sliced per tab in refreshRules()
+    private final TabLayout.OnTabSelectedListener tabAccountListener = new TabLayout.OnTabSelectedListener() {
+        @Override
+        public void onTabSelected(TabLayout.Tab tab) {
+            int pos = tab.getPosition();
+            if (pos >= 0 && pos < ruleAccounts.size())
+                selectAccountTab(ruleAccounts.get(pos));
+        }
+
+        @Override
+        public void onTabUnselected(TabLayout.Tab tab) {
+            // Do nothing
+        }
+
+        @Override
+        public void onTabReselected(TabLayout.Tab tab) {
+            // Do nothing
+        }
+    };
 
     // comms: "About this engine" collapsible section (all mode only)
     private View cardAbout;
@@ -138,6 +166,9 @@ public class FragmentRules extends FragmentBase {
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getContext());
         cards = prefs.getBoolean("cards", true);
         dividers = prefs.getBoolean("dividers", true);
+
+        // comms: reopen the global Rules page on the account tab the user left it on
+        selectedAccount = prefs.getLong("rules_account_tab", -1);
     }
 
     @Override
@@ -161,6 +192,8 @@ public class FragmentRules extends FragmentBase {
 
         cardCommands = view.findViewById(R.id.cardCommands);
         btnCmdReapply = view.findViewById(R.id.btnCmdReapply);
+
+        tabRulesAccount = view.findViewById(R.id.tabRulesAccount);
 
         cardServerRules = view.findViewById(R.id.cardServerRules);
         rvServerRule = view.findViewById(R.id.rvServerRule);
@@ -252,9 +285,11 @@ public class FragmentRules extends FragmentBase {
         // no ambiguity, so there's nothing extra worth fetching from the cloud.
         if (all) {
             cardAbout.setVisibility(View.VISIBLE);
-            cardCommands.setVisibility(View.VISIBLE);
-            cardServerRules.setVisibility(View.VISIBLE);
             tvDeviceRulesHeader.setVisibility(View.VISIBLE);
+            // comms: cardCommands/cardServerRules are cloud/JMAP-specific; their
+            // visibility is decided per selected tab in selectAccountTab()
+            tabRulesAccount.setVisibility(View.VISIBLE);
+            tabRulesAccount.addOnTabSelectedListener(tabAccountListener);
 
             tvAboutBody.setText(TextUtils.join("\n\n", new String[]{
                     getString(R.string.title_comms_rules_about_pipeline),
@@ -342,39 +377,116 @@ public class FragmentRules extends FragmentBase {
         (all ? db.rule().liveRules() : db.rule().liveRules(folder)).observe(getViewLifecycleOwner(), new Observer<List<TupleRuleEx>>() {
             @Override
             public void onChanged(List<TupleRuleEx> rules) {
-                if (rules == null)
-                    rules = new ArrayList<>();
+                rawRules = (rules == null ? new ArrayList<>() : rules);
+                refreshRules();
+            }
+        });
 
-                SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-                // comms: the global Rules page groups by the tag a rule files
-                // into; a per-folder list keeps the manual `order`, which is
-                // what decides which rule wins there.
-                String sort = prefs.getString("rule_sort", all ? "target" : "order");
+        // comms: per-account tabs (all mode only) -- one tab per synchronizing
+        // account, ordered the same as the nav drawer. Rebuilding on every
+        // change keeps a renamed/added/removed account's tab in sync.
+        if (all)
+            db.account().liveSynchronizingAccountsOrdered().observe(getViewLifecycleOwner(), new Observer<List<EntityAccount>>() {
+                @Override
+                public void onChanged(List<EntityAccount> accounts) {
+                    ruleAccounts = (accounts == null ? new ArrayList<>() : accounts);
 
-                // comms: resolve each rule's target tag before showing them.
-                // action is JSON in a column, so this cannot be a JOIN without
-                // json_extract -- which is not dependable across the API levels
-                // this app still supports. The list is tens of rows and only
-                // reloads when a rule changes, so a background pass is cheaper
-                // than the compatibility risk.
-                annotateTargets(context, rules, new RulesReady() {
-                    @Override
-                    public void onReady(List<TupleRuleEx> annotated) {
-                        adapter.set(protocol, type, sort, annotated);
-                        rvRule.invalidateItemDecorations();
+                    tabRulesAccount.removeOnTabSelectedListener(tabAccountListener);
+                    tabRulesAccount.removeAllTabs();
+                    for (EntityAccount a : ruleAccounts)
+                        tabRulesAccount.addTab(tabRulesAccount.newTab().setText(a.name));
+                    tabRulesAccount.addOnTabSelectedListener(tabAccountListener);
+
+                    if (ruleAccounts.isEmpty()) {
+                        selectAccountTab(null);
+                        return;
                     }
-                });
 
-                if (all)
-                    tvDeviceRulesEmpty.setVisibility(rules.isEmpty() ? View.VISIBLE : View.GONE);
+                    // comms: restore the tab the user left the page on; fall
+                    // back to the first account when it's gone (deleted) or
+                    // this is the first time the page has ever been opened.
+                    int index = 0;
+                    for (int i = 0; i < ruleAccounts.size(); i++)
+                        if (ruleAccounts.get(i).id == selectedAccount) {
+                            index = i;
+                            break;
+                        }
 
-                pbWait.setVisibility(View.GONE);
-                grpReady.setVisibility(View.VISIBLE);
+                    TabLayout.Tab tab = tabRulesAccount.getTabAt(index);
+                    if (tab == null)
+                        selectAccountTab(null);
+                    else if (tab.isSelected())
+                        // select() is a no-op (and so would not call the
+                        // listener) when this tab is already the selected one,
+                        // e.g. the default first tab on the page's first build
+                        selectAccountTab(ruleAccounts.get(index));
+                    else
+                        tab.select();
+                }
+            });
+    }
+
+    // comms: apply the selected account tab -- narrows rawRules to that
+    // account's rules and swaps the cloud-only cards (Commands, Server rules)
+    // in or out depending on whether the tab is the JMAP account.
+    private void selectAccountTab(EntityAccount account) {
+        selectedAccount = (account == null ? -1 : account.id);
+
+        Context context = getContext();
+        if (context != null)
+            PreferenceManager.getDefaultSharedPreferences(context)
+                    .edit().putLong("rules_account_tab", selectedAccount).apply();
+
+        boolean jmap = (account != null && account.protocol == EntityAccount.TYPE_JMAP);
+        cardCommands.setVisibility(jmap ? View.VISIBLE : View.GONE);
+        cardServerRules.setVisibility(jmap ? View.VISIBLE : View.GONE);
+        if (jmap)
+            onLoadServerRules(selectedAccount);
+
+        refreshRules();
+    }
+
+    // comms: re-slice rawRules for the selected tab (all mode) and re-sort/
+    // re-group/re-annotate exactly as the original single-list observer did.
+    private void refreshRules() {
+        final Context context = getContext();
+        if (context == null)
+            return;
+
+        List<TupleRuleEx> rules;
+        if (all && selectedAccount >= 0) {
+            rules = new ArrayList<>();
+            for (TupleRuleEx rule : rawRules)
+                if (rule.account == selectedAccount)
+                    rules.add(rule);
+        } else
+            rules = new ArrayList<>(rawRules);
+
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        // comms: the global Rules page groups by the tag a rule files
+        // into; a per-folder list keeps the manual `order`, which is
+        // what decides which rule wins there.
+        String sort = prefs.getString("rule_sort", all ? "target" : "order");
+
+        // comms: resolve each rule's target tag before showing them.
+        // action is JSON in a column, so this cannot be a JOIN without
+        // json_extract -- which is not dependable across the API levels
+        // this app still supports. The list is tens of rows and only
+        // reloads when a rule changes, so a background pass is cheaper
+        // than the compatibility risk.
+        annotateTargets(context, rules, new RulesReady() {
+            @Override
+            public void onReady(List<TupleRuleEx> annotated) {
+                adapter.set(protocol, type, sort, annotated);
+                rvRule.invalidateItemDecorations();
             }
         });
 
         if (all)
-            onLoadServerRules();
+            tvDeviceRulesEmpty.setVisibility(rules.isEmpty() ? View.VISIBLE : View.GONE);
+
+        pbWait.setVisibility(View.GONE);
+        grpReady.setVisibility(View.VISIBLE);
     }
 
     // comms: expand/collapse the "About this engine" body, mirroring the
@@ -446,55 +558,45 @@ public class FragmentRules extends FragmentBase {
                 : R.drawable.twotone_expand_more_24);
     }
 
-    // comms: fetch the server-side rules (mail-rules.nix → per-account Stalwart
-    // Sieve) over the app's existing JMAP connection(s) and summarize them into
-    // the read-only "Server rules (cloud)" section. One JMAP account is the
-    // expected case, but every synchronizing JMAP account gets its own script
-    // fetched and labelled, in case more than one is ever configured.
-    private void onLoadServerRules() {
+    // comms: fetch the server-side rules (mail-rules.nix → this account's
+    // Stalwart Sieve) over the app's existing JMAP connection and summarize
+    // them into the read-only "Server rules (cloud)" section. Scoped to the
+    // one account whose tab is selected -- see selectAccountTab().
+    private void onLoadServerRules(long accountId) {
         new SimpleTask<List<SieveRules.Row>>() {
             @Override
             protected List<SieveRules.Row> onExecute(Context context, Bundle args) {
                 DB db = DB.getInstance(context);
-                List<EntityAccount> accounts = new ArrayList<>();
-                for (EntityAccount a : db.account().getAccounts())
-                    if (a.synchronize && a.protocol == EntityAccount.TYPE_JMAP)
-                        accounts.add(a);
+                EntityAccount a = db.account().getAccount(accountId);
 
                 List<SieveRules.Row> rows = new ArrayList<>();
-                for (EntityAccount a : accounts) {
-                    EmailService iservice = null;
-                    try {
-                        iservice = new EmailService(context, a, EmailService.PURPOSE_USE, false);
-                        iservice.connect(a);
-                        JmapService jmap = iservice.getJmapService();
-                        String sieve = (jmap == null ? null : jmap.fetchSieveScript());
-                        List<SieveRules.Row> parsed = SieveRules.parse(sieve);
-                        // Prefix with the account when there's more than one, so
-                        // two accounts' rules don't read as one merged list.
-                        if (accounts.size() > 1)
-                            for (SieveRules.Row r : parsed)
-                                rows.add(new SieveRules.Row(a.name + ": " + r.title, r.subtitle));
-                        else
-                            rows.addAll(parsed);
-                    } catch (Throwable ex) {
-                        Log.w(ex);
-                        rows.add(new SieveRules.Row(
-                                accounts.size() > 1 ? a.name : getString(R.string.title_comms_server_rules_header),
-                                getString(R.string.title_comms_server_rules_error, JmapService.describe(ex))));
-                    } finally {
-                        if (iservice != null)
-                            try {
-                                iservice.close();
-                            } catch (Throwable ignored) {
-                            }
-                    }
-                }
 
-                if (accounts.isEmpty())
+                if (a == null || !a.synchronize || a.protocol != EntityAccount.TYPE_JMAP) {
                     rows.add(new SieveRules.Row(
                             getString(R.string.title_comms_server_rules_header),
                             getString(R.string.title_comms_server_rules_no_account)));
+                    return rows;
+                }
+
+                EmailService iservice = null;
+                try {
+                    iservice = new EmailService(context, a, EmailService.PURPOSE_USE, false);
+                    iservice.connect(a);
+                    JmapService jmap = iservice.getJmapService();
+                    String sieve = (jmap == null ? null : jmap.fetchSieveScript());
+                    rows.addAll(SieveRules.parse(sieve));
+                } catch (Throwable ex) {
+                    Log.w(ex);
+                    rows.add(new SieveRules.Row(
+                            getString(R.string.title_comms_server_rules_header),
+                            getString(R.string.title_comms_server_rules_error, JmapService.describe(ex))));
+                } finally {
+                    if (iservice != null)
+                        try {
+                            iservice.close();
+                        } catch (Throwable ignored) {
+                        }
+                }
 
                 return rows;
             }
@@ -711,7 +813,9 @@ public class FragmentRules extends FragmentBase {
 
     // comms: applies every enabled rule against its own folder's messages, folder by folder;
     // reuses the same matches()/execute() sequence as the per-rule "Execute" action (AdapterRule)
+    // Scoped to the selected account tab, like the rest of the all-mode page.
     private void onMenuApplyAll() {
+        final long accountId = selectedAccount;
         new SimpleTask<int[]>() {
             private Toast toast = null;
 
@@ -731,7 +835,9 @@ public class FragmentRules extends FragmentBase {
             protected int[] onExecute(Context context, Bundle args) throws Throwable {
                 DB db = DB.getInstance(context);
 
-                List<EntityRule> rules = db.rule().getEnabledRules();
+                List<EntityRule> rules = (accountId < 0
+                        ? db.rule().getEnabledRules()
+                        : db.rule().getEnabledRules(accountId));
 
                 int folders = 0;
                 int applied = 0;
@@ -802,6 +908,7 @@ public class FragmentRules extends FragmentBase {
     // Wired to the "Commands" card's "Reapply now" button — this is the only
     // command the server engine exposes (one sentinel mailbox, main.rs).
     private void onCommandReapply() {
+        final long accountId = selectedAccount;
         new SimpleTask<Integer>() {
             @Override
             protected void onPreExecute(Bundle args) {
@@ -811,28 +918,29 @@ public class FragmentRules extends FragmentBase {
             @Override
             protected Integer onExecute(Context context, Bundle args) {
                 DB db = DB.getInstance(context);
+
+                EntityAccount a = db.account().getAccount(accountId);
+                if (a == null || !a.synchronize || a.protocol != EntityAccount.TYPE_JMAP)
+                    return 0;
+
                 int triggered = 0;
-                for (EntityAccount a : db.account().getAccounts()) {
-                    if (!a.synchronize || a.protocol != EntityAccount.TYPE_JMAP)
-                        continue;
-                    EmailService iservice = null;
-                    try {
-                        iservice = new EmailService(context, a, EmailService.PURPOSE_USE, false);
-                        iservice.connect(a);
-                        JmapService jmap = iservice.getJmapService();
-                        if (jmap != null) {
-                            jmap.requestReapply();
-                            triggered++;
-                        }
-                    } catch (Throwable ex) {
-                        Log.w(ex);
-                    } finally {
-                        if (iservice != null)
-                            try {
-                                iservice.close();
-                            } catch (Throwable ignored) {
-                            }
+                EmailService iservice = null;
+                try {
+                    iservice = new EmailService(context, a, EmailService.PURPOSE_USE, false);
+                    iservice.connect(a);
+                    JmapService jmap = iservice.getJmapService();
+                    if (jmap != null) {
+                        jmap.requestReapply();
+                        triggered++;
                     }
+                } catch (Throwable ex) {
+                    Log.w(ex);
+                } finally {
+                    if (iservice != null)
+                        try {
+                            iservice.close();
+                        } catch (Throwable ignored) {
+                        }
                 }
                 return triggered;
             }

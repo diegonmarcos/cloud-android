@@ -133,6 +133,9 @@ public class AdapterAccount extends RecyclerView.Adapter<AdapterAccount.ViewHold
         private TextView tvWarning;
         private TextView tvError;
         private Button btnHelp;
+        private Button btnSync;
+        private Button btnEdit;
+        private Button btnLog;
         private Group grpSettings;
 
         private TwoStateOwner powner = new TwoStateOwner(owner, "AccountPopup");
@@ -166,6 +169,9 @@ public class AdapterAccount extends RecyclerView.Adapter<AdapterAccount.ViewHold
             tvWarning = itemView.findViewById(R.id.tvWarning);
             tvError = itemView.findViewById(R.id.tvError);
             btnHelp = itemView.findViewById(R.id.btnHelp);
+            btnSync = itemView.findViewById(R.id.btnSync);
+            btnEdit = itemView.findViewById(R.id.btnEdit);
+            btnLog = itemView.findViewById(R.id.btnLog);
             grpSettings = itemView.findViewById(R.id.grpSettings);
 
             if (vwColor != null)
@@ -199,6 +205,9 @@ public class AdapterAccount extends RecyclerView.Adapter<AdapterAccount.ViewHold
             view.setOnLongClickListener(this);
             ibInbox.setOnClickListener(this);
             btnHelp.setOnClickListener(this);
+            btnSync.setOnClickListener(this);
+            btnEdit.setOnClickListener(this);
+            btnLog.setOnClickListener(this);
         }
 
         private void unwire() {
@@ -206,6 +215,9 @@ public class AdapterAccount extends RecyclerView.Adapter<AdapterAccount.ViewHold
             view.setOnLongClickListener(null);
             ibInbox.setOnClickListener(null);
             btnHelp.setOnClickListener(null);
+            btnSync.setOnClickListener(null);
+            btnEdit.setOnClickListener(null);
+            btnLog.setOnClickListener(null);
         }
 
         private void bindTo(TupleAccountFolder account) {
@@ -382,6 +394,10 @@ public class AdapterAccount extends RecyclerView.Adapter<AdapterAccount.ViewHold
                 tvError.setVisibility(account.error == null ? View.GONE : View.VISIBLE);
                 btnHelp.setVisibility(account.error == null ? View.GONE : View.VISIBLE);
 
+                btnSync.setVisibility(View.VISIBLE);
+                btnEdit.setVisibility(View.VISIBLE);
+                btnLog.setVisibility(View.VISIBLE);
+
                 ibInbox.setVisibility(settings ? View.GONE : View.VISIBLE);
                 grpSettings.setVisibility(settings ? View.VISIBLE : View.GONE);
             } else {
@@ -436,6 +452,10 @@ public class AdapterAccount extends RecyclerView.Adapter<AdapterAccount.ViewHold
                 tvError.setVisibility(View.GONE);
                 btnHelp.setVisibility(View.GONE);
 
+                btnSync.setVisibility(View.GONE);
+                btnEdit.setVisibility(View.GONE);
+                btnLog.setVisibility(View.GONE);
+
                 ibInbox.setVisibility(View.GONE);
                 grpSettings.setVisibility(View.GONE);
             }
@@ -461,6 +481,53 @@ public class AdapterAccount extends RecyclerView.Adapter<AdapterAccount.ViewHold
                     intent.putExtra("address", "address");
                     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     context.startActivity(intent);
+                }
+                return;
+            }
+
+            if (view.getId() == R.id.btnSync) {
+                int pos = getAdapterPosition();
+                TupleAccountFolder account = (pos == RecyclerView.NO_POSITION ? null : items.get(pos));
+                if (account != null && account.tbd == null)
+                    ServiceSynchronize.reload(context, account.id, true, "account sync button");
+                return;
+            }
+
+            if (view.getId() == R.id.btnEdit) {
+                int pos = getAdapterPosition();
+                TupleAccountFolder account = (pos == RecyclerView.NO_POSITION ? null : items.get(pos));
+                if (account != null && account.tbd == null) {
+                    if (settings)
+                        LocalBroadcastManager.getInstance(context).sendBroadcast(
+                                new Intent(ActivitySetup.ACTION_EDIT_ACCOUNT)
+                                        .putExtra("id", account.id)
+                                        .putExtra("protocol", account.protocol));
+                    else
+                        context.startActivity(new Intent(context, ActivitySetup.class)
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                                .putExtra("target", "accounts")
+                                .putExtra("id", account.id)
+                                .putExtra("protocol", account.protocol));
+                }
+                return;
+            }
+
+            if (view.getId() == R.id.btnLog) {
+                int pos = getAdapterPosition();
+                TupleAccountFolder account = (pos == RecyclerView.NO_POSITION ? null : items.get(pos));
+                if (account != null && account.tbd == null) {
+                    if (owner.getLifecycle().getCurrentState().isAtLeast(Lifecycle.State.STARTED))
+                        parentFragment.getParentFragmentManager().popBackStack("logs", FragmentManager.POP_BACK_STACK_INCLUSIVE);
+
+                    Bundle args = new Bundle();
+                    args.putLong("account", account.id);
+
+                    Fragment fragment = new FragmentLogs();
+                    fragment.setArguments(args);
+
+                    FragmentTransaction fragmentTransaction = parentFragment.getParentFragmentManager().beginTransaction();
+                    fragmentTransaction.replace(R.id.content_frame, fragment).addToBackStack("logs");
+                    fragmentTransaction.commit();
                 }
                 return;
             }

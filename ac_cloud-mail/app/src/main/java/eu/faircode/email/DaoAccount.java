@@ -49,6 +49,13 @@ public interface DaoAccount {
     @Query("SELECT * FROM account WHERE synchronize")
     LiveData<List<EntityAccount>> liveSynchronizingAccounts();
 
+    // comms: per-account tabs on the global Rules page (Settings > Rules) -
+    // ordered the same way as getAccounts() so tab order matches the nav drawer
+    @Query("SELECT * FROM account" +
+            " WHERE synchronize" +
+            " ORDER BY `order`, `primary` DESC, name COLLATE NOCASE")
+    LiveData<List<EntityAccount>> liveSynchronizingAccountsOrdered();
+
     @Query("SELECT account.*" +
             ", (SELECT COUNT(identity.id)" +
             "    FROM identity" +

@@ -75,6 +75,15 @@ public interface DaoRule {
             " ORDER BY rule.folder, rule.`order`, rule.name COLLATE NOCASE")
     List<EntityRule> getEnabledRules();
 
+    // comms: same as getEnabledRules(), scoped to one account - "apply all
+    // rules" on the global Rules page now applies to the selected account tab
+    @Query("SELECT rule.* FROM rule" +
+            " JOIN folder ON folder.id = rule.folder" +
+            " WHERE rule.enabled" +
+            " AND folder.account = :account" +
+            " ORDER BY rule.folder, rule.`order`, rule.name COLLATE NOCASE")
+    List<EntityRule> getEnabledRules(long account);
+
     @Query("SELECT DISTINCT `group` FROM rule" +
             " WHERE NOT `group` IS NULL" +
             " ORDER by `group` COLLATE NOCASE")
