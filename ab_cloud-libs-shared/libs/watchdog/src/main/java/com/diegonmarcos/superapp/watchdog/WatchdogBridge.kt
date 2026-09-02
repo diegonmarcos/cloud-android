@@ -161,59 +161,57 @@ class WatchdogBridge(
     fun refresh(alias: String) {
         val peer = alias.trim().takeIf { it.isNotEmpty() }
         pool.execute {
-            // THE TERMINAL CANNOT DO THE FLEET, and a bound terminal is not
-            // proof it can answer the question asked.
+            // SSH TO THE PROVISIONED ENV FIRST, always.
             //
-            // The terminal backend binds to cld.termux — the cloud-terminal
-            // fork — which is a bare env: it has neither ~/git/cloud-infra/
-            // config.json (so `fleet_machines()` finds nothing and the drawer
-            // says "no fleet in this envelope") nor the ssh mesh keys (so it
-            // cannot hop to a VM at all). nix-on-droid, reached over ssh, is
-            // the PROVISIONED env that has both. So the terminal is preferred
-            // only for a LOCAL snapshot, and only when it actually comes back
-            // carrying a fleet; a peer hop skips it outright, and a fleetless
-            // local answer falls through to ssh rather than being shown.
-            val panelBin =
-                if (peer == null && terminal.available()) terminal.toolPath(BIN_PANEL) else null
-            val viaTerminal = if (panelBin != null) {
-                // The sampler first. The panel only RENDERS a snapshot, so
-                // asking for one before anything is publishing gets "the
-                // sampler did not publish" on a phone where everything else
-                // is right.
-                terminal.toolPath(BIN_DAEMON)?.let { terminal.ensureDaemon(it) }
-                terminal.exec(panelBin, arrayOf("snapshot"), timeoutMs = 20_000)
-                    .onFailure { Log.w(WatchdogTerminal.TAG, "terminal snapshot: ${it.message}") }
-                    .getOrNull()
-                    ?.takeIf { hasFleet(it) }
-            } else {
-                if (peer != null) Log.i(WatchdogTerminal.TAG, "peer hop → ssh (terminal cannot reach $peer)")
-                else Log.w(WatchdogTerminal.TAG, "terminal: ${WatchdogTerminal.TERMUX_PKG} did not answer")
-                null
-            }
-
-            if (viaTerminal != null) {
-                val js = "window.__wdRender(${JSONObject.quote(viaTerminal)})"
-                webView.post { webView.evaluateJavascript(js, null) }
-                push("fresh", "terminal")
-                return@execute
-            }
-
-            ssh.snapshot(backend(), peer).fold(
-                onSuccess = { json ->
-                    val js = "window.__wdRender(${JSONObject.quote(json)})"
-                    webView.post { webView.evaluateJavascript(js, null) }
-                    push("fresh", ssh.activeBackend ?: "")
-                },
-                onFailure = {
-                    // Named here because the page cannot say it: the shipped
-                    // shell defines __wdRender and nothing else, so an event
-                    // pushed at it lands on an undefined function and the
-                    // only symptom left is a dashboard that never fills in.
-                    Log.w(WatchdogTerminal.TAG, "ssh snapshot (${backend()}${peer?.let { "→$it" } ?: ""}): ${it.message}")
-                    push("stale", it.message ?: "unreachable")
+            // The fleet dashboard needs two things only nix-on-droid has:
+            // ~/git/cloud-infra/config.json (the machine list — without it the
+            // drawer says "no fleet in this envelope") and the mesh ssh keys
+            // (to hop to a VM at all). The terminal backend binds to cld.termux
+            // — the cloud-terminal fork — a bare env that has NEITHER, so a
+            // snapshot taken there lists no machines and can reach no peer.
+            //
+            // It was tried first and, when it answered at all, its fleetless
+            // reply was shown before ssh ever got a turn. So ssh is primary now
+            // and the terminal is the genuine fallback: only a phone with no
+            // nix-on-droid, only for its own local numbers, ever falls to it —
+            // and never for a peer hop, which the terminal cannot make.
+            val out = ssh.snapshot(backend(), peer).fold(
+                onSuccess = { it },
+                onFailure = { err ->
+                    Log.w(WatchdogTerminal.TAG, "ssh snapshot (${backend()}${peer?.let { "→$it" } ?: ""}): ${err.message}")
+                    // A peer hop has no terminal fallback — only the mesh env
+                    // can reach it. A local snapshot may still come off the
+                    // terminal on a phone that has no nix-on-droid.
+                    if (peer != null) null
+                    else terminalSnapshot()
                 },
             )
+
+            if (out != null) {
+                val js = "window.__wdRender(${JSONObject.quote(out)})"
+                webView.post { webView.evaluateJavascript(js, null) }
+                push("fresh", ssh.activeBackend ?: "terminal")
+            } else {
+                // Named here because the page cannot say it: the shipped shell
+                // defines __wdRender and nothing else, so an event pushed at it
+                // lands on an undefined function and the only symptom left is a
+                // dashboard that never fills in.
+                push("stale", if (peer != null) "$peer unreachable" else "no env answered")
+            }
         }
+    }
+
+    /** A local snapshot off the terminal backend, or null if it cannot give one. */
+    private fun terminalSnapshot(): String? {
+        if (!terminal.available()) {
+            Log.w(WatchdogTerminal.TAG, "terminal: ${WatchdogTerminal.TERMUX_PKG} did not answer")
+            return null
+        }
+        val panelBin = terminal.toolPath(BIN_PANEL) ?: return null
+        terminal.toolPath(BIN_DAEMON)?.let { terminal.ensureDaemon(it) }
+        return terminal.exec(panelBin, arrayOf("snapshot"), timeoutMs = 20_000)
+            .onFailure { Log.w(WatchdogTerminal.TAG, "terminal snapshot: ${it.message}") }
+            .getOrNull()
     }
 
     /** Refresh the data without pressing anything — the frame's `a` loop. */
@@ -254,18 +252,6 @@ class WatchdogBridge(
         /** The sampler beside it — the panel draws what THIS publishes. */
         const val BIN_DAEMON = "libmywatchdog.so"
     }
-
-    /**
-     * Does this envelope carry a fleet?
-     *
-     * The one signal that separates the provisioned env from the bare one: a
-     * snapshot from nix-on-droid lists every mesh machine, one from an
-     * unprovisioned cld.termux lists none. Malformed or fleetless ⇒ false, so
-     * the caller falls through to ssh rather than showing "no fleet".
-     */
-    private fun hasFleet(json: String): Boolean =
-        runCatching { JSONObject(json).optJSONArray("machines")?.length() ?: 0 }
-            .getOrDefault(0) > 0
 
     private fun push(kind: String, payload: String) {
         val js = "window.__wdEvent(${JSONObject.quote(kind)}, ${JSONObject.quote(payload)})"
