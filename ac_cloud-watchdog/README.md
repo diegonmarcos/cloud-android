@@ -9,13 +9,19 @@ opens whether or not it can reach anything — the failure that made it show a
 terminal error where a dashboard should be was the UI being a property of
 having measured something.
 
-The numbers arrive separately. It ssh's to nix-on-droid on `127.0.0.1` (Termux
-as fallback), asks for one envelope, and hands it to the page.
+The numbers arrive separately, and **the app does not fetch them**. It has no
+ssh client, no key and no socket. nix-on-droid — which has the mesh keys, the
+fleet declaration and an ssh client — runs `my-watchdog-tui android-bridge`,
+measures whatever the app asks for, and pushes the envelope IN through a
+ContentProvider the app exports for the env's uid (rewritten 2026-09-02, after
+three builds failed inside the app's ssh client where nothing could see them).
 
 ```
-  APK opens ──► watchdog-app.html          (UI, baked in, no machine in it)
-  WebView   ──► WatchdogBridge ──ssh 127.0.0.1:8022──► my-watchdog-tui envelope
-  WebView   ◄── window.__wdRender(json)  ◄──────────── {snapshot, machines, …}
+  APK opens ──► watchdog-app.html                (UI, baked in, no machine in it)
+  drawer tap ─► AndroidWatchdog.refresh(alias) ─► filesDir/bridge/wants = alias
+  env loop  ──► content query …/wants           ─► my-watchdog-tui snapshot [alias]
+  env loop  ──► content write …/snapshot/<alias> ─► BridgeProvider → filesDir/bridge/<alias>.json
+  WebView   ◄── window.__wdRender(json)          ◄── on arrival, and on every open
 ```
 
 ## The pages
@@ -66,28 +72,47 @@ a thumb, never about what one does. 38 of 49 keys have a button; the rest are
 aliases, digit-reachable sub-tabs, or the quit keys, which are deliberately
 not forwarded.
 
-## Why ssh and not an Intent
+## Why a provider and not ssh
 
-nix-on-droid is another app with its own uid. `RUN_COMMAND` fires and forgets
-and the output is on the far side of a sandbox. `127.0.0.1` is shared between
-app sandboxes, so its sshd is reachable with no cross-UID barrier and no
-packet leaving the phone. **cloud-ide already does exactly this** — same JSch
-fork, same self-generated ECDSA key, same manual `authorized_keys` step.
+nix-on-droid is another app with its own uid; `127.0.0.1` is shared, so its
+sshd WAS reachable — and the app's JSch client failed three ways in a row
+(a first-run key shadowing the vault key, ed25519 needing Bouncy Castle, and
+one more nobody could read off a uid-scoped logcat). A provider inverts the
+direction: the env, which already has everything, does the work, and every
+step is a shell command you can run by hand over ssh:
 
+```sh
+A=content://com.diegonmarcos.watchdog.bridge
+content query --uri $A/wants                       # what the user picked
+content query --uri $A/snapshots                   # what has arrived, sizes, times
+content query --uri $A/log                         # the APP's own log
+content write --uri $A/snapshot/local < env.json   # push one by hand
+```
+
+(`content` is an app_process: from proot it needs the Android runtime
+environment — `android-bridge` reads it off the proot launcher's environ.)
 ## Setup
 
 1. Install the APK.
-2. Run sshd in nix-on-droid (`:8022`) or Termux (`:8023`).
-3. Put the app's public key in that env's `~/.ssh/authorized_keys` — the app
-   prints it on its error screen.
-4. `my-watchdog-tui` must be on that env's PATH.
-
+2. In nix-on-droid, run the env side (the app used to push the binary over
+   ssh; now it is fetched from the release):
+   ```sh
+   mkdir -p ~/.cache/cloud-watchdog/bin && cd ~/.cache/cloud-watchdog/bin
+   curl -fsSL -o my-watchdog-tui https://github.com/diegonmarcos/cloud-u-linux/releases/download/my-watchdog-latest/my-watchdog-tui-aarch64
+   curl -fsSL -o my-watchdog     https://github.com/diegonmarcos/cloud-u-linux/releases/download/my-watchdog-latest/my-watchdog-aarch64
+   chmod +x my-watchdog my-watchdog-tui
+   (nohup ./my-watchdog --no-tray >/dev/null 2>&1 &)
+   (nohup ./my-watchdog-tui android-bridge >> ~/.cache/cloud-watchdog/bridge.log 2>&1 &)
+   ```
+3. Open the app. The drawer lists the fleet as soon as the first local
+   envelope lands (≤ 5 s); tap a machine to have the env measure it.
 ## Cross references
 
 | | |
 |---|---|
 | the panel + daemon | `cloud-u-linux/da_watchdog` — see its `ARCHITECTURE.md` |
-| the ssh bridge | `ab_cloud-libs-shared/libs/watchdog` (shared by reference, also ships its own APK) |
+| the provider + page bridge | `ab_cloud-libs-shared/libs/watchdog` — `BridgeProvider`, `WatchdogBridge` |
+| the env loop | `cloud-u-linux/da_watchdog/src/tui/android_bridge.rs` |
 | the same mechanism | `ac_cloud-ide` — `SshBackend`, `TerminalBridge`, `data/terminal-targets.json` |
 | host/port/user/command | `build.json::watchdog` → baked to `BuildConfig`, never Kotlin constants |
 | fleet + console actions | `cloud-infra/1_cloud-configs/dist/watchdog.json` |
@@ -102,34 +127,21 @@ overview shows a "waiting for a machine" state now until a machine answers, and
 the number formatters coerce non-numbers to 0 so one bad field can never blank
 the page again. (fixed 2026-09-02)
 
-## If the app cannot reach a machine
+## If the drawer says "no fleet" or a machine never fills in
 
-It is not reaching the machine, and until 2026-09-02 the usual reason was a
-bug in the panel rather than anything on the phone.
-
-`snapshot` decided whether the sampler had published by asking whether
-`host_info.host` was empty. That is read from `/proc/sys/kernel/hostname`,
-which returns an **empty string inside nix-on-droid's proot** — so every
-published snapshot on this device looked like no snapshot, `snapshot` exited 1,
-and the app got an error instead of an envelope. The shell it ships with stayed
-exactly as baked: no fleet, no numbers, no pages. Every "the APK has not
-changed" was this.
-
-The liveness test is `ts` now, which the publisher writes on every tick and
-nothing else writes, and the sampler names the device four ways
-(`/proc/sys/kernel/hostname` → `/etc/hostname` → `$HOSTNAME` →
-`/system/bin/getprop ro.product.model`, which answers `SM-G996B` here).
-
-To check by hand, from a shell in the env:
+The app reaches nothing, so look at the env. From a shell in nix-on-droid:
 
 ```sh
-export XDG_RUNTIME_DIR=$HOME/.cache/xdg-runtime
-~/.cache/cloud-watchdog/bin/my-watchdog-tui snapshot | head -c 200
+tail ~/.cache/cloud-watchdog/bridge.log         # "pushed local (131219 B)" every 5 s?
+pgrep -x my-watchdog-tui || echo "bridge loop not running"
+pgrep -x my-watchdog     || echo "sampler not running"
+content query --uri content://com.diegonmarcos.watchdog.bridge/log   # what the app saw
 ```
 
-An envelope means the app has everything it needs. An error names what is
-missing.
-
+`android-bridge: wants: … SecurityException` means the provider refused the
+env's uid — the package ids it trusts are `BridgeProvider.ENV_PACKAGES`.
+`… snapshot/oci-apps: …` names an ssh problem on the env's hop to that peer,
+the same one `my-watchdog-tui snapshot oci-apps` would show.
 ## Known gaps
 
 * `versionCode` is 1 and never bumped, so the in-app updater is inert —
