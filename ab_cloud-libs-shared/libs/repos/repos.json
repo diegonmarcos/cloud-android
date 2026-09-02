@@ -11,11 +11,15 @@
   "exclude": {
     "cloud-u-android": "This repo. A snapshot of ourselves inside ourselves is a copy, not information.",
     "cloud-vault": "SECRETS (sops/age). Never mirrored into this tree: cloud-u-android is a PUBLIC repo, and a directory whose whole design is that it is never cleaned is the worst possible home for credentials.",
-    "front-assets-cdn": "1.4 GB of binary assets and no source. Excluded by hand.",
-    "cloud": "Symlink farm — its content is links to the others, which say nothing once snapshotted.",
-    "front": "Symlink farm, same reason."
+    "front-assets-cdn": "1.4 GB of binary assets and no source. Excluded by hand."
   },
   "repos": [
+    {
+      "name": "cloud",
+      "repo": "diegonmarcos/cloud",
+      "private": false,
+      "doc": "Project master (symlink farm): repos.json + clone.sh + committed symlinks to its members."
+    },
     {
       "name": "cloud-data",
       "repo": "diegonmarcos/cloud-data",
@@ -65,6 +69,12 @@
       "doc": "The d* unix apps split out of cloud-unix, which was renamed cloud-infra-desktop in the same move. The desktop flakes reference them as home-directory paths, never as flake inputs."
     },
     {
+      "name": "front",
+      "repo": "diegonmarcos/ffront",
+      "private": false,
+      "doc": "Project master (symlink farm): repos.json + clone.sh + committed symlinks to its members."
+    },
+    {
       "name": "front-data",
       "repo": "diegonmarcos/front-data",
       "private": false,
@@ -88,5 +98,6 @@
       "private": true,
       "doc": "Unity asset pipeline (unity-asset-vm: upkg2gltf, fetch-and-convert) plus its assets. Was front-asset-cdn, the predecessor of front-assets-cdn; renamed 2026-08-18 to match what it actually holds - the CDN itself is front-assets-cdn."
     }
-  ]
+  ],
+  "_doc_hubs": "cloud and front are the HUB repos — the symlink farms. They are mirrored FIRST-CLASS, not skipped: their committed symlinks are the navigation layer, and because every member is a sibling here exactly as it is in ~/git, a link like cloud/cloud-infra -> ../cloud-infra resolves INSIDE the mirror. That is what makes this a usable copy of the workspace rather than a pile of unrelated directories. A link to something not mirrored (cloud-vault, cloud-u-android) dangles, which the farms' own doc already treats as meaning 'a repo you have not cloned yet'."
 }
