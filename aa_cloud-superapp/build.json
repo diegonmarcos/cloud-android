@@ -1478,7 +1478,9 @@
             "id": "configs",
             "label": "Configs",
             "icon": "ic_settings",
-            "facet": true
+            "facet": true,
+            "mirror_section": "config",
+            "_doc": "Renders THE Configs section's own grid (Pages + Actions + the star's extra actions), not a second list of the same pages. There were briefly two Configs pages and only one of them had the Actions group; this is that one."
           },
           {
             "id": "data-ml",
@@ -1867,93 +1869,6 @@
         ],
         "_doc_tiles_labs": "Master Lab index — 6 icon tiles, one per subject Lab. Read by home_groups[title=Labs] via tiles_from_section='cloud/labs'. The key keeps the name `labs` on purpose: it is the SUBJECT labs, which is not what the Linktree tab became. No page `labs` exists, so this list is the Home face only — each icon opens page:cloud/<lab-id>.",
         "_doc_pages": "Cloud: Apps (the cloud apps) | Linktree (the site, embedded) | C3 (Cloud Control Center) | Configs.",
-        "tiles_configs": [
-          {
-            "id": "profile",
-            "label": "Profile",
-            "icon": "ic_settings",
-            "target": "page:config/profile"
-          },
-          {
-            "id": "wg",
-            "label": "WireGuard",
-            "icon": "ic_wg",
-            "target": "section:wg"
-          },
-          {
-            "id": "kde",
-            "label": "KDE",
-            "icon": "ic_kde",
-            "target": "page:config/kde"
-          },
-          {
-            "id": "ai",
-            "label": "AI",
-            "icon": "ic_ai_sparkle",
-            "target": "page:config/ai"
-          },
-          {
-            "id": "launcher",
-            "label": "Launcher",
-            "icon": "ic_home",
-            "target": "page:config/launcher"
-          },
-          {
-            "id": "keyboard",
-            "label": "Keyboard",
-            "icon": "ic_keyboard",
-            "target": "extapp:cloud-keyboard"
-          },
-          {
-            "id": "update",
-            "label": "Update All",
-            "icon": "ic_refresh",
-            "target": "action:update_all"
-          },
-          {
-            "id": "kde_connect",
-            "label": "KDE Connect",
-            "icon": "ic_kde",
-            "target": "action:kde_connect_now"
-          },
-          {
-            "id": "animations",
-            "label": "Animations",
-            "icon": "ic_mode_apps",
-            "target": "action:toggle_animations"
-          },
-          {
-            "id": "copy_info",
-            "label": "Copy Info",
-            "icon": "ic_p_import",
-            "target": "action:about_copy_all"
-          },
-          {
-            "id": "constellation",
-            "label": "Constellation",
-            "icon": "ic_refresh",
-            "target": "action:constellation"
-          },
-          {
-            "id": "onehand",
-            "label": "One-Hand",
-            "icon": "ic_onehand",
-            "target": "page:config/onehand"
-          },
-          {
-            "id": "perms",
-            "label": "Permissions",
-            "icon": "ic_settings",
-            "target": "page:config/perms"
-          },
-          {
-            "id": "about",
-            "label": "About",
-            "icon": "ic_settings",
-            "target": "page:config/about"
-          }
-        ],
-        "_doc_tiles_configs": "Cloud ▸ Configs. Generated from sections[config].pages — one tile per page, using its `action` when it declares one (wg → section:wg, keyboard → extapp:…) and page:config/<id> otherwise. Add a config page there and mirror it here; guard 19 in shared-modules.test.sh fails if a target here stops resolving.",
         "stack_lnktree": [
           {
             "kind": "link_grid",
@@ -6765,6 +6680,10 @@
         "sec_connections",
         "sec_yara"
       ]
+    },
+    "_doc_c3_ops": "Where the C3 container sheet's Actions tab POSTs. c3-infra-api's operations routes, reached through the same public base the front portal uses. The API distinguishes a CONTAINER from its SERVICE — /vms/{vm}/containers/{name}/{start,stop,restart,update} against /vms/{vm}/services/{service}/{start,stop} — which is why the sheet shows Container Actions and App Actions as two lists rather than one: they are two different operations with different blast radius, and the infrastructure already says so. AUTHENTICATED: this path is behind Caddy forward_auth, so every call carries the Authelia bearer libs:ops already stores for Dagu. Empty base_url disables the Actions tab's network buttons and says so; Infos needs no network at all.",
+    "c3_ops": {
+      "base_url": "https://api.diegonmarcos.com/c3-infra-api"
     }
   },
   "deploy": {

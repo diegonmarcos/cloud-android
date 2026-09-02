@@ -242,6 +242,8 @@ def logIngestUrl       = (buildJson.diagnostics?.log_ingest_url ?: '').toString(
 // Baked so the endpoint, the user slug and the artifact contract version
 // are a build.json edit, never a Kotlin literal. See
 // build.json::_doc_config_source.
+def c3Ops              = buildJson.ui.c3_ops ?: [:]
+def c3OpsBaseUrl       = (c3Ops.base_url ?: '').toString()
 def configSource       = buildJson.ui.config_source ?: [:]
 def configSrcBaseUrl   = (configSource.base_url ?: '').toString()
 def configSrcPath      = (configSource.path_template ?: '/pub/superapp/config/{user}').toString()
@@ -627,6 +629,7 @@ android {
         buildConfigField "int",    "UI_CONFIG_SOURCE_CONNECT_MS",     "${configSrcConnectMs}"
         buildConfigField "int",    "UI_CONFIG_SOURCE_READ_MS",        "${configSrcReadMs}"
         buildConfigField "String", "LOG_INGEST_URL",  "\"${logIngestUrl}\""
+        buildConfigField "String", "UI_C3_OPS_BASE_URL", "\"${c3OpsBaseUrl}\""
         buildConfigField "String", "UI_CONFIG_GIT_REPO",      "\"${configGitRepo}\""
         buildConfigField "String", "UI_CONFIG_GIT_PATH",      "\"${configGitPath}\""
         buildConfigField "String", "UI_CONFIG_GIT_REF",       "\"${configGitRef}\""

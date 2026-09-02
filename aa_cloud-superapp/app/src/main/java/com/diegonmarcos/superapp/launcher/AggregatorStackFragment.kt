@@ -857,10 +857,11 @@ class AggregatorStackFragment : Fragment(),
                         // Explicit open-URL (e.g. VM dashboard) — open it verbatim
                         // but still light up from the url:port ping.
                         it.link.isNotBlank() -> CloudTile(it.label, sub.icon, it.link, showLight = true,
-                            ping = if (it.port in 1..65535) it.url to it.port else null)
-                        it.external -> CloudTile(it.label, sub.icon, it.url, showLight = false, ping = null)
+                            ping = if (it.port in 1..65535) it.url to it.port else null, name = it.name)
+                        it.external -> CloudTile(it.label, sub.icon, it.url, showLight = false, ping = null,
+                            name = it.name)
                         else -> CloudTile(it.label, sub.icon, "https://${it.url}", showLight = true,
-                            ping = if (it.port in 1..65535) it.url to it.port else null)
+                            ping = if (it.port in 1..65535) it.url to it.port else null, name = it.name)
                     }
                 })
             }
@@ -871,6 +872,10 @@ class AggregatorStackFragment : Fragment(),
     private data class CloudTile(
         val label: String, val icon: String, val openUrl: String,
         val showLight: Boolean, val ping: Pair<String, Int>?,
+        /** Container name, the key every declarative lookup and every ops route
+         *  is addressed by. Blank for a provider console, which is a web page
+         *  and not a container — those keep the old open-the-URL behaviour. */
+        val name: String = "",
     )
 
     /** Wrap-flowing `cols`-column grid of cloud tiles (same grid as the
@@ -896,8 +901,10 @@ class AggregatorStackFragment : Fragment(),
     }
 
     /** Icon + STATUS LIGHT (under the icon) + label tile. weight=1 → 1/Nth
-     *  row width. Tap opens the in-app browser; the light TCP-pings the
-     *  container's {name}.app (green up / red down / grey checking). */
+     *  row width. Tap opens [ContainerSheet] — Infos / Actions for the box and
+     *  the app inside it; a provider console has no container behind it and
+     *  still opens its URL. The light TCP-pings the container's {name}.app
+     *  (green up / red down / grey checking). */
     private fun cloudTile(
         ctx: android.content.Context, t: CloudTile,
         executor: java.util.concurrent.ExecutorService,
@@ -908,7 +915,17 @@ class AggregatorStackFragment : Fragment(),
             val padH = dp(4); val padV = dp(8); setPadding(padH, padV, padH, padV)
             isClickable = true; isFocusable = true
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            setOnClickListener { openUrlOrTarget(t.openUrl) }
+            setOnClickListener {
+                // Every tile in a container subgroup IS a container, so the tap
+                // opens the sheet that can describe and operate it. Opening the
+                // URL is still available — it is the first action inside.
+                val act = activity
+                if (t.name.isNotBlank() && act is androidx.fragment.app.FragmentActivity) {
+                    com.diegonmarcos.superapp.cloud.ContainerSheet.show(act, t.name, t.label, t.openUrl)
+                } else {
+                    openUrlOrTarget(t.openUrl)
+                }
+            }
         }
         cell.addView(ImageView(ctx).apply {
             val resId = Sections.iconResFor(ctx, t.icon)
