@@ -95,12 +95,18 @@ public class JmapSync {
         // reaching the server (the "huge delay to mark read" complaint), and a
         // backoff wait cannot be interrupted by user action at all.
         final android.os.Handler mainHandler = new android.os.Handler(android.os.Looper.getMainLooper());
-        final TwoStateOwner cowner = new TwoStateOwner(account.name + "/jmap-ops");
+        // TwoStateOwner's CONSTRUCTOR registers a lifecycle observer, and
+        // androidx enforces addObserver on the main thread -- constructing it
+        // here on the account thread threw IllegalStateException and killed the
+        // monitor in a restart loop (measured on-device 13:40:01, build
+        // 3352044). Everything lifecycle-touching happens inside the post.
+        final TwoStateOwner[] cowner = new TwoStateOwner[1];
         mainHandler.post(new Runnable() {
             @Override
             public void run() {
-                cowner.start();
-                db.operation().liveOperations(account.id).observe(cowner, new androidx.lifecycle.Observer<java.util.List<TupleOperationEx>>() {
+                cowner[0] = new TwoStateOwner(account.name + "/jmap-ops");
+                cowner[0].start();
+                db.operation().liveOperations(account.id).observe(cowner[0], new androidx.lifecycle.Observer<java.util.List<TupleOperationEx>>() {
                     private int last = -1;
                     @Override
                     public void onChanged(java.util.List<TupleOperationEx> ops) {
@@ -178,7 +184,8 @@ public class JmapSync {
             mainHandler.post(new Runnable() {
                 @Override
                 public void run() {
-                    cowner.destroy();
+                    if (cowner[0] != null)
+                        cowner[0].destroy();
                 }
             });
         }
