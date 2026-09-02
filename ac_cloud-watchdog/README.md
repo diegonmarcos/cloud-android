@@ -12,15 +12,15 @@ having measured something.
 The numbers arrive separately, and **the app does not fetch them**. It has no
 ssh client, no key and no socket. nix-on-droid — which has the mesh keys, the
 fleet declaration and an ssh client — runs `my-watchdog-tui android-bridge`,
-measures whatever the app asks for, and pushes the envelope IN through a
-ContentProvider the app exports for the env's uid (rewritten 2026-09-02, after
+measures whatever the app asks for, and pushes the envelope IN with explicit
+broadcasts to a receiver the app exports for the env's uid (rewritten 2026-09-02, after
 three builds failed inside the app's ssh client where nothing could see them).
 
 ```
   APK opens ──► watchdog-app.html                (UI, baked in, no machine in it)
   drawer tap ─► AndroidWatchdog.refresh(alias) ─► filesDir/bridge/wants = alias
-  env loop  ──► content query …/wants           ─► my-watchdog-tui snapshot [alias]
-  env loop  ──► content write …/snapshot/<alias> ─► BridgeProvider → filesDir/bridge/<alias>.json
+  env loop  ──► am broadcast …WANTS  (result data) ─► my-watchdog-tui snapshot [alias]
+  env loop  ──► am broadcast …PUSH --es gz <b64>   ─► BridgeReceiver → filesDir/bridge/<alias>.json
   WebView   ◄── window.__wdRender(json)          ◄── on arrival, and on every open
 ```
 
@@ -72,25 +72,29 @@ a thumb, never about what one does. 38 of 49 keys have a button; the rest are
 aliases, digit-reachable sub-tabs, or the quit keys, which are deliberately
 not forwarded.
 
-## Why a provider and not ssh
+## Why broadcasts and not ssh
 
 nix-on-droid is another app with its own uid; `127.0.0.1` is shared, so its
 sshd WAS reachable — and the app's JSch client failed three ways in a row
 (a first-run key shadowing the vault key, ed25519 needing Bouncy Castle, and
-one more nobody could read off a uid-scoped logcat). A provider inverts the
+one more nobody could read off a uid-scoped logcat). Broadcasts invert the
 direction: the env, which already has everything, does the work, and every
-step is a shell command you can run by hand over ssh:
+step is a shell command you can run by hand over ssh — the receiver's result
+data comes back on stdout:
 
 ```sh
-A=content://com.diegonmarcos.watchdog.bridge
-content query --uri $A/wants                       # what the user picked
-content query --uri $A/snapshots                   # what has arrived, sizes, times
-content query --uri $A/log                         # the APP's own log
-content write --uri $A/snapshot/local < env.json   # push one by hand
+R=com.diegonmarcos.watchdog/com.diegonmarcos.superapp.watchdog.BridgeReceiver
+am broadcast -a com.diegonmarcos.watchdog.WANTS -n $R    # data="oci-apps" — what the user picked
+am broadcast -a com.diegonmarcos.watchdog.LOG   -n $R    # the APP's own log
+am broadcast -a com.diegonmarcos.watchdog.PUSH  -n $R --es alias local --es id 1 --ei part 0 --ei parts 1 \
+   --es gz "$(my-watchdog-tui snapshot | gzip -c | base64 -w0)"        # push one by hand
 ```
 
-(`content` is an app_process: from proot it needs the Android runtime
-environment — `android-bridge` reads it off the proot launcher's environ.)
+Not a ContentProvider: Android's `content` tool goes through
+`getContentProviderExternal`, which only the shell uid may call — from an
+app uid it fails with a SecurityException. `am` is an app_process too: from
+proot it needs the Android runtime environment, which `android-bridge` reads
+off the proot launcher's environ.
 ## Setup
 
 1. Install the APK.
@@ -111,7 +115,7 @@ environment — `android-bridge` reads it off the proot launcher's environ.)
 | | |
 |---|---|
 | the panel + daemon | `cloud-u-linux/da_watchdog` — see its `ARCHITECTURE.md` |
-| the provider + page bridge | `ab_cloud-libs-shared/libs/watchdog` — `BridgeProvider`, `WatchdogBridge` |
+| the receiver + page bridge | `ab_cloud-libs-shared/libs/watchdog` — `BridgeReceiver`, `WatchdogBridge` |
 | the env loop | `cloud-u-linux/da_watchdog/src/tui/android_bridge.rs` |
 | the same mechanism | `ac_cloud-ide` — `SshBackend`, `TerminalBridge`, `data/terminal-targets.json` |
 | host/port/user/command | `build.json::watchdog` → baked to `BuildConfig`, never Kotlin constants |
@@ -135,11 +139,13 @@ The app reaches nothing, so look at the env. From a shell in nix-on-droid:
 tail ~/.cache/cloud-watchdog/bridge.log         # "pushed local (131219 B)" every 5 s?
 pgrep -x my-watchdog-tui || echo "bridge loop not running"
 pgrep -x my-watchdog     || echo "sampler not running"
-content query --uri content://com.diegonmarcos.watchdog.bridge/log   # what the app saw
+am broadcast -a com.diegonmarcos.watchdog.LOG -n com.diegonmarcos.watchdog/com.diegonmarcos.superapp.watchdog.BridgeReceiver   # what the app saw
 ```
 
-`android-bridge: wants: … SecurityException` means the provider refused the
-env's uid — the package ids it trusts are `BridgeProvider.ENV_PACKAGES`.
+`android-bridge: wants: no receiver answered` means the app is not installed
+(or an old build without the receiver); `data="denied"` means the receiver
+refused the env's uid — the package ids it trusts are
+`BridgeReceiver.ENV_PACKAGES`.
 `… snapshot/oci-apps: …` names an ssh problem on the env's hop to that peer,
 the same one `my-watchdog-tui snapshot oci-apps` would show.
 ## Known gaps

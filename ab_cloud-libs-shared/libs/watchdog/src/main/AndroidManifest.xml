@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- No permissions. This app opens no socket and binds no service: the
-         env pushes envelopes IN through the provider below, and the provider
-         checks the caller's uid itself. -->
+         env pushes envelopes IN with explicit broadcasts to the receiver
+         below, which checks the sender's uid itself. -->
     <queries>
         <package android:name="com.termux.nix" />
         <package android:name="cld.termux.nix" />
@@ -10,9 +10,14 @@
         <package android:name="cld.termux" />
     </queries>
     <application>
-        <provider
-            android:name="com.diegonmarcos.superapp.watchdog.BridgeProvider"
-            android:authorities="com.diegonmarcos.watchdog.bridge"
-            android:exported="true" />
+        <receiver
+            android:name="com.diegonmarcos.superapp.watchdog.BridgeReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.diegonmarcos.watchdog.WANTS" />
+                <action android:name="com.diegonmarcos.watchdog.PUSH" />
+                <action android:name="com.diegonmarcos.watchdog.LOG" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>
