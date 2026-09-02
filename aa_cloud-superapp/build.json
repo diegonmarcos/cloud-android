@@ -1854,6 +1854,11 @@
                 "target": "extapp:cloud-wallet"
               },
               {
+                "label": "Me",
+                "icon": "ic_vcard",
+                "target": "extapp:cloud-me"
+              },
+              {
                 "_doc": "Navigation — hands off to the dedicated Cloud-Nav app (ac_cloud-nav). libs:maps (MapLibre tracker + timeline + MyTrips) was MOVED out of the SuperApp into Cloud-Nav, so this tile no longer routes to an in-app section. target=extapp:cloud-nav → MainActivity.launchExternalApp opens com.diegonmarcos.cloudnav if installed, else downloads + installs ui.external_apps[id=cloud-nav].install_apk_url (Cloud-Nav.apk). icon ic_nav (ic_maps left with libs:maps). For the system Google Maps launcher use action:app://com.google.android.apps.maps from anywhere else.",
                 "id": "maps",
                 "label": "Navigation",
@@ -5794,6 +5799,15 @@
         "hub_package": "com.diegonmarcos.cloudwallet",
         "install_package": "com.diegonmarcos.cloudwallet",
         "install_apk_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Wallet.apk",
+        "forks": {}
+      },
+      {
+        "_doc": "Cloud-Me — the personal-administration app (ac_cloud-me): Buro / Agenda / Me / Projects / Studying, plus Health in the drawer. Like cloud-wallet it is a standalone constellation APK with no forks, so extapp:cloud-me resolves straight to hub_package; the Cloud tile opens it when installed and otherwise downloads install_apk_url. install_apk_url mirrors ac_cloud-me/build.json::release.gh_release (asset Cloud-Me.apk, published by ship-cloud-me.yml). Shares the constellation signing key.",
+        "id": "cloud-me",
+        "label": "Cloud-Me",
+        "hub_package": "com.diegonmarcos.cloudme",
+        "install_package": "com.diegonmarcos.cloudme",
+        "install_apk_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Me.apk",
         "forks": {}
       },
       {
