@@ -191,7 +191,6 @@ internal fun WalletIdsTab(
 ) {
     var countries by remember { mutableStateOf(setOf("es", "br")) }
     var types    by remember { mutableStateOf(setOf("id", "license")) }
-    var viewMode by remember { mutableStateOf("2d") }  // "2d" | "3dr" | "3df"
     val licenseKinds = setOf("id_driving_es", "id_boat_es")
     val filtered = remember(allIds, countries, types) {
         allIds.filter { card ->
@@ -203,7 +202,7 @@ internal fun WalletIdsTab(
         }
     }
     Column(modifier = Modifier.fillMaxSize()) {
-        // Filter strip: [ES] [BR]  |  [ID] [Licenses]  ···  [2D|3D]
+        // Filter strip: [ES] [BR]  |  [ID] [Licenses]
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -238,27 +237,6 @@ internal fun WalletIdsTab(
                     Text(label, color = Color.White, fontSize = 11.sp, fontWeight = if (active) FontWeight.Bold else FontWeight.Normal)
                 }
             }
-            Spacer(Modifier.weight(1f))
-            // 2D / 3D-r / 3D-f view toggle
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(Color(0x20FFFFFF))
-                    .padding(2.dp),
-            ) {
-                listOf("2d" to "2D", "3dr" to "3D-r", "3df" to "3D-f").forEach { (key, label) ->
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(if (viewMode == key) Color(0xFF7C3AED) else Color.Transparent)
-                            .clickable { viewMode = key }
-                            .padding(horizontal = 8.dp, vertical = 3.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(label, color = Color.White, fontSize = 11.sp, fontWeight = if (viewMode == key) FontWeight.Bold else FontWeight.Normal)
-                    }
-                }
-            }
         }
         if (filtered.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -282,9 +260,7 @@ internal fun WalletIdsTab(
                             card.category == "doc" -> DocCardView(card = card, modifier = Modifier.fillMaxSize())
                             card.kind == "vcard" || card.kind == "vcard_imported" ->
                                 WalletCardView(card = card, isExpanded = false, modifier = Modifier.fillMaxSize())
-                            viewMode == "3dr" -> IdCard3DReactView(card = card, modifier = Modifier.fillMaxSize())
-                            viewMode == "3df" -> IdCard3DFilamentView(card = card, modifier = Modifier.fillMaxSize())
-                            else              -> IdCardView(card = card, modifier = Modifier.fillMaxSize())
+                            else -> IdCardView(card = card, modifier = Modifier.fillMaxSize())
                         }
                     }
                 }
