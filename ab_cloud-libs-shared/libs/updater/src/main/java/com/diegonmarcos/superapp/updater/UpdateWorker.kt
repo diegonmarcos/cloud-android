@@ -102,11 +102,23 @@ class UpdateWorker(
             // capped at AU_MAX_PER_PASS, so whichever worker won the race
             // decided whether 3 apps or all of them installed. Same cap, same
             // behaviour, whoever gets there first.
+            // THE CAP EXISTS FOR ONE REASON ONLY: a SessionInstall leaves a
+            // tap-to-confirm notification holding a PackageInstaller session
+            // until the user answers it, and Android refuses new sessions past
+            // 50 per UID. A shell install opens no session and shows nothing,
+            // so when the shell channel is live the cap protects against
+            // nothing and only stops the fleet from ever catching up — three
+            // apps per six hours against a fifty-entry fleet is why
+            // "auto-update on" never finished.
+            val silent = Fleet.silentCapable(applicationContext)
+            val limit = if (silent) Int.MAX_VALUE else BuildConfig.AU_MAX_PER_PASS
             val n = Fleet.installAll(
-                applicationContext, fleet, Fleet.Mode.UPDATES,
-                limit = BuildConfig.AU_MAX_PER_PASS,
+                applicationContext, fleet, Fleet.Mode.UPDATES, limit = limit,
             )
-            if (n > 0) Log.i("Updater/Worker", "fleet auto-update: acted on $n app(s)")
+            Log.i("Updater/Worker",
+                "fleet auto-update: acted on $n app(s) " +
+                if (silent) "(silent via ${Fleet.silentChannelName(applicationContext)}, uncapped)"
+                else "(no shell channel — capped at ${BuildConfig.AU_MAX_PER_PASS}, each install prompts)")
         }.onFailure { Log.w("Updater/Worker", "fleet auto-update failed: ${it.message}", it) }
     }
 

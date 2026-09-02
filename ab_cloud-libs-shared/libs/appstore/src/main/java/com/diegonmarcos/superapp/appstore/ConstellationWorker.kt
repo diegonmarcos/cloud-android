@@ -52,11 +52,14 @@ class ConstellationWorker(appCtx: Context, params: WorkerParameters) :
             // session until the user answers it. Whatever it does not take is
             // picked up by the next pass. build.json::release.auto_update
             // .max_installs_per_pass drives the number.
+            // Same rule as UpdateWorker: the cap only guards against pending
+            // PackageInstaller sessions, and a shell install opens none.
+            val silent = Fleet.silentCapable(applicationContext)
             val acted = Fleet.installAll(
                 applicationContext, apps, Fleet.Mode.UPDATES,
-                limit = AuConfig.AU_MAX_PER_PASS,
+                limit = if (silent) Int.MAX_VALUE else AuConfig.AU_MAX_PER_PASS,
             )
-            Log.i(TAG, "auto-update: acted on $acted app(s)")
+            Log.i(TAG, "auto-update: acted on $acted app(s)" + if (silent) " (silent, uncapped)" else " (capped, prompting)")
             if (acted > 0) notifyUpdates(applicationContext, acted)
         } catch (t: Throwable) {
             Log.w(TAG, "fleet auto-update failed: ${t.message}")

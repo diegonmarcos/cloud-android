@@ -343,6 +343,27 @@ object Fleet {
      *  the same thing ("bring the fleet up to date"), so the batch already in
      *  flight IS that request being served. Auto-update and Update-All stop
      *  being two functions here and become one machine with two triggers. */
+    /**
+     * Whether an install can complete with NO user interaction at all.
+     *
+     * True only when a shell channel (Shizuku / embedded adb) is live: that
+     * runs `pm install` as uid 2000, which holds INSTALL_PACKAGES, so nothing
+     * is shown and no PackageInstaller session is opened.
+     *
+     * USER_ACTION_NOT_REQUIRED on the session path is NOT the same thing and is
+     * why "silent" can look broken: Android honours it only for a package this
+     * app is already the installer of record for, and silently prompts for
+     * every other one. An app the user installed by hand therefore always costs
+     * one confirmation before it can ever update quietly.
+     *
+     * This is also what decides whether the unattended pass needs a cap — see
+     * [installAll]'s callers.
+     */
+    fun silentCapable(ctx: Context): Boolean = activeShellChannel(ctx) != null
+
+    /** Name of the live shell channel, for status lines. */
+    fun silentChannelName(ctx: Context): String? = activeShellChannel(ctx)?.name()
+
     private val batchRunning = java.util.concurrent.atomic.AtomicBoolean(false)
 
     fun installAll(

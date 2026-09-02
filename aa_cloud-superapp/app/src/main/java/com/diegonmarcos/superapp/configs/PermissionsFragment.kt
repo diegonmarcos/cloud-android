@@ -163,6 +163,21 @@ class PermissionsFragment : Fragment() {
             if (com.diegonmarcos.superapp.updater.AutoUpdatePrefs.enabled(ctxAny())) "✓ ON" else "✗ OFF")
         row(ctx, col, "Install unknown apps",
             if (com.diegonmarcos.superapp.updater.AutoUpdatePrefs.canInstallSilently(ctxAny())) "✓ Granted" else "◯ Not granted")
+        // "Auto-update is ON but nothing installs quietly" has three different
+        // causes and they are indistinguishable from the toggle alone, so the
+        // effective state is spelled out rather than left to be guessed.
+        val silentCh = com.diegonmarcos.superapp.updater.Fleet.silentChannelName(ctxAny())
+        row(ctx, col, "Unattended installs",
+            if (silentCh != null) "✓ Silent via $silentCh (whole fleet per pass)"
+            else "◯ Prompts — capped at ${com.diegonmarcos.superapp.updater.BuildConfig.AU_MAX_PER_PASS}/pass")
+        if (silentCh == null) col.addView(small(ctx,
+            "No shell channel, so each update opens a confirm dialog and holds a " +
+            "PackageInstaller session until you answer — which is why the unattended pass " +
+            "only takes a few apps at a time. Start Shizuku (or pair the embedded adb under " +
+            "Dev tools) and the pass installs the whole fleet with nothing shown. " +
+            "'Install unknown apps' alone is not enough: USER_ACTION_NOT_REQUIRED is honoured " +
+            "only for apps this one already installed, so anything installed by hand prompts " +
+            "once regardless."))
         col.addView(permButtonRow(ctx,
             permButton(ctx, "Auto-update: " + (if (com.diegonmarcos.superapp.updater.AutoUpdatePrefs.enabled(ctxAny())) "ON" else "OFF"),
                        com.diegonmarcos.superapp.updater.AutoUpdatePrefs.enabled(ctxAny())) {
