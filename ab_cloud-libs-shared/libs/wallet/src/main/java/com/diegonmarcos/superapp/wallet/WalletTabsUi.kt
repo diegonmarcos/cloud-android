@@ -215,7 +215,7 @@ internal fun WalletArchiveToggle(
             // end reserves WalletConfigGear's corner, which floats over this
             // bar's right edge — a settings tap that lands on Archive instead
             // is worse than an off-centre bar.
-            .padding(start = 16.dp, end = 68.dp, vertical = 10.dp),
+            .padding(start = 16.dp, end = 68.dp, top = 10.dp, bottom = 10.dp),
     ) {
         Box(
             modifier = Modifier
