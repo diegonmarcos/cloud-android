@@ -267,9 +267,22 @@ case "$CMD" in
     # ORAS 1.x dropped --media-type; per-file media type is set via `file:type`.
     reg="$(python3 -c "import json;d=json.load(open('$SCRIPT_DIR/build.json'))['release']['ghcr'];print(f\"{d['registry']}/{d['namespace']}/{d['image']}\")")"
     mt="$(python3 -c "import json;print(json.load(open('$SCRIPT_DIR/build.json'))['release']['ghcr']['media_type'])")"
-    ( cd "$DIST_DIR" && oras push "${reg}:latest"          "Cloud-Keyboard.apk:${mt}" \
+    ghcr_image="${reg##*/}"
+    # CREATE WITH GITHUB_TOKEN, UPDATE WITH THE AMBIENT PAT LOGIN. Visibility is
+    # fixed at CREATE time and there is no API to change it afterwards, so the
+    # token is chosen per PACKAGE: absent package -> GITHUB_TOKEN, which links it
+    # to this public repo and inherits that visibility. Inert for a package that
+    # already exists, which is every one of these today.
+    creds=()
+    if [ -n "${GHCR_CREATE_TOKEN:-}" ] && command -v gh >/dev/null 2>&1 \
+       && ! gh api "/user/packages/container/${ghcr_image}" >/dev/null 2>&1; then
+      log "ghcr: ${ghcr_image} does not exist — creating it with GITHUB_TOKEN so it inherits the repo"
+      creds=(--username "${GITHUB_ACTOR:-diegonmarcos}" --password "${GHCR_CREATE_TOKEN}")
+    fi
+
+    ( cd "$DIST_DIR" && oras push "${creds[@]}" "${reg}:latest"          "Cloud-Keyboard.apk:${mt}" \
     --annotation "org.opencontainers.image.source=$(_ghcr_source)" )
-    ( cd "$DIST_DIR" && oras push "${reg}:sha-${SHORT}"    "Cloud-Keyboard.apk:${mt}" \
+    ( cd "$DIST_DIR" && oras push "${creds[@]}" "${reg}:sha-${SHORT}"    "Cloud-Keyboard.apk:${mt}" \
     --annotation "org.opencontainers.image.source=$(_ghcr_source)" )
     log "Pushed :latest + :sha-${SHORT}"
     registry="${reg%%/*}"; _ns_image="${reg#*/}"; namespace="${_ns_image%/*}"; image="${_ns_image##*/}"

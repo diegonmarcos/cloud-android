@@ -416,11 +416,22 @@ step_oras_push() {
     elif [ -f "$DIST_DIR/${base_debug%.apk}${suffix}.apk" ];   then art="$DIST_DIR/${base_debug%.apk}${suffix}.apk"
     else log "oras-push: no artifact for abi $abi (suffix '${suffix}') — skip"; continue; fi
     adir="$(dirname "$art")"; aname="$(basename "$art")"
+    # CREATE WITH GITHUB_TOKEN, UPDATE WITH THE AMBIENT PAT LOGIN. Visibility is
+    # fixed at CREATE time and there is no API to change it afterwards, so the
+    # token is chosen per PACKAGE: absent package -> GITHUB_TOKEN, which links it
+    # to this public repo and inherits that visibility. Inert for a package that
+    # already exists, which is every one of these today.
+    local creds=()
+    if [ -n "${GHCR_CREATE_TOKEN:-}" ] && command -v gh >/dev/null 2>&1 \
+       && ! gh api "/user/packages/container/${image}" >/dev/null 2>&1; then
+      log "ghcr: ${image} does not exist — creating it with GITHUB_TOKEN so it inherits the repo"
+      creds=(--username "${GITHUB_ACTOR:-diegonmarcos}" --password "${GHCR_CREATE_TOKEN}")
+    fi
     while IFS= read -r tmpl; do
       [ -z "$tmpl" ] && continue
       tag="$(_resolve_template "$tmpl")${suffix}"; ref="$registry/$namespace/$image:$tag"
       log "oras push $ref ← $aname"
-      ( cd "$adir" && in_nix oras push "$ref" "$aname:$media_type" --artifact-type "$media_type" \
+      ( cd "$adir" && in_nix oras push "${creds[@]}" "$ref" "$aname:$media_type" --artifact-type "$media_type" \
     --annotation "org.opencontainers.image.source=$(_ghcr_source)" )
     done < <(prefer_host jq -r '.release.ghcr.tags[]' "$SCRIPT_DIR/build.json")
     _ghcr_gate_public "$namespace" "$image" "$tag" "$registry"

@@ -419,6 +419,28 @@ step_oras_push() {
   rev="${GITHUB_SHA:-$(prefer_host git -C "$SCRIPT_DIR" rev-parse HEAD 2>/dev/null || echo unknown)}"
   rev="${rev:0:8}"
 
+  # CREATE WITH GITHUB_TOKEN, UPDATE WITH THE AMBIENT PAT LOGIN. A GHCR
+  # package's visibility is decided by the token that CREATES it and can never
+  # be changed afterwards — there is no visibility API (PATCH/PUT/POST on
+  # /user/packages/container/{pkg}[/visibility] all 404). A repo-scoped
+  # GITHUB_TOKEN creates the package linked to this repo and inheriting its
+  # PUBLIC visibility; the user-scoped PAT creates it unlinked and PRIVATE
+  # forever. But GITHUB_TOKEN cannot UPDATE a package that is not linked to
+  # this repo, so the token is chosen per PACKAGE, not per repo.
+  #
+  # This changes NOTHING for this app today: its package already exists and is
+  # already public, so the branch below is never taken and the ambient login
+  # keeps updating it. It matters the day the package is deleted and recreated
+  # — which is exactly how cloud-camera and then cloud-me were each created
+  # private, one app at a time, because the guarantee lived in whichever script
+  # had last been fixed rather than in all of them.
+  local creds=()
+  if [ -n "${GHCR_CREATE_TOKEN:-}" ] && command -v gh >/dev/null 2>&1 \
+     && ! gh api "/user/packages/container/${image}" >/dev/null 2>&1; then
+    log "ghcr: ${image} does not exist — creating it with GITHUB_TOKEN so it inherits the repo"
+    creds=(--username "${GITHUB_ACTOR:-diegonmarcos}" --password "${GHCR_CREATE_TOKEN}")
+  fi
+
   local tags
   tags="$(prefer_host jq -r '.release.ghcr.tags[]' "$SCRIPT_DIR/build.json")"
   local suffix; suffix="$(_variant_tag_suffix)"
@@ -428,7 +450,7 @@ step_oras_push() {
     tag="$(_resolve_template "$tmpl")${suffix}"
     ref="$registry/$namespace/$image:$tag"
     log "oras push $ref ← $artifact_name (rev $rev)"
-    ( cd "$artifact_dir" && in_nix oras push "$ref" "$artifact_name:$media_type" \
+    ( cd "$artifact_dir" && in_nix oras push "${creds[@]}" "$ref" "$artifact_name:$media_type" \
         --artifact-type "$media_type" \
         --annotation "org.opencontainers.image.revision=$rev" \
         --annotation "org.opencontainers.image.source=$(_ghcr_source)" )

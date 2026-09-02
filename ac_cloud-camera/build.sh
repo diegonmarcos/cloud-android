@@ -858,12 +858,22 @@ step_oras_push() {
   elif [ -f "$DIST_DIR/$(_json '.release.artifact.debug')" ];   then artifact="$DIST_DIR/$(_json '.release.artifact.debug')"
   else errlog "oras-push: no APK in $DIST_DIR — run build/release first"; exit 1; fi
   local adir aname; adir="$(dirname "$artifact")"; aname="$(basename "$artifact")"
+  # Second push site, second decision. publish-fork got the per-package token
+  # when cloud-camera was created private on 2026-08-31; this one — the HUB
+  # APK's own image — did not, so the same defect stayed live in the same file
+  # behind a fixed sibling.
+  local creds=()
+  if [ -n "${GHCR_CREATE_TOKEN:-}" ] && command -v gh >/dev/null 2>&1 \
+     && ! gh api "/user/packages/container/${image}" >/dev/null 2>&1; then
+    log "ghcr: ${image} does not exist — creating it with GITHUB_TOKEN so it inherits the repo"
+    creds=(--username "${GITHUB_ACTOR:-diegonmarcos}" --password "${GHCR_CREATE_TOKEN}")
+  fi
   local tmpl tag ref
   while IFS= read -r tmpl; do
     [ -z "$tmpl" ] && continue
     tag="$(_resolve_template "$tmpl")"; ref="$registry/$namespace/$image:$tag"
     log "oras push $ref ← $aname"
-    ( cd "$adir" && in_nix oras push "$ref" "$aname:$media_type" --artifact-type "$media_type" )
+    ( cd "$adir" && in_nix oras push "${creds[@]}" "$ref" "$aname:$media_type" --artifact-type "$media_type" )
   done < <(prefer_host jq -r '.release.ghcr.tags[]' "$SCRIPT_DIR/build.json")
   _ghcr_gate_public "$namespace" "$image" "$tag" "$registry"
 }

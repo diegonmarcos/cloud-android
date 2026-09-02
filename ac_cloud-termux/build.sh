@@ -727,11 +727,22 @@ step_publish_fork() {
   # on that device before falling back to the universal `latest`.
   local abi="${COMMS_BUNDLE_ABI:-arm64-v8a}" suffix=""
   [ "$abi" = "arm64-v8a" ] || suffix="-$abi"
+  # CREATE WITH GITHUB_TOKEN, UPDATE WITH THE AMBIENT PAT LOGIN. Visibility is
+  # fixed when a GHCR package is CREATED and no API can change it later, so the
+  # token is chosen per PACKAGE: absent package -> GITHUB_TOKEN, which links it
+  # to this public repo and inherits that visibility. Inert once the package
+  # exists, which is the case for every image these forks publish today.
+  local creds=()
+  if [ -n "${GHCR_CREATE_TOKEN:-}" ] && command -v gh >/dev/null 2>&1 \
+     && ! gh api "/user/packages/container/${image}" >/dev/null 2>&1; then
+    log "ghcr: ${image} does not exist — creating it with GITHUB_TOKEN so it inherits the repo"
+    creds=(--username "${GITHUB_ACTOR:-diegonmarcos}" --password "${GHCR_CREATE_TOKEN}")
+  fi
   local tag ref
   for tag in latest "sha-${sha:0:8}"; do
     ref="$registry/$namespace/$image:${tag}${suffix}"
     log "publish-fork[$key]: oras push $ref"
-    ( cd "$DIST_DIR" && in_nix oras push "$ref" "$(_variant_gh_asset):$media_type" \
+    ( cd "$DIST_DIR" && in_nix oras push "${creds[@]}" "$ref" "$(_variant_gh_asset):$media_type" \
         --artifact-type "$media_type" )
   done
   _ghcr_gate_public "$namespace" "$image" "${tag}${suffix}" "$registry"
@@ -868,12 +879,23 @@ step_oras_push() {
   elif [ -f "$DIST_DIR/$(_json '.release.artifact.debug')" ];   then artifact="$DIST_DIR/$(_json '.release.artifact.debug')"
   else errlog "oras-push: no APK in $DIST_DIR — run build/release first"; exit 1; fi
   local adir aname; adir="$(dirname "$artifact")"; aname="$(basename "$artifact")"
+  # CREATE WITH GITHUB_TOKEN, UPDATE WITH THE AMBIENT PAT LOGIN. Visibility is
+  # fixed when a GHCR package is CREATED and no API can change it later, so the
+  # token is chosen per PACKAGE: absent package -> GITHUB_TOKEN, which links it
+  # to this public repo and inherits that visibility. Inert once the package
+  # exists, which is the case for every image these forks publish today.
+  local creds=()
+  if [ -n "${GHCR_CREATE_TOKEN:-}" ] && command -v gh >/dev/null 2>&1 \
+     && ! gh api "/user/packages/container/${image}" >/dev/null 2>&1; then
+    log "ghcr: ${image} does not exist — creating it with GITHUB_TOKEN so it inherits the repo"
+    creds=(--username "${GITHUB_ACTOR:-diegonmarcos}" --password "${GHCR_CREATE_TOKEN}")
+  fi
   local tmpl tag ref
   while IFS= read -r tmpl; do
     [ -z "$tmpl" ] && continue
     tag="$(_resolve_template "$tmpl")"; ref="$registry/$namespace/$image:$tag"
     log "oras push $ref ← $aname"
-    ( cd "$adir" && in_nix oras push "$ref" "$aname:$media_type" --artifact-type "$media_type" )
+    ( cd "$adir" && in_nix oras push "${creds[@]}" "$ref" "$aname:$media_type" --artifact-type "$media_type" )
   done < <(prefer_host jq -r '.release.ghcr.tags[]' "$SCRIPT_DIR/build.json")
   _ghcr_gate_public "$namespace" "$image" "$tag" "$registry"
 }

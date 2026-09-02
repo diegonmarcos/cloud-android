@@ -274,9 +274,20 @@ case "$CMD" in
     mt="$(_bj "['release']['ghcr']['media_type']")"
     registry="${reg%%/*}"; namespace="${reg#*/}"
     while IFS='|' read -r n flavor asset image; do
-      ( cd "$DIST_DIR" && oras push "${reg}/${image}:latest"       "${asset}:${mt}" \
+      # CREATE WITH GITHUB_TOKEN, UPDATE WITH THE AMBIENT PAT LOGIN. Visibility is
+      # fixed at CREATE time and there is no API to change it afterwards, so the
+      # token is chosen per PACKAGE: absent package -> GITHUB_TOKEN, which links it
+      # to this public repo and inherits that visibility. Inert for a package that
+      # already exists, which is every one of these today.
+      creds=()
+      if [ -n "${GHCR_CREATE_TOKEN:-}" ] && command -v gh >/dev/null 2>&1 \
+         && ! gh api "/user/packages/container/${image}" >/dev/null 2>&1; then
+        log "ghcr: ${image} does not exist — creating it with GITHUB_TOKEN so it inherits the repo"
+        creds=(--username "${GITHUB_ACTOR:-diegonmarcos}" --password "${GHCR_CREATE_TOKEN}")
+      fi
+      ( cd "$DIST_DIR" && oras push "${creds[@]}" "${reg}/${image}:latest"       "${asset}:${mt}" \
     --annotation "org.opencontainers.image.source=$(_ghcr_source)" )
-      ( cd "$DIST_DIR" && oras push "${reg}/${image}:sha-${SHORT}" "${asset}:${mt}" \
+      ( cd "$DIST_DIR" && oras push "${creds[@]}" "${reg}/${image}:sha-${SHORT}" "${asset}:${mt}" \
     --annotation "org.opencontainers.image.source=$(_ghcr_source)" )
       _ghcr_publish "$image"
       _ghcr_gate_public "$namespace" "$image" "sha-${SHORT}" "$registry"

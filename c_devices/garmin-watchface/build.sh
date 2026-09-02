@@ -198,11 +198,22 @@ step_oras_push() {
   local artdir="$DIST_DIR/$design"
   [ -f "$artdir/$art" ] || die "oras-push: $artdir/$art missing — run build first"
 
+  # CREATE WITH GITHUB_TOKEN, UPDATE WITH THE AMBIENT PAT LOGIN. Visibility is
+  # fixed at CREATE time and there is no API to change it afterwards, so the
+  # token is chosen per PACKAGE: absent package -> GITHUB_TOKEN, which links it
+  # to this public repo and inherits that visibility. Inert for a package that
+  # already exists, which is every one of these today.
+  local creds=()
+  if [ -n "${GHCR_CREATE_TOKEN:-}" ] && command -v gh >/dev/null 2>&1 \
+     && ! gh api "/user/packages/container/${image}" >/dev/null 2>&1; then
+    log "ghcr: ${image} does not exist — creating it with GITHUB_TOKEN so it inherits the repo"
+    creds=(--username "${GITHUB_ACTOR:-diegonmarcos}" --password "${GHCR_CREATE_TOKEN}")
+  fi
   local tag; while IFS= read -r tag; do
     tag="$(_expand "$tag" "$design")"
     local ref="$registry/$namespace/$image:$tag"
     log "oras push $ref ← $art"
-    ( cd "$artdir" && in_nix oras push "$ref" "$art:$media" )
+    ( cd "$artdir" && in_nix oras push "${creds[@]}" "$ref" "$art:$media" )
   done < <(jqr -r '.release.ghcr.tags[]' "$BUILD_JSON")
 }
 
