@@ -244,6 +244,12 @@ object Sections {
          *  tiles meant keeping two copies of one link list in step forever. */
         val url: String = "",
 
+        /** When set, this page renders THAT section's own page grid (Pages +
+         *  Actions) instead of a list of its own — so a tab can BE another
+         *  section rather than a second copy of it that drifts. Cloud ▸
+         *  Configs is the case. */
+        val mirrorSection: String = "",
+
         /** true = routable but NOT listed as a child of its section. Cloud's
          *  five subject Labs (quant, circus, …) already render inside the Labs
          *  facet via tiles_labs; listing them again made Cloud eight
@@ -472,6 +478,7 @@ object Sections {
                         facet    = po.optBoolean("facet", false),
                         mode     = po.optString("mode", ""),
                         url      = po.optString("url", ""),
+                        mirrorSection = po.optString("mirror_section", ""),
                         hidden   = po.optBoolean("hidden", false),
                         isAction = po.optBoolean("is_action", false),
                     ))

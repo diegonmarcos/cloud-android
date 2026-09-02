@@ -57,7 +57,6 @@ class LauncherNavController(private val host: NavHost) {
      *  into the detail pane (tablets). */
     fun goSection(id: String, label: String, initialPage: String = "") {
         if (id == "home") { goHome(); return }
-        val ctx = host.navContext()
         host.currentSection = id
         host.currentLabel = label
         host.setSectionTitle(label)
@@ -100,30 +99,7 @@ class LauncherNavController(private val host: NavHost) {
             // took anything a tablet has too many pages to pane, so page count
             // no longer gates this: a phone keeps its strip at any size.
             isTabbed(section) -> SectionTabsFragment.newInstance(id, initialPage)
-            section.pages.isNotEmpty() -> {
-                // Pages and Actions are shown as two labelled groups, off the
-                // same `is_action` flag the bottom star splits its two arcs by.
-                // The extras declared on this section's radial node (KDE
-                // Connect, Animations, Copy Info) are merged in so the grid and
-                // the star list the same actions — declared once in build.json.
-                val own = section.pages.map { p ->
-                    TileGridFragment.Tile(
-                        id = if (p.action.isNotBlank()) p.action else "page:${p.id}",
-                        label = p.label,
-                        iconRes = p.iconName?.let { Sections.iconResFor(ctx, it) } ?: 0,
-                        group = if (p.isAction) GROUP_ACTIONS else GROUP_PAGES)
-                }
-                val extra = com.diegonmarcos.superapp.onehand.CircularMenu.config().nodes
-                    .firstOrNull { it.childKey == id }?.actions.orEmpty()
-                    .map { TileGridFragment.Tile(it.target, it.label, Sections.iconResFor(ctx, it.iconName), GROUP_ACTIONS) }
-                val actions = own.filter { it.group == GROUP_ACTIONS } + extra
-                TileGridFragment.newInstance(
-                    title = label,
-                    // No actions in this section? Drop the headings entirely —
-                    // a lone "PAGES" banner over every other grid is noise.
-                    tiles = if (actions.isEmpty()) own.map { it.copy(group = "") }
-                            else own.filter { it.group == GROUP_PAGES } + actions)
-            }
+            section.pages.isNotEmpty() -> sectionGrid(section, label)
             section.defaultChildren.isNotEmpty() -> TileGridFragment.newInstance(
                 title = label,
                 tiles = section.defaultChildren.mapIndexed { i, lbl ->
@@ -264,6 +240,42 @@ class LauncherNavController(private val host: NavHost) {
     }
 
     /**
+     * A section's own page grid — Pages and Actions as two labelled groups,
+     * off the same `is_action` flag the bottom star splits its two arcs by,
+     * with the extras declared on that section's radial node (KDE Connect,
+     * Animations, Copy Info) merged in so the grid and the star list the same
+     * actions from one declaration.
+     *
+     * Pulled out of [goSection] because Cloud ▸ Configs has to render THE
+     * Configs grid, not a second list of the same pages maintained beside it.
+     */
+    private fun sectionGrid(section: Sections.Section, title: String): Fragment {
+        val ctx = host.navContext()
+        val own = section.pages.map { p ->
+            TileGridFragment.Tile(
+                // FULLY QUALIFIED on purpose. The bare "page:<id>" form this
+                // used to emit resolves against MainActivity.currentSection,
+                // which is only the right section while you are standing in
+                // it — mirrored into the Cloud tab, every tile would have
+                // opened page:cloud/<id> and found nothing.
+                id = if (p.action.isNotBlank()) p.action else "page:${section.id}/${p.id}",
+                label = p.label,
+                iconRes = p.iconName?.let { Sections.iconResFor(ctx, it) } ?: 0,
+                group = if (p.isAction) GROUP_ACTIONS else GROUP_PAGES)
+        }
+        val extra = com.diegonmarcos.superapp.onehand.CircularMenu.config().nodes
+            .firstOrNull { it.childKey == section.id }?.actions.orEmpty()
+            .map { TileGridFragment.Tile(it.target, it.label, Sections.iconResFor(ctx, it.iconName), GROUP_ACTIONS) }
+        val actions = own.filter { it.group == GROUP_ACTIONS } + extra
+        return TileGridFragment.newInstance(
+            title = title,
+            // No actions in this section? Drop the headings entirely — a lone
+            // "PAGES" banner over every other grid is noise.
+            tiles = if (actions.isEmpty()) own.map { it.copy(group = "") }
+                    else own.filter { it.group == GROUP_PAGES } + actions)
+    }
+
+    /**
      * Render a FACET page (build.json `"facet": true`) — a child of an
      * aggregator section that shows the SECTION's own tile/stack data rather
      * than a [SectionPages] factory. The facet id is the `tiles_<id>` /
@@ -274,7 +286,12 @@ class LauncherNavController(private val host: NavHost) {
     private fun aggregatorPage(section: Sections.Section, page: Sections.Page): Fragment {
         val title = "${section.label} · ${page.label}"
         val ownTiles = section.tilesByPage[page.id].orEmpty()
+        val mirrored = page.mirrorSection.takeIf { it.isNotBlank() }?.let { Sections.byId(it) }
         return when {
+            // `mirror_section` — this facet IS that section's grid. Cloud ▸
+            // Configs shows THE Configs page, Actions and all, instead of a
+            // second copy of the same page list drifting beside it.
+            mirrored != null -> sectionGrid(mirrored, page.label)
             // What the PAGE declares, in order — stack_<id>, then tiles_<id>.
             // Only a page that declares neither falls back to the section-wide
             // tile_groups; checking tile_groups first meant a section that had
