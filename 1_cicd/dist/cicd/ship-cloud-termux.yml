@@ -26,6 +26,7 @@ on:
       - "ac_cloud-termux/**"
 permissions:
   contents: write   # gh release upload
+  packages: write   # ghcr push (oras) — cloud-terminal mirror, arm64
 
 concurrency:
   group: ship-cloud-termux-${{ github.ref }}
@@ -139,6 +140,45 @@ jobs:
           path: ${{ env.WORK_DIR }}/dist/*.apk
           if-no-files-found: error
           retention-days: 30
+
+      # ── GHCR mirror (PUBLIC on first build), arm64 only ──────────────
+      # The old cloud-terminal package was linked to cloud-infra-desktop, so
+      # every cloud-u-android push 403'd; it was deleted so THIS repo's first
+      # push creates it fresh. Login is GITHUB_TOKEN, never the PAT: a package
+      # created by a PAT is account-owned and born PRIVATE with no API to flip
+      # it, which is the whole reason first builds came out private. arm64 only
+      # so the two ABI jobs cannot race on the `latest` tag; x86_64 ships via
+      # the release asset. The engine (step_oras_push) creates an absent
+      # package with GHCR_CREATE_TOKEN=GITHUB_TOKEN so it inherits this public
+      # repo, then anon-pulls and auto-deletes it if it is somehow not public.
+      - name: Install ORAS
+        if: ${{ steps.gate.outputs.skip != 'true' && matrix.abi == 'arm64' }}
+        run: |
+          curl -fsSL https://github.com/oras-project/oras/releases/download/v1.2.0/oras_1.2.0_linux_amd64.tar.gz \
+            | sudo tar -C /usr/local/bin -xzf - oras
+          oras version
+
+      - name: Login to GHCR
+        if: ${{ steps.gate.outputs.skip != 'true' && matrix.abi == 'arm64' }}
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" \
+            | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Push APK to GHCR via ORAS (public, arm64)
+        if: ${{ steps.gate.outputs.skip != 'true' && matrix.abi == 'arm64' }}
+        working-directory: ${{ env.WORK_DIR }}
+        env:
+          BYPASS_NIX: "1"
+          CLOUDNAV_VARIANT: arm64
+          GITHUB_SHA: ${{ github.sha }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_CREATE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./build.sh oras-push
+
+      - name: Is the GHCR package publicly pullable
+        if: ${{ always() && steps.gate.outputs.skip != 'true' && matrix.abi == 'arm64' }}
+        continue-on-error: true
+        run: sh 1_cicd/dist/scripts/cloud-android-ghcr-visibility.sh diegonmarcos cloud-terminal
 
       # Rolling 'latest': /releases/latest/download/cloud-terminal.apk is the
       # stable install URL the constellation points at.

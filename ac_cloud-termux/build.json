@@ -62,12 +62,16 @@
   },
   "release": {
     "ghcr": {
-      "_doc": "ENABLED. It was disabled when packages came out private \u2014 the cause was the login preferring secrets.GHCR_TOKEN, a PAT, which creates an ACCOUNT-owned package that is born private and cannot be patched. Every workflow here logs in with GITHUB_TOKEN now, which creates the package FOR THE REPOSITORY and takes the repository's visibility; verified on cloud-u-linux, whose first GITHUB_TOKEN push produced a public package. The workflow checks after every push and says so if it ever regresses.",
+      "_doc": "PUBLIC on first build. Published arm64-only (the canonical phone image) so the two ABI jobs cannot collide on `latest`; x86_64 ships via the release asset only. step_oras_push creates an ABSENT package with GITHUB_TOKEN (GHCR_CREATE_TOKEN), which links it to THIS public repo and is born public; _ghcr_gate_public anon-pulls after and auto-deletes if it ever comes out private, so the store falls through to the public release rather than waiting on an unreachable mirror. The old `cloud-terminal` package was linked to cloud-infra-desktop and so 403'd every cloud-u-android push; it was deleted 2026-09-02 to free the name.",
       "enabled": true,
       "registry": "ghcr.io",
       "namespace": "diegonmarcos",
       "image": "cloud-terminal",
-      "media_type": "application/vnd.android.package-archive"
+      "media_type": "application/vnd.android.package-archive",
+      "tags": [
+        "latest",
+        "sha-{sha}"
+      ]
     },
     "gh_release": {
       "_doc": "Rolling 'latest' release: the ONLY channel for this app, since GHCR would publish it private. asset_name was inherited as cloud-comms-dialer.apk when this block was copied from the dialer \u2014 an install URL pointing at a different app entirely. regen.sh's fork branch derives the store asset as image + '.apk' and so was never wrong, which is exactly why the bad value could have sat here unnoticed.",
@@ -109,6 +113,10 @@
         "ghcr_tag_suffix": "-x86_64",
         "update_tag": "latest-x86_64"
       }
-    ]
+    ],
+    "artifact": {
+      "release": "cloud-terminal.apk",
+      "debug": "cloud-terminal.apk"
+    }
   }
 }
