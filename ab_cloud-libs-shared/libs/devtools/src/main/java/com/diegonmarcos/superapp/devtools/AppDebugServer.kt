@@ -111,6 +111,23 @@ object AppDebugServer {
         ConcurrentHashMap<String, (String, Map<String, String>) -> String?>()
 
     /**
+     * One entry of an app group's catalog, as it appears in /api/docs.
+     *
+     * Same three fields the universal endpoints already publish, so a client
+     * reads one list and does not care which half an entry came from.
+     */
+    data class Op(
+        val op: String,
+        val params: String = "",
+        val description: String = "",
+    )
+
+    /** Catalogs supplied via the documenting [route] overload, keyed like
+     *  [routes]. A group registered without one still serves — it is simply
+     *  undiscoverable, which is the pre-existing behaviour. */
+    private val routeDocs = ConcurrentHashMap<String, List<Op>>()
+
+    /**
      * Register an app's own data group: `route("news") { op, q -> ... }` serves
      * `/api/news/<op>`, returning null for 404. Call it from Application.onCreate.
      *
@@ -121,6 +138,28 @@ object AppDebugServer {
      */
     fun route(group: String, handler: (op: String, query: Map<String, String>) -> String?) {
         routes[group.trim('/')] = handler
+    }
+
+    /**
+     * Same registration, plus the catalog /api/docs should advertise for it.
+     *
+     * Without this an app's own routes are reachable but invisible: /api/docs
+     * listed only the six universal endpoints, so anything reading the catalog
+     * to find out what an app serves — cloud-superapp-mcp's `superapp_docs`,
+     * or a human with curl — concluded every app served the same six. The
+     * alternative was a route table mirrored outside the app, and this
+     * constellation already has enough hand-kept mirrors that drift.
+     *
+     * `route("news", listOf(Op("latest", "n=count", "newest headlines"))) { op, q -> ... }`
+     */
+    fun route(
+        group: String,
+        ops: List<Op>,
+        handler: (op: String, query: Map<String, String>) -> String?,
+    ) {
+        val g = group.trim('/')
+        routes[g] = handler
+        routeDocs[g] = ops
     }
 
     /** `Authorization: Bearer <t>` → `<t>`; null for any other header. Case and
@@ -348,6 +387,19 @@ object AppDebugServer {
         append("""{"path":"/api/fleet/wake","params":"pkg=<applicationId>",""")
         append(""""description":"start a member's process via its provider — no activity """)
         append("""launch, so Android background-start restrictions do not apply"}""")
+        append("],")
+        append(""""groups":[""")
+        routeDocs.entries.sortedBy { it.key }.forEachIndexed { gi, (group, ops) ->
+            if (gi > 0) append(',')
+            append("""{"group":"${esc(group)}","endpoints":[""")
+            ops.forEachIndexed { i, o ->
+                if (i > 0) append(',')
+                append("""{"path":"/api/${esc(group)}/${esc(o.op)}",""")
+                append(""""params":"${esc(o.params)}",""")
+                append(""""description":"${esc(o.description)}"}""")
+            }
+            append("]}")
+        }
         append("]}")
     }
 
