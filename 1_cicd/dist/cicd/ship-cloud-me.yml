@@ -39,7 +39,6 @@ on:
       - "ab_cloud-libs-shared/libs/fin/**"
       - "ab_cloud-libs-shared/libs/health/**"
       - "ab_cloud-libs-shared/libs/updater/**"
-      - "ab_cloud-libs-shared/libs/wallet/**"
       - "ac_cloud-me/**"
 permissions:
   contents: write

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Forced DARK (not DayNight): the section surfaces are drawn in code
-         against @color/me_bg, and libs:wallet / libs:health both paint their
+         against @color/me_bg, and libs:health paints its
          own #0B0414 Compose ground. A system light-mode switch would recolour
          the chrome and leave the content dark, so the app commits to one. -->
     <style name="Theme.CloudMe" parent="Theme.Material3.Dark.NoActionBar">

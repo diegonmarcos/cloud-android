@@ -1,9 +1,9 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
-    // libs:wallet and libs:health are pure-Compose surfaces and this module
-    // hosts them inside a ComposeView, so the app needs the Compose compiler
-    // even though its own shell is Views.
+    // libs:health is a pure-Compose surface and this module hosts it inside a
+    // ComposeView, so the app needs the Compose compiler even though its own
+    // shell is Views.
     id 'org.jetbrains.kotlin.plugin.compose'
 }
 
@@ -140,7 +140,6 @@ dependencies {
     implementation project(':libs:core')
     implementation project(':libs:updater')
     implementation project(':libs:analytics')
-    implementation project(':libs:wallet')   // Me tab (social cards)
     implementation project(':libs:health')   // Health section (Health Connect)
     implementation project(':libs:fin')      // Buro → Accounting
     implementation project(':libs:cal')      // Agenda → events + todos
