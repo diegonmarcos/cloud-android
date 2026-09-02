@@ -286,6 +286,22 @@ public class JmapSync {
             folderToMailbox.put(folder.id, mb.getId());
             mailboxToFolder.put(mb.getId(), folder.id);
         }
+        // Probe folders that are NO LONGER on the server never enter the mailbox
+        // loop above, so their rows would outlive the folder forever. On-device
+        // 2026-09-02: Cloud-Infra/Health/Checks/health_resources had left the
+        // server yet still held 2699 local rows — every unread-count query paid
+        // for them and no discovery pass could ever purge them. Walk the LOCAL
+        // folder list too; idempotent, logs only when rows were removed.
+        for (EntityFolder lf : db.folder().getFolders(account.id, false, false)) {
+            if (lf == null || !noPhoneSync(lf.name))
+                continue;
+            if (Boolean.TRUE.equals(lf.synchronize))
+                db.folder().setFolderSynchronize(lf.id, false);
+            int purged = db.message().deleteMessagesKeep(lf.id, 0);
+            if (purged > 0)
+                EntityLog.log(context, "JMAP no-phone-sync (local) folder=" + lf.name + " purged=" + purged);
+        }
+
         if (!repaired)
             prefs.edit().putBoolean(repairKey, true).apply();
 
