@@ -88,6 +88,15 @@ print(f"checked {len(files)} pages, {len(bar)} bar sections, {len(roots)} file t
 sys.exit(1 if bad else 0)
 PY
 
+# A literal-dollar escape in Kotlin is almost always a generated-code accident:
+# "${'$'}x" is the string $x, not the value of x. One of those turned every
+# page asset path into a filename that could not exist, and the fail-soft
+# loader rendered empty pages instead of saying so.
+if grep -rn "\${'\$'}" app/src --include='*.kt' 2>/dev/null; then
+    echo "FAIL: literal-dollar escape in Kotlin (see above) — did a generator write that?"
+    exit 1
+fi
+
 # Cloud Wallet's bundled wallet.json is this tree flattened, not a second copy.
 ./data/regen-wallet-json.py --check
 

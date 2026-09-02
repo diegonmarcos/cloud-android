@@ -1,6 +1,7 @@
 package com.diegonmarcos.cloudme
 
 import android.content.Context
+import android.util.Log
 import android.util.Base64
 import org.json.JSONArray
 import org.json.JSONObject
@@ -100,13 +101,19 @@ object Sections {
         val section = byId(sectionId) ?: return JSONArray()
         val parent = section.parentOf(pageId)
         val path = if (parent != null && parent.id != pageId) {
-            "${'$'}sectionId/${'$'}{parent.id}/${'$'}pageId.json"
+            "$sectionId/${parent.id}/$pageId.json"
         } else {
-            "${'$'}sectionId/${'$'}pageId.json"
+            "$sectionId/$pageId.json"
         }
         return runCatching {
             JSONArray(ctx.assets.open(path).bufferedReader().use { it.readText() })
-        }.getOrDefault(JSONArray())
+        }.getOrElse {
+            // Empty-and-quiet is how a wrong path stayed invisible through a
+            // whole release: every page rendered its "Nothing here yet" state
+            // and nothing said why. Still fail soft, but leave a trace.
+            Log.w("Sections", "no page asset at $path", it)
+            JSONArray()
+        }
     }
 
     /** One level of `pages`, plus whatever `pages` each of those declares.
