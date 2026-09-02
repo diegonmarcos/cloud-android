@@ -92,6 +92,34 @@ fork, same self-generated ECDSA key, same manual `authorized_keys` step.
 | host/port/user/command | `build.json::watchdog` → baked to `BuildConfig`, never Kotlin constants |
 | fleet + console actions | `cloud-infra/1_cloud-configs/dist/watchdog.json` |
 
+## If the app shows an empty interface
+
+It is not reaching the machine, and until 2026-09-02 the usual reason was a
+bug in the panel rather than anything on the phone.
+
+`snapshot` decided whether the sampler had published by asking whether
+`host_info.host` was empty. That is read from `/proc/sys/kernel/hostname`,
+which returns an **empty string inside nix-on-droid's proot** — so every
+published snapshot on this device looked like no snapshot, `snapshot` exited 1,
+and the app got an error instead of an envelope. The shell it ships with stayed
+exactly as baked: no fleet, no numbers, no pages. Every "the APK has not
+changed" was this.
+
+The liveness test is `ts` now, which the publisher writes on every tick and
+nothing else writes, and the sampler names the device four ways
+(`/proc/sys/kernel/hostname` → `/etc/hostname` → `$HOSTNAME` →
+`/system/bin/getprop ro.product.model`, which answers `SM-G996B` here).
+
+To check by hand, from a shell in the env:
+
+```sh
+export XDG_RUNTIME_DIR=$HOME/.cache/xdg-runtime
+~/.cache/cloud-watchdog/bin/my-watchdog-tui snapshot | head -c 200
+```
+
+An envelope means the app has everything it needs. An error names what is
+missing.
+
 ## Known gaps
 
 * `versionCode` is 1 and never bumped, so the in-app updater is inert —
