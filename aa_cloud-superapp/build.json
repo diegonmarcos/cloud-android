@@ -436,7 +436,7 @@
         {
           "label": "Labs",
           "icon": "ic_p_sol_tools",
-          "target": "page:cloud/linktree"
+          "target": "page:cloud/lnktree"
         },
         {
           "label": "C3",
@@ -1459,11 +1459,11 @@
             "_doc": "The cloud apps page — Quickmarks (tile_groups), the star's Actions ring, then Smart Folders. GroupedTilesFragment keys its extras off sectionId=='cloud', not this page id."
           },
           {
-            "id": "linktree",
-            "label": "Linktree",
+            "id": "lnktree",
+            "label": "Lnktree",
             "icon": "ic_p_sol_tools",
             "mode": "apps",
-            "_doc": "Renders the live linktree site in a WebView (WebPageFragment) instead of a Kotlin port of it — one maintained list, not two copies to keep in step. `mode` still selects Apps mode on open; that is declared, not inferred from the id.",
+            "_doc": "Renders the live site in a WebView (WebPageFragment) instead of a Kotlin port of it — one maintained list, not two copies to keep in step. The PAGE is Lnktree; the `url` host keeps its i because linktree.diegonmarcos.com is what actually serves the site (lnktree.diegonmarcos.com answers 404). `mode` still selects Apps mode on open — declared, not inferred from the id.",
             "url": "https://linktree.diegonmarcos.com"
           },
           {
@@ -1944,7 +1944,7 @@
           }
         ],
         "_doc_tiles_configs": "Cloud ▸ Configs. Generated from sections[config].pages — one tile per page, using its `action` when it declares one (wg → section:wg, keyboard → extapp:…) and page:config/<id> otherwise. Add a config page there and mirror it here; guard 19 in shared-modules.test.sh fails if a target here stops resolving.",
-        "stack_linktree": [
+        "stack_lnktree": [
           {
             "kind": "link_grid",
             "title": "Data & ML",
@@ -3446,10 +3446,10 @@
         "label": "Phone"
       },
       {
-        "id": "linktree",
+        "id": "lnktree",
         "section": "cloud",
-        "page": "linktree",
-        "label": "Linktree"
+        "page": "lnktree",
+        "label": "Lnktree"
       },
       {
         "id": "c3",
@@ -5084,7 +5084,7 @@
             "icon": "ic_suite"
           },
           {
-            "id": "page:cloud/linktree",
+            "id": "page:cloud/lnktree",
             "label": "Labs",
             "icon": "ic_p_sol_tools"
           },
@@ -6238,7 +6238,7 @@
             },
             {
               "label": "Labs",
-              "target": "page:cloud/linktree"
+              "target": "page:cloud/lnktree"
             },
             {
               "label": "Configs",
