@@ -40,6 +40,10 @@ data class Section(
     val icon: String,
     val bottomNav: Boolean,
     val toolbar: Boolean,
+    /** The section the app opens on, and the one Back walks home to. Exactly
+     *  one section should set it; without it the app lands on the first bar
+     *  item, which is an accident of `order` rather than a decision. */
+    val isDefault: Boolean,
     val order: Int,
     /** Non-blank ⇒ this bar/drawer item is a launch target, not a page host:
      *  the string goes to [MainActivity.onTarget] and nothing in this app is
@@ -82,7 +86,12 @@ object Sections {
 
     fun toolbarSection(): Section? = entries.firstOrNull { it.toolbar }
 
-    fun default(): Section? = bottom().firstOrNull() ?: entries.firstOrNull()
+    /** Where the app opens. A section that declares `default` wins; otherwise
+     *  the first item in the bar, which is where it used to always land. */
+    fun default(): Section? =
+        entries.firstOrNull { it.isDefault && !it.toolbar }
+            ?: bottom().firstOrNull()
+            ?: entries.firstOrNull()
 
     /**
      * One page's content list, read from assets when the page opens.
@@ -151,6 +160,7 @@ object Sections {
                     icon = o.optString("icon"),
                     bottomNav = o.optBoolean("bottom_nav", false),
                     toolbar = o.optBoolean("toolbar", false),
+                    isDefault = o.optBoolean("default", false),
                     order = o.optInt("order", Int.MAX_VALUE),
                     target = o.optString("target"),
                     pages = pages,

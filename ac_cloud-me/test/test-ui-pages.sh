@@ -79,6 +79,14 @@ if os.path.isdir("data/files"):
         if name in pages and pages[name]:
             bad.append(f"section '{name}' collides with data/files/{name}/ in the asset root")
 
+# Exactly one landing section, and it has to be reachable from the bar.
+landing = [s for s in secs if s.get("default")]
+if len(landing) > 1:
+    bad.append(f"{len(landing)} sections declare default — only one can be the landing page")
+for s in landing:
+    if not s.get("bottom_nav"):
+        bad.append(f"section '{s['id']}' is the default but is not in the bottom bar")
+
 bar = [s for s in secs if s.get("bottom_nav")]
 if len(bar) > 5:
     bad.append(f"{len(bar)} bottom_nav sections — BottomNavigationView drops the sixth")
