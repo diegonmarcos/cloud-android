@@ -117,10 +117,29 @@ object ContainerSheet {
         card2.addView(kv(ctx, "Auth", pub?.auth.orEmpty().ifBlank { if (pub == null) "private (mesh only)" else "—" }))
         card2.addView(kv(ctx, "Exposure", if (pub != null) "public via Caddy" else "private — reachable over WireGuard only"))
 
+        // App-specific configuration. The generic fields above describe the box;
+        // these describe the JOB — Caddy's routes, WireGuard's mesh, Authelia's
+        // guard list. Long lists are expected here (41 public routes), so each
+        // block is its own card and the pane scrolls.
+        val extras = ContainerConfigs.forContainer(name)
+        for (b in extras) {
+            val c = card(ctx); pane.addView(c)
+            c.addView(blockTitle(ctx, b.title))
+            if (b.subtitle.isNotBlank()) c.addView(TextView(ctx).apply {
+                text = b.subtitle
+                setTextColor(0xFF6F6880.toInt()); textSize = 11f
+                setPadding(0, 0, 0, dp(ctx, 2))
+            })
+            for ((k, v) in b.rows) c.addView(kv(ctx, k, v))
+        }
+
         pane.addView(note(ctx,
-            "Declared, not probed. Every value above comes from data/services_public.json and " +
-            "data/services_private.json, the same files the dashboard tile was built from, so " +
-            "this sheet cannot disagree with the icon that opened it."))
+            "Declared, not probed. Every value above comes from data/services_public.json, " +
+            "data/services_private.json and data/mesh.json — the same files the dashboard tile " +
+            "was built from, so this sheet cannot disagree with the icon that opened it, and it " +
+            "still reads correctly with the mesh down." +
+            if (extras.isEmpty()) "\n\nNo app-specific config block is written for this " +
+                "container yet; ContainerConfigs is where one goes." else ""))
     }
 
     // ── Actions ──────────────────────────────────────────────────────────
