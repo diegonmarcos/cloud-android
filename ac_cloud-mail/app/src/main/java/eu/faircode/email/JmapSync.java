@@ -290,8 +290,13 @@ public class JmapSync {
             if (folder == null || !folder.synchronize)
                 continue;
             syncMessages(context, account, folder, e.getValue(), jmap);
-            // 3) Drain pending operations queued against this folder.
-            processOperations(context, account, folder, e.getValue(), mailboxToFolder, jmap);
+            // Operations DELIBERATELY not drained here -- see phase 2 below.
+            // The interleaved drain let one folder's deep post-backfill BODY
+            // backlog starve every later folder's reconciliation (measured
+            // 2026-09-02: Inbox held the pass 50+ minutes while the stale
+            // view mirrors -- the visible read/unread bug -- were never
+            // reached). Reconciliation is cheap and user-visible; ops are
+            // heavy and invisible: visible work first.
             // 4) Retention.
             prune(context, db, folder);
             // 5) Repair rows written before the hash/preview fixes. One-shot:
@@ -302,6 +307,16 @@ public class JmapSync {
         }
         if (!backfilled)
             prefs.edit().putBoolean(backfillKey, true).apply();
+
+        // 3) PHASE 2: drain pending operations, one folder at a time, only
+        // after every folder above has reconciled. A deep backlog here can no
+        // longer starve the visible read/unread state.
+        for (Map.Entry<Long, String> e : folderToMailbox.entrySet()) {
+            EntityFolder folder = db.folder().getFolder(e.getKey());
+            if (folder == null || !folder.synchronize)
+                continue;
+            processOperations(context, account, folder, e.getValue(), mailboxToFolder, jmap);
+        }
     }
 
     /**
