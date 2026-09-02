@@ -10,7 +10,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -24,7 +23,6 @@ import io.github.sceneview.rememberCameraNode
 import io.github.sceneview.rememberEngine
 import io.github.sceneview.rememberMaterialLoader
 import io.github.sceneview.texture.ImageTexture
-import kotlin.math.sin
 
 /**
  * A card rendered as an actual 3D object — Filament geometry, a real camera and
@@ -40,6 +38,13 @@ import kotlin.math.sin
  * Compose card: a texture has to be a bitmap either way, and painting it
  * directly is one Canvas instead of an offscreen layer capture per card.
  *
+ * KNOWN LIMIT — why this is not the default anywhere. SceneView renders into a
+ * SurfaceView, and a surface punches a hole the compositor fills directly, so
+ * it does not obey the clip of a scrolling parent: a card in a LazyColumn draws
+ * straight over the tab strip as the list moves. Every card container in this
+ * app scrolls, so this stays behind the IDs tab's 3D-f toggle until the
+ * renderer can target a TextureView instead.
+ *
  * ponytail: a box, not a .glb. A credit card IS a box, and shipping a mesh for
  * one would mean an asset pipeline for a shape with six faces. Load a model the
  * day a passport needs to open.
@@ -53,9 +58,6 @@ internal fun FilamentCard(
      *  mean an engine per row — which is the mistake the WebView path makes
      *  with GL contexts, in a different costume. */
     engine: Engine = rememberEngine(),
-    /** Degrees of idle yaw sweep. The card turns through this continuously, so
-     *  it reads as an object without being touched. */
-    sweep: Float = 26f,
 ) {
     val materialLoader = rememberMaterialLoader(engine)
     // Back off far enough that the whole card fits the frustum at full yaw.
@@ -79,19 +81,10 @@ internal fun FilamentCard(
         )
     }
 
+    // Set once, never animated. A wallet is a stack of cards lying still;
+    // a deck that turns on its own is a screensaver, not a wallet.
     LaunchedEffect(cube) {
-        while (true) {
-            withFrameNanos { t ->
-                val s = t / 1_000_000_000.0f
-                // Two out-of-phase sines: a turn that never repeats on the
-                // beat, which is what stops it looking like a spinning logo.
-                cube.rotation = Rotation(
-                    x = sin(s * 0.41f) * 9f,
-                    y = sin(s * 0.29f) * sweep,
-                    z = sin(s * 0.17f) * 2.5f,
-                )
-            }
-        }
+        cube.rotation = Rotation(x = 6f, y = -16f, z = 0f)
     }
 
     DisposableEffect(cube) { onDispose { cube.destroy() } }

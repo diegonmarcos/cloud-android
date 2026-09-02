@@ -1,14 +1,8 @@
 package com.diegonmarcos.superapp.wallet
 
-import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.StartOffset
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,23 +25,20 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import kotlin.random.Random
 
 /**
  * Turns a flat Compose card into an object with volume.
  *
- * Four things together, and it is the combination that reads as 3D — any one
- * of them alone still looks like a picture of a card:
+ * Three things together, and it is the combination that reads as 3D — any one
+ * of them alone still looks like a picture of a card. Nothing here animates on
+ * its own: the card moves when you touch it and is otherwise still.
  *
  *  1. **Thickness.** The card's edge is extruded behind its face, so you see
  *     the slab it is cut from. This is the part that was missing: perspective
  *     on a zero-thickness plane is still a plane.
  *  2. **Perspective.** A near camera, so rotation foreshortens instead of
  *     shearing. Without [cameraDistance] a rotationY is an affine squash.
- *  3. **Motion at rest.** A slow, per-card sway. A card you have not touched
- *     has to move to prove it has depth; a static tilt just looks like a
- *     skewed rectangle.
- *  4. **A moving highlight.** The specular band slides against the rotation,
+ *  3. **A moving highlight.** The specular band slides against the rotation,
  *     which is what tells the eye the surface is catching light.
  *
  * The tilt follows your finger, hard. Pointer events are observed on the
@@ -86,21 +77,10 @@ internal fun Modifier.card3d(
     val ry = animateFloatAsState(tiltY, spec, label = "card3d-ry")
     val lift = animateFloatAsState(pressed, spec, label = "card3d-lift")
 
-    // Idle sway. Phased per card so a list breathes instead of pulsing in
-    // lockstep, and slow enough (7s) to read as weight rather than jitter.
-    val phase = remember { Random.nextInt(0, 7000) }
-    val sway by rememberInfiniteTransition(label = "card3d-idle").animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            tween(7000), RepeatMode.Reverse, initialStartOffset = StartOffset(phase),
-        ),
-        label = "card3d-sway",
-    )
-
-    /** Live rotation: the finger wins, the sway fills the silence. */
-    fun liveY(): Float = ry.value + (sway - 0.5f) * 9f * (1f - lift.value)
-    fun liveX(): Float = rx.value + (sway - 0.5f) * 4f * (1f - lift.value)
+    // No idle animation. Cards sit still — depth comes from the stock and the
+    // perspective, and a deck that drifts on its own reads as a screensaver.
+    fun liveY(): Float = ry.value
+    fun liveX(): Float = rx.value
 
     return this
         .pointerInput(Unit) {

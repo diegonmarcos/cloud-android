@@ -28,8 +28,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import com.google.android.filament.Engine
-import io.github.sceneview.rememberEngine
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -72,8 +70,6 @@ internal fun WalletDeck(
     val deck = remember(cards, showAddTile) {
         if (showAddTile) cards + AddCardSentinel else cards
     }
-    // Shared by every 3D face in the deck — see FilamentCard's `engine`.
-    val engine = rememberEngine()
     if (deck.isEmpty()) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("No items on this tab.", color = Color(0x99FFFFFF), fontSize = 14.sp)
@@ -169,7 +165,6 @@ internal fun WalletDeck(
                 } else {
                     WalletDeckCard(
                         card       = card,
-                        engine     = engine,
                         isSelected = isSelected,
                         onCardTap  = {
                             when {
@@ -196,10 +191,8 @@ internal fun WalletIdsTab(
 ) {
     var countries by remember { mutableStateOf(setOf("es", "br")) }
     var types    by remember { mutableStateOf(setOf("id", "license")) }
-    var viewMode by remember { mutableStateOf("3df") }  // "2d" | "3dr" | "3df"
+    var viewMode by remember { mutableStateOf("2d") }  // "2d" | "3dr" | "3df"
     val licenseKinds = setOf("id_driving_es", "id_boat_es")
-    // Shared across every 3D card in this list — see FilamentCard's `engine`.
-    val engine = rememberEngine()
     val filtered = remember(allIds, countries, types) {
         allIds.filter { card ->
             val isVcard    = card.kind == "vcard" || card.kind == "vcard_imported"
@@ -290,7 +283,7 @@ internal fun WalletIdsTab(
                             card.kind == "vcard" || card.kind == "vcard_imported" ->
                                 WalletCardView(card = card, isExpanded = false, modifier = Modifier.fillMaxSize())
                             viewMode == "3dr" -> IdCard3DReactView(card = card, modifier = Modifier.fillMaxSize())
-                            viewMode == "3df" -> IdCard3DFilamentView(card = card, modifier = Modifier.fillMaxSize(), engine = engine)
+                            viewMode == "3df" -> IdCard3DFilamentView(card = card, modifier = Modifier.fillMaxSize())
                             else              -> IdCardView(card = card, modifier = Modifier.fillMaxSize())
                         }
                     }
@@ -337,7 +330,6 @@ internal fun WalletPassesTab(
 @Composable
 private fun WalletDeckCard(
     card: WalletStore.Card,
-    engine: Engine,
     isSelected: Boolean,
     onCardTap: () -> Unit,
     onInfoTap: () -> Unit,
@@ -360,17 +352,8 @@ private fun WalletDeckCard(
         label         = "glow",
     )
 
-    // Banking cards render as real geometry; a vcard stays flat because its
-    // face is a QR you have to be able to scan off the screen, and a scannable
-    // code cannot be a texture on a turning object.
-    val is3d = resolved.kind in setOf("credit", "debit", "virtual_debit")
-
     Box(modifier = Modifier.fillMaxSize().clickable(onClick = onCardTap)) {
-        if (is3d) {
-            FilamentCard(card = resolved, modifier = Modifier.fillMaxSize(), engine = engine)
-        } else {
-            WalletCardView(card = resolved, isExpanded = isSelected, modifier = Modifier.fillMaxSize())
-        }
+        WalletCardView(card = resolved, isExpanded = isSelected, modifier = Modifier.fillMaxSize())
         if (borderAlpha > 0f) {
             Box(
                 modifier = Modifier
