@@ -170,4 +170,11 @@ dependencies {
     // constellation, not two: a second would be a second key format, a second
     // set of host-key rules and a second thing to audit.
     implementation 'com.github.mwiede:jsch:0.2.17'
+    // ed25519 is not a key JSch can sign with on its own: mwiede's JSch needs
+    // Java 15's EdDSA or Bouncy Castle, and Android has neither as
+    // org.bouncycastle (its own copy is repackaged out of reach). Without
+    // this, addIdentity on the constellation key fails and every connect
+    // reads as "no env answered". 1.81, the version the other libs pin —
+    // Gradle bumps the shared bcprov to the highest one app-wide.
+    implementation 'org.bouncycastle:bcprov-jdk15to18:1.81'
 }

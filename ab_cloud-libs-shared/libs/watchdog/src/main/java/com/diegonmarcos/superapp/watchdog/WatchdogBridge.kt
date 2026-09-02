@@ -175,14 +175,16 @@ class WatchdogBridge(
             // and the terminal is the genuine fallback: only a phone with no
             // nix-on-droid, only for its own local numbers, ever falls to it —
             // and never for a peer hop, which the terminal cannot make.
+            var why = ""
             val out = ssh.snapshot(backend(), peer).fold(
                 onSuccess = { it },
                 onFailure = { err ->
-                    Log.w(WatchdogTerminal.TAG, "ssh snapshot (${backend()}${peer?.let { "→$it" } ?: ""}): ${err.message}")
+                    why = "ssh ${backend()}${peer?.let { "→$it" } ?: ""}: ${err.message ?: "unreachable"}"
+                    Log.w(WatchdogTerminal.TAG, why)
                     // Said on screen, not only in a logcat nobody can read off
                     // this uid: the reason ssh failed is the reason the drawer
                     // has no fleet, and the terminal fallback below hides it.
-                    push("ssh", "${backend()}${peer?.let { "→$it" } ?: ""}: ${err.message ?: "unreachable"}")
+                    push("ssh", why)
                     // A peer hop has no terminal fallback — only the mesh env
                     // can reach it. A local snapshot may still come off the
                     // terminal on a phone that has no nix-on-droid.
@@ -200,7 +202,9 @@ class WatchdogBridge(
                 // defines __wdRender and nothing else, so an event pushed at it
                 // lands on an undefined function and the only symptom left is a
                 // dashboard that never fills in.
-                push("stale", if (peer != null) "$peer unreachable" else "no env answered")
+                // The reason rides along: "stale" was the last event pushed,
+                // so it was the only one the drawer ever showed.
+                push("stale", (if (peer != null) "$peer unreachable" else "no env answered") + " — $why")
             }
         }
     }
