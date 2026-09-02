@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
@@ -289,7 +290,24 @@ public class JmapSync {
         // heavy: keyword sync + stale-mirror removals on existing rows. This
         // is the whole visible read/unread fix, and it must never wait behind
         // an insert flood or an op backlog.
-        for (Map.Entry<Long, String> e : folderToMailbox.entrySet()) {
+        //
+        // Ordered by LOCAL unseen count descending: on a starved edge a pass
+        // gets only a few seconds of live connection before it drops, so the
+        // folders that most need reconcile (the view mirrors hoarding stale
+        // unread -- Ca Unread at 477) must spend that window FIRST, ahead of a
+        // huge Inbox whose paged query would otherwise consume the whole
+        // connection lifetime before the loop ever reached them. countUnseen
+        // is a cheap local COUNT; the network cost per view folder is one
+        // small query (server=7), so neediest-first clears the visible symptom
+        // in a single short window even when the pass never completes.
+        List<Map.Entry<Long, String>> sweepOrder = new ArrayList<>(folderToMailbox.entrySet());
+        Map<Long, Integer> unseenByFolder = new HashMap<>();
+        for (Map.Entry<Long, String> e : sweepOrder)
+            unseenByFolder.put(e.getKey(), db.message().countUnseen(e.getKey()));
+        Collections.sort(sweepOrder, (a, b) ->
+                Integer.compare(unseenByFolder.getOrDefault(b.getKey(), 0),
+                                unseenByFolder.getOrDefault(a.getKey(), 0)));
+        for (Map.Entry<Long, String> e : sweepOrder) {
             EntityFolder folder = db.folder().getFolder(e.getKey());
             if (folder == null || !folder.synchronize)
                 continue;
