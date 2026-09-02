@@ -27,7 +27,7 @@ import org.json.JSONObject
  *   section_title  a heading between blocks
  *   note           a paragraph — used for honest empty states
  *   stats          label/value rows in a card
- *   cards          a card per item, with optional meta rows and progress bar
+ *   cards          a card per item, with optional body, meta rows, progress
  *   link_grid      a four-column icon grid of navigation targets
  *   about          version, commit, build time and the update control
  *   permissions    the runtime permissions from build.json, requestable inline
@@ -115,6 +115,19 @@ class StackFragment : Fragment() {
         card.addView(header)
 
         o.optString("subtitle").takeIf { it.isNotBlank() }?.let { card.addView(dim(ctx, it)) }
+
+        // `body` is the long form — a role's description, a course's
+        // curriculum. Rendered like a note's body rather than as another dim
+        // subtitle, because paragraphs need the line spacing.
+        o.optString("body").takeIf { it.isNotBlank() }?.let { body ->
+            card.addView(TextView(ctx).apply {
+                text = body
+                setTextColor(ContextCompat.getColor(ctx, R.color.me_text_dim))
+                textSize = 13f
+                setLineSpacing(dp(ctx, 3).toFloat(), 1f)
+                setPadding(0, dp(ctx, 8), 0, 0)
+            })
+        }
 
         val meta = o.optJSONArray("meta") ?: JSONArray()
         for (i in 0 until meta.length()) {

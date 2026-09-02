@@ -24,8 +24,8 @@ import org.json.JSONObject
  *
  * A page's content is decided by its `stack_<id>` list. When that list is a
  * single `fragment` block the library fragment is hosted directly — Health,
- * Accounting, Me, Agenda and the Wallet file browser are whole surfaces owned
- * by their modules, and wrapping them in a renderer would only add a scroll
+ * Accounting, Agenda and the Wallet file browser are whole surfaces owned by
+ * their modules, and wrapping them in a renderer would only add a scroll
  * container inside a scroll container. Everything else goes to [StackFragment].
  */
 class SectionFragment : Fragment() {
@@ -188,7 +188,6 @@ class SectionFragment : Fragment() {
     private fun libraryFragment(o: JSONObject): Fragment? = when (o.optString("id")) {
         "health" -> HealthFragment.newInstance(o.optString("page", HealthFragment.PAGE_SUMMARY))
         "fin"    -> MyFinDashboardFragment()
-        "me"     -> MeFragment()
         "agenda" -> AgendaFragment.newInstance(AgendaFragment.MODE_EVENTS)
         "todo"   -> AgendaFragment.newInstance(AgendaFragment.MODE_TODOS)
         "files"  -> FilesFragment.newInstance(o)

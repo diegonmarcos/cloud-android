@@ -83,3 +83,8 @@ PY
 
 # Cloud Wallet's bundled wallet.json is this tree flattened, not a second copy.
 ./data/regen-wallet-json.py --check
+
+# Profile > About is generated from the LinkedIn profile, not typed twice.
+# Skipped when the sibling front repo is not checked out — CI has the committed
+# output and does not need the source.
+./data/regen-profile.py --check 2>/dev/null || echo "profile source not present — skipped"
