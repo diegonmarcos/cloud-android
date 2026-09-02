@@ -4732,9 +4732,9 @@
         "path": "superapp-config.json",
         "ref": "main"
       },
-      "_doc_github_oauth": "OAuth device flow for the 'Import GH OWebAuth' tile. client_id is PUBLIC by design — the device grant exists precisely so a native app needs no client secret — so it belongs in build.json as data, not in a secret store. LEFT EMPTY DELIBERATELY: this build has no OAuth App registered yet, and an invented id would fail at the point where the user has already typed a code into a browser. While it is empty the tile says so up front and the flow never starts. Fill it in from github.com/settings/developers (the app must have Device Flow enabled) and rebuild. scope=repo is required because cloud-vault is a private repository.",
+      "_doc_github_oauth": "OAuth device flow for the 'Import GH OWebAuth' tile. client_id is PUBLIC by design — the device grant exists precisely so a native app needs no client secret — so it belongs here as data. Taken from the cloud front portal (front-diegonmarcos/a-Portals/cloud/src/cloud_control.html), which is the OAuth App that actually exists: probing GitHub's device-code endpoint, this id answers 'device_flow_disabled' while the id in that portal's maintained admin-actions.ts (Ov23liQPvqLvZgQQrI7C) answers 'Not Found' — GitHub distinguishes an app with the grant switched off from an app that is not there, so the TypeScript module points at a deleted App and the inline one is live. STILL ONE CLICK SHORT: Device Flow must be ticked on the App at github.com/settings/developers ('Enable Device Flow'). Until it is, the tile fails cleanly with GitHub's own words rather than hanging. scope=repo, not the portal's read:user, because cloud-vault is private — same App, wider consent screen, which is normal for a device grant.",
       "github_oauth": {
-        "client_id": "",
+        "client_id": "Ov23liOg9JhezyYUCHmS",
         "scope": "repo",
         "device_code_url": "https://github.com/login/device/code",
         "token_url": "https://github.com/login/oauth/access_token"
