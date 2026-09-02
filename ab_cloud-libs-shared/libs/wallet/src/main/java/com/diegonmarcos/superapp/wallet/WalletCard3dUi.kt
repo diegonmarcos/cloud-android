@@ -45,10 +45,11 @@ import androidx.compose.ui.unit.dp
  * Initial pass and never consumed, so taps still land and lists still scroll —
  * the card reacts to a gesture it does not own.
  *
- * ponytail: extrusion + perspective, not a mesh. The WebGL path in
- * [IdCard3DReactView] stays an opt-in experiment — this repo's own
- * docs/3d-view-design.md calls a WebView renderer unfit for production
- * Android, and one JS engine per row in a scrolling list is why.
+ * ponytail: extrusion + perspective, not a mesh. Both real-3D renderers that
+ * once sat beside this — WebGL in a WebView, and Filament via SceneView — are
+ * gone: each draws into a surface, and a surface ignores the clip of the
+ * scrolling list every card here lives in, so both drew over the tab strip.
+ * See docs/3d-view-design.md if that path is ever picked up again.
  */
 @Composable
 internal fun Modifier.card3d(

@@ -1,10 +1,5 @@
 package com.diegonmarcos.superapp.wallet
 
-import android.util.Log
-import android.webkit.ConsoleMessage
-import android.webkit.WebChromeClient
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -23,12 +18,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import com.google.android.filament.Engine
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -55,89 +48,6 @@ internal fun IdCardView(card: WalletStore.Card, modifier: Modifier = Modifier) {
         "id_boat_es"     -> BoatEsCard(card, modifier)
         else             -> GenericIdCard(card, modifier)
     }
-}
-
-/**
- * 3D-r: raw WebGL via AndroidView(WebView).
- * Page loads ONCE; card changes are sent via window.setCard() JS call only —
- * no URL reloads, no WebGL context leak.
- */
-@Composable
-internal fun IdCard3DReactView(card: WalletStore.Card, modifier: Modifier = Modifier) {
-    val kind = card.kind
-    AndroidView(
-        factory = { ctx ->
-            // Capture mutable state in closure so update() can mutate without reload
-            var currentKind = kind
-            var pageReady = false
-            WebView(ctx).also { wv ->
-                wv.settings.javaScriptEnabled = true
-                wv.settings.domStorageEnabled = true
-                wv.settings.allowFileAccess = true
-                @Suppress("SetJavaScriptEnabled")
-                wv.webViewClient = object : WebViewClient() {
-                    override fun onPageFinished(view: WebView?, url: String?) {
-                        LogStore.add("[NAV]  onPageFinished: $url")
-                        pageReady = true
-                        wv.evaluateJavascript("window.setCard('$currentKind')", null)
-                    }
-                    override fun onReceivedError(view: WebView?, errorCode: Int, description: String?, url: String?) {
-                        Log.e("Wallet3D", "[ERROR] $errorCode: $description @ $url")
-                        LogStore.add("[ERROR] WebViewClient $errorCode: $description")
-                    }
-                }
-                wv.webChromeClient = object : WebChromeClient() {
-                    override fun onConsoleMessage(msg: ConsoleMessage): Boolean {
-                        val level = when (msg.messageLevel()) {
-                            ConsoleMessage.MessageLevel.ERROR   -> "[ERROR]"
-                            ConsoleMessage.MessageLevel.WARNING -> "[WARN] "
-                            ConsoleMessage.MessageLevel.DEBUG   -> "[DEBUG]"
-                            else                               -> "[LOG]  "
-                        }
-                        val line = "$level ${msg.message()} (${msg.sourceId().substringAfterLast('/')}:${msg.lineNumber()})"
-                        Log.d("Wallet3D", line)
-                        LogStore.add(line)
-                        return true
-                    }
-                }
-                // Store setter in tag so update() can call setCard without reloading the page
-                wv.tag = fun(k: String) {
-                    currentKind = k
-                    if (pageReady) wv.evaluateJavascript("window.setCard('$k')", null)
-                }
-                LogStore.add("[NAV]  loadUrl: file:///android_asset/wallet3d/index.html")
-                wv.loadUrl("file:///android_asset/wallet3d/index.html")
-            }
-        },
-        update = { wv ->
-            @Suppress("UNCHECKED_CAST")
-            (wv.tag as? ((String) -> Unit))?.invoke(kind)
-        },
-        onRelease = { wv ->
-            wv.stopLoading()
-            wv.destroy()
-        },
-        modifier = modifier
-            .shadow(8.dp, RoundedCornerShape(16.dp))
-            .clip(RoundedCornerShape(16.dp)),
-    )
-}
-
-/**
- * 3D-f: Google Filament via SceneView — real native geometry.
- *
- * No longer a stub, and no longer a .glb: [FilamentCard] builds the card as a
- * CubeNode at ID-1 proportions and textures it from the card's own data. See
- * docs/3d-view-design.md for the path this fills in.
- */
-@Composable
-internal fun IdCard3DFilamentView(
-    card: WalletStore.Card,
-    modifier: Modifier = Modifier,
-    engine: Engine? = null,
-) {
-    if (engine != null) FilamentCard(card = card, modifier = modifier, engine = engine)
-    else FilamentCard(card = card, modifier = modifier)
 }
 
 /** Documents — birth certificates and the like, which are paper, not cards. */
