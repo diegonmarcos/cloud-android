@@ -265,6 +265,58 @@ class DevControlFragment : Fragment() {
             box.addView(scopeRow)
             box.addView(filters)
             box.addView(actions)
+
+            // One-time capability row. Shown only while the grant is missing —
+            // once READ_LOGS is held it has nothing left to do and disappears,
+            // which is also how you can tell at a glance whether it worked.
+            val grantRow = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
+            fun renderGrantRow() {
+                grantRow.removeAllViews()
+                if (holdsReadLogs(ctx)) {
+                    grantRow.addView(TextView(ctx).apply {
+                        text = "✓ READ_LOGS granted — All Apps and Select a App read every app, " +
+                               "in this process, with Shizuku stopped."
+                        setTextColor(0xFF34C759.toInt()); textSize = 11f
+                        setPadding(0, dp(6), 0, 0)
+                    })
+                    return
+                }
+                grantRow.addView(android.widget.Button(ctx).apply {
+                    text = "Enable all-app logs (one-time grant)"
+                    layoutParams = LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+                    setOnClickListener {
+                        isEnabled = false; text = "Granting…"
+                        // Binds a shell channel — never on the main thread.
+                        kotlin.concurrent.thread(name = "readlogs-grant") {
+                            val r = com.diegonmarcos.superapp.adbdebug.ShizukuAdb
+                                .grant(ctx, "android.permission.READ_LOGS")
+                            grantRow.post {
+                                android.widget.Toast.makeText(
+                                    ctx,
+                                    when {
+                                        r.held -> "READ_LOGS granted"
+                                        !r.ran -> r.output
+                                        else -> "pm grant ran but the permission is still not held: ${r.output}"
+                                    },
+                                    android.widget.Toast.LENGTH_LONG,
+                                ).show()
+                                renderGrantRow()
+                                if (r.held) refresh()
+                            }
+                        }
+                    }
+                })
+                grantRow.addView(TextView(ctx).apply {
+                    text = "Runs `pm grant` once through Shizuku or a paired adb. The grant " +
+                           "persists, so nothing needs to stay running afterwards."
+                    setTextColor(0xFF9B93AB.toInt()); textSize = 11f
+                    setPadding(0, dp(4), 0, 0)
+                })
+            }
+            renderGrantRow()
+            box.addView(grantRow)
+
             box.addView(logScroll)
             refresh()
         }
@@ -291,24 +343,69 @@ class DevControlFragment : Fragment() {
      * reason, rather than silently falling back to this app's own lines and
      * looking like the other app logged nothing.
      */
+    /** True once READ_LOGS has been granted; from then on the whole buffer is
+     *  readable IN THIS PROCESS, with no shell channel live. */
+    private fun holdsReadLogs(ctx: Context): Boolean =
+        ctx.checkSelfPermission("android.permission.READ_LOGS") ==
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+
+    /**
+     * Read the log buffer for one scope.
+     *
+     * Android hands an unprivileged app only its OWN lines, so reading anything
+     * else takes elevation. There are two ways to have it, and they are very
+     * different to live with:
+     *
+     *   READ_LOGS granted  — the good one. `logcat` in our own process returns
+     *                        EVERY app's lines. Nothing needs to be running:
+     *                        Shizuku can be stopped and adb unplugged. This is
+     *                        why the grant is offered as a one-off.
+     *   shell channel      — the fallback until then. Works, but only while
+     *                        Shizuku or a paired adb is actually up.
+     *
+     * A single app is narrowed with `--uid`, not `--pid`: a pid needs the app to
+     * be RUNNING, while the uid is stable and still works for one that has
+     * already crashed — usually the app whose log you want.
+     */
     private fun readLogcat(ctx: Context, uid: Int, errorsOnly: Boolean): String {
-        val level = if (errorsOnly) " *:E" else ""
-        if (uid == -1) {
-            return runCatching {
-                val cmd = if (errorsOnly) arrayOf("logcat", "-d", "-v", "time", "*:E")
-                          else arrayOf("logcat", "-d", "-v", "time")
-                Runtime.getRuntime().exec(cmd).inputStream.bufferedReader().readText()
-                    .ifBlank { "(empty — Android only lets an app read its OWN logs; use the app, then Refresh)" }
-            }.getOrElse { "logcat read failed: ${it.message}" }
+        val args = buildList {
+            add("logcat"); add("-d"); add("-v"); add("time")
+            // --uid landed in Android 10; below that logcat rejects it outright.
+            if (uid >= 0 && android.os.Build.VERSION.SDK_INT >= 29) add("--uid=$uid")
+            if (errorsOnly) add("*:E")
         }
-        val filter = if (uid == -2) "" else " --uid=$uid"
-        val out = com.diegonmarcos.superapp.adbdebug.ShizukuAdb.exec(
-            ctx, "logcat -d -v time$filter$level")
+        val elevated = holdsReadLogs(ctx)
+
+        if (uid >= 0 && android.os.Build.VERSION.SDK_INT < 29) {
+            return "Per-app filtering needs Android 10+ (logcat --uid). " +
+                "Use All Apps on this device."
+        }
+
+        // In-process whenever it can answer: own logs always, everything once
+        // READ_LOGS is held. No binder, no bind latency.
+        if (uid == -1 || elevated) {
+            val out = runCatching {
+                Runtime.getRuntime().exec(args.toTypedArray())
+                    .inputStream.bufferedReader().readText()
+            }.getOrElse { return "logcat read failed: ${it.message}" }
+            if (out.isNotBlank()) return out
+            return if (uid == -1 && !elevated)
+                "(empty — Android only lets an app read its OWN logs; use the app, then Refresh)"
+            else "(empty — nothing in the buffer for this scope)"
+        }
+
+        // Not granted yet: borrow a shell channel for this one read.
+        val cmd = args.joinToString(" ")
+        val out = com.diegonmarcos.superapp.adbdebug.ShellChannels.active(ctx)?.exec(ctx, cmd)
+            ?: com.diegonmarcos.superapp.adbdebug.ShizukuAdb.exec(ctx, cmd)
         return out?.ifBlank { "(empty — nothing in the buffer for this scope)" }
-            ?: ("Reading another app's logs needs the Shizuku shell (uid 2000), which holds " +
-                "READ_LOGS.\n\nShizuku status: " +
-                com.diegonmarcos.superapp.adbdebug.ShizukuAdb.status() +
-                "\n\nStart Shizuku and grant this app, then Refresh. \"This App\" works without it.")
+            ?: ("Reading another app's logs needs READ_LOGS, which Android will not give an " +
+                "app at install time.\n\nTap \"Enable all-app logs\" below: it runs " +
+                "`pm grant` through Shizuku or a paired adb ONCE, and the grant sticks — after " +
+                "that this works with Shizuku stopped.\n\nShell channel: " +
+                (com.diegonmarcos.superapp.adbdebug.ShellChannels.active(ctx)?.name()
+                    ?: "none ready") +
+                "\nShizuku: " + com.diegonmarcos.superapp.adbdebug.ShizukuAdb.status())
     }
 
     /** Buffer handed to the SAF writer — the picker is async, so the text has to

@@ -133,10 +133,31 @@ object ShizukuAdb {
      * stopped — the "self-contained" part. Returns a [GrantResult] with
      * the raw shell output and whether the permission is now held.
      */
-    fun grantDump(ctx: Context): GrantResult {
-        val perm = "android.permission.DUMP"
-        val out = exec(ctx, "pm grant ${ctx.packageName} $perm")
-            ?: return GrantResult(false, false, "Shizuku unavailable / not granted")
+    fun grantDump(ctx: Context): GrantResult = grant(ctx, "android.permission.DUMP")
+
+    /**
+     * Self-grant any DEVELOPMENT-protected permission to this app, once.
+     *
+     * This is the whole trick behind "self-contained": permissions whose
+     * protection level includes `development` (DUMP, READ_LOGS, …) are refused
+     * to a normal app at install time but CAN be handed over by `pm grant` from
+     * a shell, and the grant PERSISTS. So a single tap while a shell channel is
+     * up buys the capability permanently — afterwards the app calls dumpsys, or
+     * reads the whole log buffer, in its own process with Shizuku stopped and
+     * adb unplugged.
+     *
+     * Any ready channel will do, so this goes through [ShellChannels] rather
+     * than Shizuku alone: someone paired over wireless debugging gets the same
+     * grant without installing Shizuku at all.
+     *
+     * The permission must be declared in the manifest — `pm grant` refuses a
+     * permission the package never asked for.
+     */
+    fun grant(ctx: Context, perm: String): GrantResult {
+        val cmd = "pm grant ${ctx.packageName} $perm"
+        val out = ShellChannels.active(ctx)?.exec(ctx, cmd)
+            ?: exec(ctx, cmd)
+            ?: return GrantResult(false, false, "No shell channel — start Shizuku or pair adb")
         val held = ctx.checkSelfPermission(perm) == PackageManager.PERMISSION_GRANTED
         return GrantResult(true, held, out.ifBlank { "(no output — pm grant is silent on success)" })
     }
