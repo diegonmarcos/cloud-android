@@ -550,7 +550,7 @@
         ]
       },
       {
-        "_doc": "Configs \u2014 reached from the gear at the top right rather than the drawer, because it is the one destination you want from wherever you are. About carries the version, the commit and the self-update control; Permissions requests the runtime permissions declared in ui.permissions.runtime.",
+        "_doc": "Configs \u2014 reached from the gear at the top right rather than the drawer, because it is the one destination you want from wherever you are. ONE page, no tab strip: a settings screen is a list you scroll, which is how every other app in the constellation lays its Configs out. Permissions first, then About with the version, the commit and the self-update control, then the way out to the rest of the constellation.",
         "id": "configs",
         "label": "Configs",
         "icon": "ic_nav_configs",
@@ -558,14 +558,9 @@
         "toolbar": true,
         "pages": [
           {
-            "id": "about",
-            "label": "About",
-            "icon": "ic_p_accounts"
-          },
-          {
-            "id": "permissions",
-            "label": "Permissions",
-            "icon": "ic_p_vault_pw"
+            "id": "configs",
+            "label": "Configs",
+            "icon": "ic_nav_configs"
           }
         ]
       }

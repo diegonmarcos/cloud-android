@@ -55,9 +55,9 @@ class SectionFragment : Fragment() {
         pageId = (s?.getString(STATE_PAGE) ?: arguments?.getString(ARG_PAGE))
             .let { section?.page(it)?.leaf()?.id }
 
-        // One page needs no tab strip. Me is the only section shaped that way
-        // today, and a single-tab strip reads as a broken control rather than
-        // a navigation aid.
+        // One page needs no tab strip — a single-tab strip reads as a broken
+        // control rather than a navigation aid. Configs is shaped that way on
+        // purpose: a settings screen is a list you scroll.
         if (section != null && section.pages.size > 1) {
             val top = buildStrip(ctx, section.pages, primary = true) { id ->
                 // A container tab has no content of its own; opening it opens
