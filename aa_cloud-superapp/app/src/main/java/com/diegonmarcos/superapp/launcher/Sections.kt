@@ -705,16 +705,19 @@ object Sections {
         sec.allPages.firstOrNull { it.id == pageId && it.mode.isNotBlank() }?.mode
     }
 
-    /** Aggregator's tiles for the given mode. tile_groups wins (flattened
-     *  into a single list); then tiles_shared; then per-mode lists. */
+    /** Aggregator's tiles for a page. The page's OWN `tiles_<id>` wins; only
+     *  a page that declares none falls back to the section-wide lists
+     *  (tile_groups flattened, then tiles_shared).
+     *
+     *  The section-wide lists used to win outright, which was invisible while
+     *  no section had both: the moment Cloud carried tile_groups (18 cloud
+     *  apps) AND per-page lists, every one of its pages rendered the same 18
+     *  apps whatever it declared. A page that names its own list means it. */
     fun aggregatorTilesFor(sec: Section, page: String): List<AggTile> = when {
+        sec.tilesByPage[page]?.isNotEmpty() == true -> sec.tilesByPage.getValue(page)
         sec.tileGroups.isNotEmpty()  -> sec.tileGroups.flatMap { it.tiles }
         sec.tilesShared.isNotEmpty() -> sec.tilesShared
-        // The page's OWN list, by id. The old code read `admin` for admin and
-        // `apps` for everything else, so every facet that was not literally
-        // called "admin" rendered the apps list — three tabs, two of them the
-        // same page.
-        else -> sec.tilesByPage[page].orEmpty()
+        else -> emptyList()
     }
 
     /** Aggregator's stack panels for the given mode. `stack_shared` wins
@@ -756,10 +759,18 @@ object Sections {
         }
     }
 
-    /** True iff this aggregator has a non-empty stack for the given mode —
-     *  i.e. render [AggregatorStackFragment] instead of the default tile grid. */
-    fun aggregatorIsStack(sec: Section, mode: String): Boolean =
-        aggregatorStackFor(sec, mode).isNotEmpty()
+    /** True iff THIS PAGE declares a stack — i.e. render
+     *  [AggregatorStackFragment] instead of the default tile grid.
+     *
+     *  Deliberately an exact lookup, NOT [aggregatorStackFor]. That one answers
+     *  a different question ("what stack for this MODE") and is allowed to fall
+     *  back to the section's first page with a stack, because the drawer asks
+     *  by ModePrefs mode and has no page id to offer. Asking it this question
+     *  made every stackless page inherit a sibling's stack: Cloud ▸ Cloud
+     *  rendered Labs' panels instead of the cloud apps grid, because
+     *  stack_labs was simply the first stack in the section. */
+    fun aggregatorIsStack(sec: Section, pageId: String): Boolean =
+        sec.stackShared.isNotEmpty() || sec.stackByPage[pageId]?.isNotEmpty() == true
 
     fun homeActions(): List<Action> {
         cachedActions?.let { return it }

@@ -431,7 +431,7 @@
         {
           "label": "Phone",
           "icon": "ic_p_dialer",
-          "target": "page:phone/phone"
+          "target": "page:phone/apps"
         },
         {
           "label": "Labs",
@@ -587,7 +587,7 @@
       "swipe_up": "action:open_home_apps_phone",
       "swipe_left": "open_last_superapp_page",
       "swipe_right": "open_last_android_app",
-      "swipe_down": "page:phone/phone"
+      "swipe_down": "page:phone/apps"
     }
   },
   "shizuku_diagnostics": {
@@ -1474,6 +1474,12 @@
             "mode": "admin"
           },
           {
+            "id": "configs",
+            "label": "Configs",
+            "icon": "ic_settings",
+            "facet": true
+          },
+          {
             "id": "data-ml",
             "label": "Data & ML",
             "icon": "ic_database",
@@ -1915,7 +1921,94 @@
         ],
         "_doc_tiles_labs": "Master Lab index - 6 icon tiles, one per Lab. Read by home_groups[title=Labs] via tiles_from_section='cloud/labs' (the section/page form, because this section's plain tiles_shared is the Cloud index). The Labs PAGE itself renders stack_labs - stack wins over tiles in aggregatorPage - so this list is the Home face only.",
         "_doc_tiles_apps": "Legacy flat roster (Linktree/Movies/Music/Maps/Photos/Analytics). No page `apps` exists any more, so tilesByPage['apps'] is never rendered - kept because SuperappSearchIndex still indexes tiles_apps and these are the only entries for those targets.",
-        "_doc_pages": "Cloud = the cloud-side surface. Cloud (the 18 grouped Cloud apps), Labs (the 6 subject Labs), C3 (Cloud Control Center)."
+        "_doc_pages": "Cloud = the cloud-side surface. Cloud (the 18 grouped Cloud apps), Labs (the 6 subject Labs), C3 (Cloud Control Center).",
+        "tiles_configs": [
+          {
+            "id": "profile",
+            "label": "Profile",
+            "icon": "ic_settings",
+            "target": "page:config/profile"
+          },
+          {
+            "id": "wg",
+            "label": "WireGuard",
+            "icon": "ic_wg",
+            "target": "section:wg"
+          },
+          {
+            "id": "kde",
+            "label": "KDE",
+            "icon": "ic_kde",
+            "target": "page:config/kde"
+          },
+          {
+            "id": "ai",
+            "label": "AI",
+            "icon": "ic_ai_sparkle",
+            "target": "page:config/ai"
+          },
+          {
+            "id": "launcher",
+            "label": "Launcher",
+            "icon": "ic_home",
+            "target": "page:config/launcher"
+          },
+          {
+            "id": "keyboard",
+            "label": "Keyboard",
+            "icon": "ic_keyboard",
+            "target": "extapp:cloud-keyboard"
+          },
+          {
+            "id": "update",
+            "label": "Update All",
+            "icon": "ic_refresh",
+            "target": "action:update_all"
+          },
+          {
+            "id": "kde_connect",
+            "label": "KDE Connect",
+            "icon": "ic_kde",
+            "target": "action:kde_connect_now"
+          },
+          {
+            "id": "animations",
+            "label": "Animations",
+            "icon": "ic_mode_apps",
+            "target": "action:toggle_animations"
+          },
+          {
+            "id": "copy_info",
+            "label": "Copy Info",
+            "icon": "ic_p_import",
+            "target": "action:about_copy_all"
+          },
+          {
+            "id": "constellation",
+            "label": "Constellation",
+            "icon": "ic_refresh",
+            "target": "action:constellation"
+          },
+          {
+            "id": "onehand",
+            "label": "One-Hand",
+            "icon": "ic_onehand",
+            "target": "page:config/onehand"
+          },
+          {
+            "id": "perms",
+            "label": "Permissions",
+            "icon": "ic_settings",
+            "target": "page:config/perms"
+          },
+          {
+            "id": "about",
+            "label": "About",
+            "icon": "ic_settings",
+            "target": "page:config/about"
+          }
+        ],
+        "_doc_tiles_configs": "Cloud ▸ Configs. Generated from sections[config].pages — one tile per page, using its `action` when it declares one (wg → section:wg, keyboard → extapp:…) and page:config/<id> otherwise. Add a config page there and mirror it here; guard 19 in shared-modules.test.sh fails if a target here stops resolving."
       },
       {
         "id": "phone",
@@ -1932,9 +2025,16 @@
         },
         "pages": [
           {
-            "id": "phone",
-            "label": "Phone",
-            "icon": "ic_p_dialer"
+            "id": "apps",
+            "label": "Apps",
+            "icon": "ic_p_dialer",
+            "_doc": "The installed-Android-apps surface (SuitePhoneAppsFragment). Not a facet — it reads LauncherApps, not build.json tiles."
+          },
+          {
+            "id": "configs",
+            "label": "Configs",
+            "icon": "ic_settings",
+            "facet": true
           }
         ],
         "_doc_phone_app_groups": "Curated phone apps surfaced in Phone, grouped under the same titled sections used by Cloud (AI · Data Primary · Data Apps · Tools Primary · Tools Dashboards · Configs). Group order = render order. Each group renders as a subhead + UI_PHONE_GRID_COLUMNS-col grid (6 by default). Missing packages silently hidden — editing this list never breaks the render. Add a new group = add an object here; add an app to an existing group = append to its packages array.",
@@ -2027,7 +2127,107 @@
         ],
         "_doc_tile_groups": "Themed sub-groups for the Suite. tile_groups is the canonical schema, read by three surfaces: (1) bottom-nav Suite SECTION page → GroupedTilesFragment renders one titled row per group; (2) Home Apps Suite card → flattens all groups into a single horizontal scroll strip (home_groups entry has no group_explode); (3) aggregatorTilesFor flat fallback if anything else asks. Single source of truth — edit here, all surfaces update.",
         "tabs": true,
-        "_doc_label": "Bottom-nav slot 5. What is left of the old Suite section once its Cloud half moved to sections[cloud]: the installed-Android-apps surface. Keeps phone_app_groups + active_apps, which app/build.gradle bakes into BuildConfig by looking the section up as id=='phone'. tabs stays true with a single page so adding a second one needs no code change."
+        "_doc_label": "Bottom-nav slot 5. What is left of the old Suite section once its Cloud half moved to sections[cloud]: the installed-Android-apps surface. Keeps phone_app_groups + active_apps, which app/build.gradle bakes into BuildConfig by looking the section up as id=='phone'. tabs stays true with a single page so adding a second one needs no code change.",
+        "tiles_configs": [
+          {
+            "id": "settings",
+            "label": "Settings",
+            "icon": "ic_settings",
+            "target": "intent:#Intent;action=android.settings.SETTINGS;end"
+          },
+          {
+            "id": "wifi",
+            "label": "Wi-Fi",
+            "icon": "ic_world",
+            "target": "intent:#Intent;action=android.settings.WIFI_SETTINGS;end"
+          },
+          {
+            "id": "mobile",
+            "label": "Mobile data",
+            "icon": "ic_world",
+            "target": "intent:#Intent;action=android.settings.DATA_ROAMING_SETTINGS;end"
+          },
+          {
+            "id": "bluetooth",
+            "label": "Bluetooth",
+            "icon": "ic_route_bluetooth",
+            "target": "intent:#Intent;action=android.settings.BLUETOOTH_SETTINGS;end"
+          },
+          {
+            "id": "display",
+            "label": "Display",
+            "icon": "ic_device_desktop",
+            "target": "intent:#Intent;action=android.settings.DISPLAY_SETTINGS;end"
+          },
+          {
+            "id": "sound",
+            "label": "Sound",
+            "icon": "ic_route_speaker",
+            "target": "intent:#Intent;action=android.settings.SOUND_SETTINGS;end"
+          },
+          {
+            "id": "battery",
+            "label": "Battery",
+            "icon": "ic_p_health_vitals",
+            "target": "intent:#Intent;action=android.settings.BATTERY_SAVER_SETTINGS;end"
+          },
+          {
+            "id": "storage",
+            "label": "Storage",
+            "icon": "ic_database",
+            "target": "intent:#Intent;action=android.settings.INTERNAL_STORAGE_SETTINGS;end"
+          },
+          {
+            "id": "apps",
+            "label": "Apps",
+            "icon": "ic_mode_apps",
+            "target": "intent:#Intent;action=android.settings.APPLICATION_SETTINGS;end"
+          },
+          {
+            "id": "security",
+            "label": "Security",
+            "icon": "ic_lock",
+            "target": "intent:#Intent;action=android.settings.SECURITY_SETTINGS;end"
+          },
+          {
+            "id": "location",
+            "label": "Location",
+            "icon": "ic_map_pin",
+            "target": "intent:#Intent;action=android.settings.LOCATION_SOURCE_SETTINGS;end"
+          },
+          {
+            "id": "accessibility",
+            "label": "Accessibility",
+            "icon": "ic_p_health_body",
+            "target": "intent:#Intent;action=android.settings.ACCESSIBILITY_SETTINGS;end"
+          },
+          {
+            "id": "datetime",
+            "label": "Date & time",
+            "icon": "ic_calendar",
+            "target": "intent:#Intent;action=android.settings.DATE_SETTINGS;end"
+          },
+          {
+            "id": "language",
+            "label": "Language",
+            "icon": "ic_keyboard",
+            "target": "intent:#Intent;action=android.settings.LOCALE_SETTINGS;end"
+          },
+          {
+            "id": "developer",
+            "label": "Developer",
+            "icon": "ic_code",
+            "target": "intent:#Intent;action=android.settings.APPLICATION_DEVELOPMENT_SETTINGS;end"
+          },
+          {
+            "id": "about",
+            "label": "About phone",
+            "icon": "ic_p_logs",
+            "target": "intent:#Intent;action=android.settings.DEVICE_INFO_SETTINGS;end"
+          }
+        ],
+        "_doc_tiles_configs": "Phone ▸ Configs — the ANDROID system settings screens, as Intent-scheme URIs handed to Intent.parseUri. Data, not Kotlin: add a screen by adding a line. A device that lacks one answers 'No app handles' rather than crashing (launchUri wraps startActivity in runCatching).",
+        "_doc_pages": "Phone = this handset. Apps (everything installed) | Configs (Android's own settings)."
       },
       {
         "id": "mail",
@@ -3289,7 +3489,7 @@
       {
         "id": "phone",
         "section": "phone",
-        "page": "phone",
+        "page": "apps",
         "label": "Phone"
       },
       {
@@ -6517,7 +6717,7 @@
         "id": "suite-phone-quickmarks",
         "label": "Phone",
         "icon": "ic_suite",
-        "target": "page:phone/phone"
+        "target": "page:phone/apps"
       },
       {
         "id": "constellation",

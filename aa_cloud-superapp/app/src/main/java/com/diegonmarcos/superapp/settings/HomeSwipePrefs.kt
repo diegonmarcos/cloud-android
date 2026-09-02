@@ -50,7 +50,7 @@ class HomeSwipePrefs(context: Context) {
             "open_last_superapp_page" to "Last SuperApp page",
             "open_last_android_app"   to "Last Android app",
             "walk_step_next"          to "Walk → next",
-            "page:phone/phone"        to "Phone: Quickmarks",
+            "page:phone/apps"         to "Phone: Apps",
             "walk_step_prev"          to "Walk ← prev",
         )
     }

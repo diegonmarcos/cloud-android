@@ -694,7 +694,7 @@ class MainActivity : AppCompatActivity(),
             }
             "walk_step_next" -> { fireGeminiPattern(); walkStep(+1) }
             "walk_step_prev" -> { fireGeminiPattern(); walkStep(-1) }
-            // Target-string actions ("page:phone/phone") route through the tile
+            // Target-string actions ("page:phone/apps") route through the tile
             // grammar. Anything else IS a home action — hand it to the one
             // dispatcher that knows them all (open_home_apps_phone, ...).
             // Was: a blind openAppDrawerSheet(), which silently turned every
@@ -1522,7 +1522,15 @@ class MainActivity : AppCompatActivity(),
             // handed off via launchUri so the browser_fallback_url extra
             // (intent:// convention) actually fires when the target app
             // isn't installed.
+            //
+            // `intent:` is listed explicitly because the ://-contains test
+            // misses it: the Intent-scheme URI for an activity with no data
+            // (`intent:#Intent;action=android.settings.WIFI_SETTINGS;end`)
+            // has no authority, so every system-settings tile fell through
+            // this `when` and did nothing at all. Intent.parseUri in
+            // launchUri has always understood the form.
             tileId.startsWith("http://") || tileId.startsWith("https://") ||
+                tileId.startsWith("intent:") ||
                 (tileId.contains("://") && !tileId.startsWith("section:") &&
                  !tileId.startsWith("page:") && !tileId.startsWith("action:") &&
                  !tileId.startsWith("stub:")) -> launchUri(tileId)

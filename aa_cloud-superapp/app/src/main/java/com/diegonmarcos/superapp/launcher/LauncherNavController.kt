@@ -273,9 +273,22 @@ class LauncherNavController(private val host: NavHost) {
      */
     private fun aggregatorPage(section: Sections.Section, page: Sections.Page): Fragment {
         val title = "${section.label} · ${page.label}"
+        val ownTiles = section.tilesByPage[page.id].orEmpty()
         return when {
+            // What the PAGE declares, in order — stack_<id>, then tiles_<id>.
+            // Only a page that declares neither falls back to the section-wide
+            // tile_groups; checking tile_groups first meant a section that had
+            // any (Cloud) served the same grouped grid to every page.
             Sections.aggregatorIsStack(section, page.id) ->
                 AggregatorStackFragment.newInstance(section.id, section.label, page.id)
+            ownTiles.isNotEmpty() -> {
+                val ctx = host.navContext()
+                TileGridFragment.newInstance(title, ownTiles.map { t ->
+                    TileGridFragment.Tile(
+                        id = t.target, label = t.label,
+                        iconRes = Sections.iconResFor(ctx, t.iconName))
+                })
+            }
             section.tileGroups.isNotEmpty() -> GroupedTilesFragment.newInstance(section.id)
             else -> {
                 val ctx = host.navContext()

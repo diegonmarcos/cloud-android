@@ -46,9 +46,9 @@ object SectionPages {
 
     private fun factoryFor(sectionId: String, pageId: String, label: String): Fragment = when {
         sectionId == "mail"  -> MailPages.fragmentFor(pageId)
-        // Phone ▸ Phone: installed Android apps, not build.json tile data — so
-        // it is an ordinary page here, unlike Cloud's `facet: true` pages.
-        sectionId == "phone" && pageId == "phone" ->
+        // Phone ▸ Apps: installed Android apps, not build.json tile data — so
+        // it is an ordinary page here, unlike its `facet: true` sibling Configs.
+        sectionId == "phone" && pageId == "apps" ->
             com.diegonmarcos.superapp.apps.SuitePhoneAppsFragment.newInstance()
         sectionId == "chat"  -> ChatPages.fragmentFor(pageId)
         sectionId == "c3"    && pageId == "health"      -> C3HealthFragment.newInstance()
