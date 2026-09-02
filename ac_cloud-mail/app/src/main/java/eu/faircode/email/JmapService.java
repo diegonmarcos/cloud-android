@@ -132,6 +132,17 @@ public class JmapService {
     private static final int CONNECT_ATTEMPTS = 3;
     private static final long CONNECT_RETRY_DELAY_MS = 3000;
 
+    // Raw-call timeouts. Same cold-edge reality the retry loop above exists
+    // for: measured 2026-09-02 from a phone on hostel wifi -> WG -> mesh, the
+    // IDENTICAL session request took 1.1s, 5.9s and 20.4s on three consecutive
+    // tries, with the variance entirely in connect+TLS (raw TCP to
+    // oci-mail:2443 was 0.3s, so the server is not the problem -- a lossy link
+    // retransmitting handshakes is). At a flat 15s the sync failed with
+    // SocketTimeoutException against a perfectly healthy server, which reads to
+    // the user as "mail is broken".
+    private static final int CONNECT_TIMEOUT_MS = 30_000;
+    private static final int READ_TIMEOUT_MS = 60_000;
+
     // Open a JMAP client and validate it by resolving the session resource +
     // the primary mail account id (RFC 8620 §2). Verbose: every step + the FULL
     // root-cause chain is logged to EntityLog (visible in the app's log viewer)
@@ -689,8 +700,8 @@ public class JmapService {
         try {
             c.setRequestMethod("POST");
             c.setDoOutput(true);
-            c.setConnectTimeout(15_000);
-            c.setReadTimeout(15_000);
+            c.setConnectTimeout(CONNECT_TIMEOUT_MS);
+            c.setReadTimeout(READ_TIMEOUT_MS);
             c.setRequestProperty("Content-Type", "application/json");
             c.setRequestProperty("Authorization", basicAuth());
             try (java.io.OutputStream os = c.getOutputStream()) {
@@ -709,8 +720,8 @@ public class JmapService {
     private String rawJmapDownload(HttpUrl url) throws Exception {
         java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL(url.toString()).openConnection();
         try {
-            c.setConnectTimeout(15_000);
-            c.setReadTimeout(15_000);
+            c.setConnectTimeout(CONNECT_TIMEOUT_MS);
+            c.setReadTimeout(READ_TIMEOUT_MS);
             c.setRequestProperty("Authorization", basicAuth());
             int code = c.getResponseCode();
             String response = Helper.readStream(code >= 200 && code < 300 ? c.getInputStream() : c.getErrorStream());
