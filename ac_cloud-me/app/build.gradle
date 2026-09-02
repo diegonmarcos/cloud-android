@@ -134,6 +134,9 @@ dependencies {
     implementation project(':libs:fin')      // Buro → Accounting
     implementation project(':libs:cal')      // Agenda → events + todos
 
+    // Photo grid on Profile > Personal. Same version libs:media already pins.
+    implementation 'io.coil-kt:coil:2.7.0'
+
     implementation 'androidx.core:core-ktx:1.13.1'
     implementation 'androidx.appcompat:appcompat:1.7.0'
     implementation 'com.google.android.material:material:1.12.0'

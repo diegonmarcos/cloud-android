@@ -16,6 +16,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
+import coil.load
 import com.diegonmarcos.superapp.updater.Updater
 import org.json.JSONArray
 import org.json.JSONObject
@@ -29,6 +30,7 @@ import org.json.JSONObject
  *   stats          label/value rows in a card
  *   cards          a card per item, with optional body, meta rows, progress
  *   link_grid      a four-column icon grid of navigation targets
+ *   image_grid     a three-column photo grid, loaded from URLs
  *   about          version, commit, build time and the update control
  *   permissions    the runtime permissions from build.json, requestable inline
  *
@@ -77,6 +79,11 @@ class StackFragment : Fragment() {
                 o.optString("title").takeIf { it.isNotBlank() }?.let { col.addView(heading(ctx, it)) }
                 o.optString("subtitle").takeIf { it.isNotBlank() }?.let { col.addView(dim(ctx, it)) }
                 col.addView(linkGrid(ctx, o.optJSONArray("links") ?: JSONArray()))
+            }
+            "image_grid" -> {
+                o.optString("title").takeIf { it.isNotBlank() }?.let { col.addView(heading(ctx, it)) }
+                o.optString("subtitle").takeIf { it.isNotBlank() }?.let { col.addView(dim(ctx, it)) }
+                col.addView(imageGrid(ctx, o.optJSONArray("images") ?: JSONArray()))
             }
             "about" -> col.addView(aboutCard(ctx, o))
             "permissions" -> col.addView(permissionsCard(ctx, o))
@@ -211,6 +218,40 @@ class StackFragment : Fragment() {
         }
     }
 
+    /** A square photo grid, three across — the shape a picture feed has. Coil
+     *  loads and caches each cell; the app already declares INTERNET and the
+     *  URLs are the public CDN the web profile uses, so nothing new is
+     *  exposed. A cell that fails to load stays the placeholder colour rather
+     *  than collapsing the grid. */
+    private fun imageGrid(ctx: Context, images: JSONArray): View {
+        val grid = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
+        val cell = (resources.displayMetrics.widthPixels - dp(ctx, 32) - dp(ctx, 4) * 2) / 3
+        var row: LinearLayout? = null
+        for (i in 0 until images.length()) {
+            val url = images.optString(i)
+            if (url.isBlank()) continue
+            if (i % PHOTO_COLUMNS == 0) {
+                row = LinearLayout(ctx).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    layoutParams = LinearLayout.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT
+                    ).apply { topMargin = dp(ctx, 4) }
+                }
+                grid.addView(row)
+            }
+            row?.addView(ImageView(ctx).apply {
+                scaleType = ImageView.ScaleType.CENTER_CROP
+                background = roundedBackground(ctx, R.color.me_surface)
+                clipToOutline = true
+                layoutParams = LinearLayout.LayoutParams(cell, cell).apply {
+                    if (i % PHOTO_COLUMNS != 0) leftMargin = dp(ctx, 4)
+                }
+                load(url)
+            })
+        }
+        return grid
+    }
+
     private fun aboutCard(ctx: Context, o: JSONObject): View {
         val card = card(ctx)
         card.addView(cardTitle(ctx, o.optString("title").ifBlank { getString(R.string.app_name) }))
@@ -338,6 +379,7 @@ class StackFragment : Fragment() {
         private const val ARG_SECTION = "section"
         private const val ARG_PAGE = "page"
         private const val COLUMNS = 4
+        private const val PHOTO_COLUMNS = 3
 
         fun newInstance(sectionId: String, pageId: String): StackFragment =
             StackFragment().apply {

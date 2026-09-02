@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
-"""front-diegonmarcos/b-Media/mySocials → data/ui/me/me.json
+"""front-diegonmarcos/b-Media/mySocials → data/ui/me/{professional,personal}.json
 
-Profile > About is the LinkedIn profile, rendered with Cloud Me's own blocks
-rather than a second copy of the text. The source is the same
-`data-linkedin.json.js` the web page hydrates from, so refreshing the profile
+Profile's two halves, each rendered with Cloud Me's own blocks rather than a
+second copy of the content:
+
+  Professional  ← data-linkedin.json.js        (the LinkedIn profile)
+  Personal      ← data-ig0-diegocnmarcos_.json.js  (the Instagram profile)
+
+Both are the same files the web pages hydrate from, so refreshing the profile
 means re-running this, not editing prose twice.
 
   ./data/regen-profile.py            rewrite data/ui/me/me.json
@@ -15,21 +19,24 @@ is committed and CI never needs the source. Same shape as regen-wallet-json.py.
 import json, os, re, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SRC = os.path.normpath(os.path.join(
-    HERE, "..", "..", "..", "front-diegonmarcos", "b-Media", "mySocials",
-    "dist", "data-linkedin.json.js"))
-OUT = os.path.join(HERE, "ui", "me", "me.json")
+DIST = os.path.normpath(os.path.join(
+    HERE, "..", "..", "..", "front-diegonmarcos", "b-Media", "mySocials", "dist"))
+PAGES = {
+    "professional": ("data-linkedin.json.js", "linkedin"),
+    "personal": ("data-ig0-diegocnmarcos_.json.js", "ig0-diegocnmarcos_"),
+}
 
 # One accent per section, so a long scroll still parses as sections at a glance.
 WORK = "#42A5F5"
 STUDY = "#FFA726"
 MAKE = "#7E57C2"
+PERSONAL = "#EC407A"
 
 
-def source():
+def source(filename, key):
     """The JSON object out of the generated JS wrapper."""
-    s = open(SRC, encoding="utf-8").read()
-    head = 'g.PORTAL_DATA["linkedin"] = '
+    s = open(os.path.join(DIST, filename), encoding="utf-8").read()
+    head = f'g.PORTAL_DATA["{key}"] = '
     raw = s[s.index(head) + len(head): s.rindex("}") + 1]
     # The wrapper closes with its own braces; shrink until it parses.
     for end in range(len(raw), 0, -1):
@@ -37,7 +44,7 @@ def source():
             return json.loads(raw[:end])
         except ValueError:
             continue
-    sys.exit(f"could not parse the profile object out of {SRC}")
+    sys.exit(f"could not parse the profile object out of {filename}")
 
 
 def tidy(text, limit=1400):
@@ -62,8 +69,8 @@ def entries(items, accent, title_key, sub_key, meta_keys):
     return out
 
 
-def build():
-    d = source()
+def professional():
+    d = source(*PAGES["professional"])
     p = d["profile"]
     blocks = [
         # Header. `stats` already draws a titled card with label/value rows —
@@ -92,18 +99,54 @@ def build():
         ]},
         {"kind": "note", "title": "Skills", "body": " · ".join(d["skills"])},
     ]
-    return json.dumps(blocks, indent=2, ensure_ascii=False) + "\n"
+    return blocks
+
+
+def personal():
+    """The Instagram half. Photos first — it is a picture feed, and a page of
+    captions with the pictures left out is not the same profile."""
+    d = source(*PAGES["personal"])
+    p = d["profile"]
+    posts = d["posts"]
+    captioned = [x for x in posts if (x.get("caption") or "").strip()]
+    return [
+        {"kind": "stats", "title": p.get("name") or p["username"],
+         "subtitle": f"@{p['username']}", "rows": [
+            {"label": "Posts", "value": str(p.get("posts", len(posts)))},
+            {"label": "Following", "value": str(p.get("following", ""))},
+            {"label": "Followers", "value": str(p.get("followers", ""))},
+        ] + ([{"label": "Bio", "value": p["bio"]}] if p.get("bio") else [])},
+        {"kind": "image_grid", "title": "Posts",
+         "subtitle": f"{len(posts)} photos",
+         "images": [x["media"] for x in posts if x.get("media")]},
+        # The captions are place write-ups, so they read as a travel log rather
+        # than as photo captions stripped of their photos.
+        {"kind": "cards", "title": "Places",
+         "subtitle": f"{len(captioned)} of {len(posts)} posts carry a note",
+         "items": [
+             {"title": tidy(x["caption"], 60).split("\n")[0].split(". ")[0],
+              "body": tidy(x["caption"], 700), "accent": PERSONAL}
+             for x in captioned
+         ]},
+    ]
+
+
+def build(name):
+    return json.dumps(
+        professional() if name == "professional" else personal(),
+        indent=2, ensure_ascii=False) + "\n"
 
 
 def main():
-    text = build()
-    if "--check" in sys.argv:
-        if open(OUT, encoding="utf-8").read() != text:
-            sys.exit(f"DRIFT: {OUT} does not match the profile source — run {sys.argv[0]}")
-        print("me.json matches the LinkedIn profile source")
-        return
-    open(OUT, "w", encoding="utf-8").write(text)
-    print(f"wrote {OUT}")
+    for name in PAGES:
+        out = os.path.join(HERE, "ui", "me", f"{name}.json")
+        text = build(name)
+        if "--check" in sys.argv:
+            if open(out, encoding="utf-8").read() != text:
+                sys.exit(f"DRIFT: {out} does not match its source — run {sys.argv[0]}")
+        else:
+            open(out, "w", encoding="utf-8").write(text)
+    print("profile pages " + ("match their sources" if "--check" in sys.argv else "written"))
 
 
 main()
