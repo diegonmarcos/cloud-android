@@ -61,7 +61,12 @@ public class DebugDumpReceiver extends BroadcastReceiver {
         // ssh, which turned a published fix into a 30-minute wait on
         // 2026-09-02. The debug tap is already the remote-ops door; an update
         // check through it costs one conditional GET when nothing is new.
-        CommsUpdateWorker.checkNow(ctx);
+        // Update check is OPT-IN (`am broadcast ... --ez update true`). It used to run on
+        // EVERY dump, and each run reaps the previous install session — so taking a
+        // debug dump every few minutes to watch an update land is exactly what kept
+        // the update from landing (2026-09-02: three sessions abandoned in a row).
+        if (intent.getBooleanExtra("update", false))
+            CommsUpdateWorker.checkNow(ctx);
         final PendingResult result = goAsync();
         new Thread(new Runnable() {
             @Override
