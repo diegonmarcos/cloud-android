@@ -22,6 +22,10 @@ data class OneHandConfig(
     val longPressMs: Int,
     val edgeInsetGestureDp: Int, // inset applied only when the device is in gesture-nav mode
     val radial: Radial,
+    /** In-app destinations, read from circular_menu.actions — the SAME list the
+     *  radial star offers. Declared once, so an edge gesture and a star node
+     *  cannot drift into offering different sets of app actions. */
+    val appActions: List<AppAction> = emptyList(),
 ) {
     enum class Edge { LEFT, RIGHT, BOTTOM }
 
@@ -52,6 +56,8 @@ data class OneHandConfig(
 
     data class Slot(val key: String, val label: String)
     data class AppOption(val label: String, val pkg: String)
+    /** label + raw navigation target, e.g. "Search" / "action:open_search". */
+    data class AppAction(val label: String, val target: String)
 
     companion object {
         /** Sectors of a handle, ordered top→down (UI + preview iterate these). Left/right
@@ -103,10 +109,19 @@ data class OneHandConfig(
                         GestureAction.parse(ritems!!.optString(i))?.let { add(it) }
                 },
             )
+            val actsJson = json.optJSONObject("circular_menu")?.optJSONArray("actions")
+            val appActions = buildList {
+                for (i in 0 until (actsJson?.length() ?: 0)) {
+                    val a = actsJson!!.optJSONObject(i) ?: continue
+                    val target = a.optString("target")
+                    val label = a.optString("label")
+                    if (target.isNotBlank() && label.isNotBlank()) add(AppAction(label, target))
+                }
+            }
             return OneHandConfig(
                 handles, apps, d.optInt("swipe_threshold_dp", 24),
                 trigger, d.optInt("long_press_ms", 300),
-                d.optInt("edge_inset_gesture_dp", 28), radial,
+                d.optInt("edge_inset_gesture_dp", 28), radial, appActions,
             )
         }
 

@@ -329,6 +329,10 @@ class OneHandAccessibilityService : AccessibilityService() {
                 .joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
         is GestureAction.OpenApp ->
             cfg?.apps?.firstOrNull { it.pkg == action.pkg }?.label ?: action.pkg
+        is GestureAction.AppTarget ->
+            cfg?.appActions?.firstOrNull { it.target == "action:${action.target}" || it.target == action.target }
+                ?.label
+                ?: action.target.split('_').joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
     }
 
     /** 0=3-button, 1=2-button, 2=gesture nav. Read from the framework resource. */

@@ -347,6 +347,11 @@ class OneHandFragment : Fragment() {
 
     private fun buildOptions(cfg: OneHandConfig): List<Option> = buildList {
         add(Option("None", null))
+        // In-app destinations, straight from circular_menu.actions — the same
+        // entries the radial star shows, so the two menus offer one list.
+        cfg.appActions.forEach {
+            add(Option(it.label, GestureAction.AppTarget(it.target.removePrefix("action:"))))
+        }
         // Config / global actions.
         OneHandAction.entries
             .filter { it != OneHandAction.NONE && it.supported }
