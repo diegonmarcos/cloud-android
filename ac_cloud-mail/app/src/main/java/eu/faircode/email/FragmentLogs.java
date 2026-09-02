@@ -190,8 +190,98 @@ public class FragmentLogs extends FragmentBase {
         } else if (itemId == R.id.menu_clear) {
             onMenuClear();
             return true;
+        } else if (itemId == R.id.menu_log_copy) {
+            onMenuExport("copy");
+            return true;
+        } else if (itemId == R.id.menu_log_export) {
+            onMenuExport("file");
+            return true;
+        } else if (itemId == R.id.menu_log_cloud) {
+            onMenuExport("cloud");
+            return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    // comms: the log screen had no way OUT -- rows could only be selected one
+    // by one. One gatherer, three sinks: clipboard, Downloads/mail-log/, and
+    // the constellation telemetry default (kind=log -> ntfy infra-comms-mail).
+    // The text honours the same type filter and account/folder/message scope
+    // the visible list uses, so what you export is what you see.
+    private void onMenuExport(String how) {
+        Bundle args = new Bundle();
+        args.putString("how", how);
+        args.putLong("account", account == null ? -1L : account);
+        args.putLong("folder", folder == null ? -1L : folder);
+        args.putLong("message", message == null ? -1L : message);
+
+        List<EntityLog.Type> types = getTypes();
+        int[] ordinals = new int[types.size()];
+        for (int i = 0; i < ordinals.length; i++)
+            ordinals[i] = types.get(i).ordinal();
+        args.putIntArray("types", ordinals);
+
+        new SimpleTask<String>() {
+            @Override
+            protected String onExecute(Context context, Bundle args) throws Throwable {
+                String how = args.getString("how");
+                long account = args.getLong("account");
+                long folder = args.getLong("folder");
+                long message = args.getLong("message");
+                boolean all = (account < 0 && folder < 0 && message < 0);
+
+                List<EntityLog.Type> types = new ArrayList<>();
+                for (int ordinal : args.getIntArray("types"))
+                    types.add(EntityLog.Type.values()[ordinal]);
+
+                long from = new Date().getTime() - 24 * 3600 * 1000L;
+                StringBuilder sb = new StringBuilder();
+                List<EntityLog> logs = DB.getInstance(context).log().getLogs(from, null);
+                // getLogs returns newest first; export oldest first so the file reads forward
+                for (int i = logs.size() - 1; i >= 0; i--) {
+                    EntityLog log = logs.get(i);
+                    if (all ? !types.contains(log.type)
+                            : !((account < 0 || Long.valueOf(account).equals(log.account)) &&
+                                (folder < 0 || Long.valueOf(folder).equals(log.folder)) &&
+                                (message < 0 || Long.valueOf(message).equals(log.message))))
+                        continue;
+                    sb.append(log.time == null ? "?" : new Date(log.time).toString())
+                            .append(' ').append(log.data).append("\r\n");
+                }
+                String text = sb.toString();
+
+                if ("file".equals(how))
+                    return DebugDumpReceiver.writeDownload(context, "mail-log", text);
+
+                if ("cloud".equals(how)) {
+                    com.diegonmarcos.superapp.core.Telemetry.post(
+                            context, "log", "mail log export", null,
+                            java.util.Collections.<String, String>emptyMap(), text);
+                    return null;
+                }
+
+                return text; // copy
+            }
+
+            @Override
+            protected void onExecuted(Bundle args, String result) {
+                String how = args.getString("how");
+                if ("copy".equals(how)) {
+                    android.content.ClipboardManager cbm =
+                            Helper.getSystemService(getContext(), android.content.ClipboardManager.class);
+                    cbm.setPrimaryClip(android.content.ClipData.newPlainText("log", result));
+                    ToastEx.makeText(getContext(), R.string.title_clipboard_copied, ToastEx.LENGTH_LONG).show();
+                } else if ("file".equals(how))
+                    ToastEx.makeText(getContext(), getString(R.string.title_save_file) + ": Downloads/mail-log/" + result, ToastEx.LENGTH_LONG).show();
+                else
+                    ToastEx.makeText(getContext(), R.string.title_log_send_cloud, ToastEx.LENGTH_LONG).show();
+            }
+
+            @Override
+            protected void onException(Bundle args, Throwable ex) {
+                Log.unexpectedError(getParentFragmentManager(), ex);
+            }
+        }.execute(this, args, "logs:export");
     }
 
     private void onMenuEnable(boolean enabled) {

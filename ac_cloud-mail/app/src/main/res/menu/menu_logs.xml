@@ -2,6 +2,22 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
+        android:id="@+id/menu_log_copy"
+        android:icon="@drawable/twotone_file_copy_24"
+        android:title="@string/title_clipboard_copy"
+        app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/menu_log_export"
+        android:icon="@drawable/twotone_save_alt_24"
+        android:title="@string/title_save_file"
+        app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/menu_log_cloud"
+        android:icon="@drawable/twotone_cloud_24"
+        android:title="@string/title_log_send_cloud"
+        app:showAsAction="ifRoom" />
+
+    <item
         android:id="@+id/menu_enabled"
         android:checkable="true"
         android:checked="true"

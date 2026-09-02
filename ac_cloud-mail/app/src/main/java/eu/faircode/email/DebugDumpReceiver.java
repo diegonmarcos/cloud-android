@@ -264,7 +264,13 @@ public class DebugDumpReceiver extends BroadcastReceiver {
     }
 
     private static void write(Context context, String content) throws Exception {
-        String name = "mail-debug-" +
+        writeDownload(context, "mail-debug", content);
+    }
+
+    // Shared with FragmentLogs' export action -- one Downloads writer for every
+    // on-device dump, so they all land in the same place with the same naming.
+    static String writeDownload(Context context, String prefix, String content) throws Exception {
+        String name = prefix + "-" +
                 new SimpleDateFormat("yyyyMMdd-HHmmss", Locale.ROOT).format(new Date()) + ".txt";
         byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
 
@@ -273,7 +279,7 @@ public class DebugDumpReceiver extends BroadcastReceiver {
             cv.put(MediaStore.Downloads.DISPLAY_NAME, name);
             cv.put(MediaStore.Downloads.MIME_TYPE, "text/plain");
             cv.put(MediaStore.Downloads.RELATIVE_PATH,
-                    Environment.DIRECTORY_DOWNLOADS + "/mail-debug");
+                    Environment.DIRECTORY_DOWNLOADS + "/" + prefix);
             Uri uri = context.getContentResolver()
                     .insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, cv);
             if (uri == null)
@@ -284,7 +290,7 @@ public class DebugDumpReceiver extends BroadcastReceiver {
             Log.i("Debug dump written to " + uri);
         } else {
             File dir = new File(Environment.getExternalStoragePublicDirectory(
-                    Environment.DIRECTORY_DOWNLOADS), "mail-debug");
+                    Environment.DIRECTORY_DOWNLOADS), prefix);
             dir.mkdirs();
             File file = new File(dir, name);
             try (OutputStream os = new FileOutputStream(file)) {
@@ -292,6 +298,7 @@ public class DebugDumpReceiver extends BroadcastReceiver {
             }
             Log.i("Debug dump written to " + file);
         }
+        return name;
     }
 
     private static void active(Context context, StringBuilder sb) {
