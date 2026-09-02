@@ -253,6 +253,19 @@ ab_cloud-libs-shared/**/build/
 ab_cloud-libs-shared/**/.cxx/
 ab_cloud-libs-shared/.cache/
 ab_cloud-libs-shared/.kotlin/
+
+## libs:repos — the mirrored snapshots, and the same trap one level deeper.
+## !ab_cloud-libs-shared/libs/** un-ignores everything under libs/, which would
+## stage ~1 GB of OTHER repositories' files into this one. The mirror is a
+## working copy of other repos, never content of this repo: only the three
+## files that DESCRIBE it are tracked. Listing the children (repos/*) rather
+## than the directory keeps the negations below reachable — git will not look
+## inside an excluded directory, so ignoring `repos/` outright would make the
+## `!` lines dead and the registry itself untracked.
+ab_cloud-libs-shared/libs/repos/*
+!ab_cloud-libs-shared/libs/repos/repos.json
+!ab_cloud-libs-shared/libs/repos/sync.sh
+!ab_cloud-libs-shared/libs/repos/README.md
 ## ac_cloud-calendar's first local ./gradlew run surfaced it, but the gap
 ## Re-ignore Gradle/Kotlin daemon caches inside the whitelisted aa_cloud-superapp/
 aa_cloud-superapp/.cache/

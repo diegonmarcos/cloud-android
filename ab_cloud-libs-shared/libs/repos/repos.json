@@ -1,0 +1,92 @@
+{
+  "_doc": "libs:repos — read-only, history-free snapshots of the cloud and front repos, so this machine can read any of them without cloning, without them ever going stale, and without any of them ever being dirty. NOT a git clone: sync.sh downloads the tip TARBALL and extracts it, so there is no .git directory at all. 'Never dirty' is therefore structural rather than enforced — there is no repo to commit from, no branch to drift, nothing to reset.",
+  "_doc_source": "The repo list is NOT invented here. It is the union of ~/git/cloud/repos.json and ~/git/front/repos.json — the two symlink farms that already index this account — regenerated with `./sync.sh --refresh-list`. `name` is the local directory and `url` is the GitHub repo, and they legitimately differ (front-diegonmarcos is diegonmarcos.github.io); the farms encode that mapping, which is exactly why deriving the list from a GitHub name filter misses repos.",
+  "_doc_freshness": "Never behind, cheaply: each snapshot records the commit sha it came from in .head. A sync asks GitHub for the branch head (one API call) and re-downloads ONLY when it differs. Unchanged repos cost one request and no bytes. The download lands in <dir>.new and is swapped in atomically, so an interrupted sync can never leave a half-updated tree.",
+  "_doc_private": "private:true entries are listed but NOT synced unless include_private is set. They would sit as plaintext source inside a public repo's working tree; that is a deliberate choice, not a default.",
+  "_schema": "cloud-repos-mirror/v1",
+  "base_dir": ".",
+  "include_private": false,
+  "exclude_globs": [],
+  "_doc_exclude_globs": "tar --exclude patterns applied at extract time. Empty = full working copies, which is what was asked for. front-diegonmarcos is 738 MB of which ~510 MB is media; adding '*.jpg','*.png', '*.mp4','*.gif','*.mp3' here takes the whole mirror from ~1.0 GB to ~530 MB and drops no source.",
+  "exclude": {
+    "cloud-u-android": "This repo. A snapshot of ourselves inside ourselves is a copy, not information.",
+    "cloud-vault": "SECRETS (sops/age). Never mirrored into this tree: cloud-u-android is a PUBLIC repo, and a directory whose whole design is that it is never cleaned is the worst possible home for credentials.",
+    "front-assets-cdn": "1.4 GB of binary assets and no source. Excluded by hand.",
+    "cloud": "Symlink farm — its content is links to the others, which say nothing once snapshotted.",
+    "front": "Symlink farm, same reason."
+  },
+  "repos": [
+    {
+      "name": "cloud-data",
+      "repo": "diegonmarcos/cloud-data",
+      "private": true,
+      "doc": "Generated fleet config consumed by cloud's services."
+    },
+    {
+      "name": "cloud-data-lfs",
+      "repo": "diegonmarcos/cloud-data-lfs",
+      "private": true,
+      "doc": "Large binary artefacts (git-lfs) for cloud-data."
+    },
+    {
+      "name": "cloud-data-my-ai-memory",
+      "repo": "diegonmarcos/cloud-data-my-ai-memory",
+      "private": true,
+      "doc": "Claude Code's durable state and the source it runs from. ~/.claude symlinks in, not out: a_sessions/<instance>/ holds transcripts, file-history, shell-snapshots and history.jsonl; b_projects/ holds MEMORY.md and memory-entries; a_commits/ snapshots every commit object of every repo here."
+    },
+    {
+      "name": "cloud-infra",
+      "repo": "diegonmarcos/cloud-infra",
+      "private": false,
+      "doc": "Fleet: services, infra, the derive engine (1_cloud-configs)."
+    },
+    {
+      "name": "cloud-infra-desktop",
+      "repo": "diegonmarcos/cloud-infra-desktop",
+      "private": false,
+      "doc": "Workstation + device configuration, nix flakes, the superapp. Holds the Claude SoT (da_my-ai/src/data/claude)."
+    },
+    {
+      "name": "cloud-notes",
+      "repo": "diegonmarcos/cloud-notes",
+      "private": true,
+      "doc": "Personal notes (Obsidian vault)."
+    },
+    {
+      "name": "cloud-u-containers",
+      "repo": "diegonmarcos/cloud-u-containers",
+      "private": false,
+      "doc": "The containerised services a_solutions ships: one dir per service, each with build.json. Mounted back into cloud-infra as a submodule at a_solutions/ so the ship engine keeps globbing a_solutions/*/build.json."
+    },
+    {
+      "name": "cloud-u-linux",
+      "repo": "diegonmarcos/cloud-u-linux",
+      "private": false,
+      "doc": "The d* unix apps split out of cloud-unix, which was renamed cloud-infra-desktop in the same move. The desktop flakes reference them as home-directory paths, never as flake inputs."
+    },
+    {
+      "name": "front-data",
+      "repo": "diegonmarcos/front-data",
+      "private": false,
+      "doc": "Front-end content and data."
+    },
+    {
+      "name": "front-diegonmarcos",
+      "repo": "diegonmarcos/diegonmarcos.github.io",
+      "private": false,
+      "doc": "Front-end: the published site and its derive job (1_front-configs). Cloned as 'front-diegonmarcos', not after its repo name (diegonmarcos.github.io) — every front member is front-<thing>, and the bare 'front' now belongs to the project master, exactly as 'cloud' does for a_cloud."
+    },
+    {
+      "name": "front-galaxy-gaia",
+      "repo": "diegonmarcos/front-galaxy-gaia",
+      "private": true,
+      "doc": "Front-end experiment."
+    },
+    {
+      "name": "front-unity",
+      "repo": "diegonmarcos/front-unity",
+      "private": true,
+      "doc": "Unity asset pipeline (unity-asset-vm: upkg2gltf, fetch-and-convert) plus its assets. Was front-asset-cdn, the predecessor of front-assets-cdn; renamed 2026-08-18 to match what it actually holds - the CDN itself is front-assets-cdn."
+    }
+  ]
+}
