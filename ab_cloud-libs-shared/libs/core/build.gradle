@@ -1,6 +1,14 @@
 plugins {
     id 'com.android.library'
-    id 'org.jetbrains.kotlin.android'
+    // apply false + conditional apply below: AGP 9 consumers (mail,
+    // media-center) register the 'kotlin' extension themselves and hard-error
+    // on a second apply; AGP 8 consumers still need the explicit one. Same
+    // pattern, same reason, same wording as libs/analytics/build.gradle.
+    id 'org.jetbrains.kotlin.android' apply false
+}
+
+if (project.extensions.findByName('kotlin') == null) {
+    apply plugin: 'org.jetbrains.kotlin.android'
 }
 
 android {

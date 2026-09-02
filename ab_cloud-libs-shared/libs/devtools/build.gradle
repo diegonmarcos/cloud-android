@@ -1,5 +1,10 @@
 apply plugin: 'com.android.library'
-apply plugin: 'org.jetbrains.kotlin.android'
+// Conditional: AGP 9 consumers self-register the 'kotlin' extension and
+// hard-error on a second apply ("Cannot add extension with name 'kotlin'");
+// AGP 8 consumers still need it. Same pattern as libs/analytics/build.gradle.
+if (project.extensions.findByName('kotlin') == null) {
+    apply plugin: 'org.jetbrains.kotlin.android'
+}
 
 // rootDir, NOT '../../': this module is shared by reference (projectDir) into
 // every constellation app, so it must read the CONSUMING app's build.json.
