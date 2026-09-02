@@ -166,6 +166,29 @@ private fun WalletScreen(modeState: MutableState<WalletMode>) {
 
     val onOpenVcard: () -> Unit = { (ctx as? WalletHost)?.onOpenVcard() }
 
+    /**
+     * The "Me" pill leaves this app: cloud-me owns the personal-administration
+     * surface (Buro / Agenda / Me / Projects / Studying) that the wallet
+     * deliberately does not. Package comes from build.json
+     * (ui.me_app_package), not a literal — repointing it must be a JSON edit.
+     *
+     * Not installed is the ordinary case, not an error: the constellation is
+     * installed piecemeal. Say so and stay put rather than throwing.
+     */
+    val onOpenMe: () -> Unit = {
+        val pkg = BuildConfig.UI_ME_APP_PACKAGE
+        val launch = pkg.takeIf { it.isNotBlank() }
+            ?.let { ctx.packageManager.getLaunchIntentForPackage(it) }
+        if (launch != null) {
+            launch.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            runCatching { ctx.startActivity(launch) }
+        } else {
+            android.widget.Toast
+                .makeText(ctx, "Cloud Me is not installed", android.widget.Toast.LENGTH_SHORT)
+                .show()
+        }
+    }
+
     fun cardOrIdle(id: String): WalletStore.Card? {
         val c = cards.firstOrNull { it.id == id }
         if (c == null) mode = WalletMode.Idle
@@ -178,6 +201,11 @@ private fun WalletScreen(modeState: MutableState<WalletMode>) {
             if (!hideChrome) {
                 WalletTabStrip(
                     selected = tab,
+                    onOpenMe = onOpenMe,
+                    onOpenConfig = {
+                        tab  = WalletTab.Config
+                        mode = WalletMode.Idle
+                    },
                     onSelect = { next ->
                         if (next != tab) {
                             tab  = next

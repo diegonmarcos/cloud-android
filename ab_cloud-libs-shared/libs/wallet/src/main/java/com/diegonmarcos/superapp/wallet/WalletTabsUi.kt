@@ -2,6 +2,8 @@ package com.diegonmarcos.superapp.wallet
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,10 +40,10 @@ import java.util.Locale
 /** Top-level wallet tabs. Events is a container with its own inner nav
  *  (Tickets / Bookings / Passes / Cal). */
 enum class WalletTab(val label: String) {
+    IDs("IDs"),
     /** Payment cards — the tab is called Pay because that is what you open it
      *  to do; the deck it holds is still the banking cards. */
     Pay("Pay"),
-    IDs("IDs"),
     /** Vcards sits between the documents you carry and the events you go to:
      *  it is the public half of the same wallet — one personal card per social,
      *  mirroring the pages of front-diegonmarcos/b-Media/mySocials. Declared,
@@ -49,6 +51,9 @@ enum class WalletTab(val label: String) {
      *  content the user cannot add to from the app. */
     Vcards("Vcards"),
     Tickets("Events"),
+    /** Still a destination, no longer a pill: it is the gear at the right end
+     *  of the strip. Kept in the enum because it is where [WalletFragment]
+     *  routes to render WalletSystemConfigTab — a mode, not a menu entry. */
     Config("Config"),
 }
 
@@ -62,37 +67,78 @@ enum class TicketsSubTab(val label: String) {
 
 // ─── Tab strips ───────────────────────────────────────────────────────────────
 
-/** Top-level pill strip (Cards / IDs / Tickets / Config). */
+/**
+ * Top-level strip: IDs · Pay · Me · Vcards · Events, with Config as the gear
+ * at the right end.
+ *
+ * NOT built from WalletTab.values() any more, because the strip and the enum
+ * no longer describe the same set. Config is a destination without a pill, and
+ * Me is a pill without a destination — it launches cloud-me, the separate app
+ * that owns the personal-administration surface this one deliberately does not.
+ *
+ * The pills scroll horizontally. Five at widthIn(min = 70.dp) plus their gaps
+ * already exceed a 360dp phone before the gear takes its corner, and a Row
+ * that overflows clips silently — the last pill simply is not there.
+ */
 @Composable
 internal fun WalletTabStrip(
     selected: WalletTab,
     onSelect: (WalletTab) -> Unit,
+    onOpenMe: () -> Unit,
+    onOpenConfig: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
-    ) {
-        WalletTab.values().forEach { tab ->
-            val isActive = tab == selected
-            Box(
-                modifier = Modifier
-                    .widthIn(min = 70.dp)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(if (isActive) Color(0xFF7C3AED) else Color(0x22FFFFFF))
-                    .clickable { onSelect(tab) }
-                    .padding(horizontal = 14.dp, vertical = 9.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = tab.label,
-                    color = Color.White,
-                    fontSize = 13.sp,
-                    fontWeight = if (isActive) FontWeight.SemiBold else FontWeight.Normal,
-                )
-            }
+    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState())
+                // end padding reserves the gear's corner so a scrolled pill
+                // never slides underneath it.
+                .padding(start = 16.dp, end = 56.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Pill(WalletTab.IDs.label, WalletTab.IDs == selected) { onSelect(WalletTab.IDs) }
+            Pill(WalletTab.Pay.label, WalletTab.Pay == selected) { onSelect(WalletTab.Pay) }
+            // Never "selected": tapping it leaves this app entirely.
+            Pill("Me", active = false, onClick = onOpenMe)
+            Pill(WalletTab.Vcards.label, WalletTab.Vcards == selected) { onSelect(WalletTab.Vcards) }
+            Pill(WalletTab.Tickets.label, WalletTab.Tickets == selected) { onSelect(WalletTab.Tickets) }
         }
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 12.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(if (selected == WalletTab.Config) Color(0xFF7C3AED) else Color(0x22FFFFFF))
+                .clickable { onOpenConfig() }
+                .padding(horizontal = 11.dp, vertical = 9.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            // A glyph, not an icon resource: material-icons-extended is not a
+            // dependency here and one gear does not justify adding it.
+            Text(text = "\u2699", color = Color.White, fontSize = 15.sp)
+        }
+    }
+}
+
+/** One strip pill. */
+@Composable
+private fun Pill(label: String, active: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .widthIn(min = 70.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(if (active) Color(0xFF7C3AED) else Color(0x22FFFFFF))
+            .clickable { onClick() }
+            .padding(horizontal = 14.dp, vertical = 9.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            color = Color.White,
+            fontSize = 13.sp,
+            fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
+        )
     }
 }
 

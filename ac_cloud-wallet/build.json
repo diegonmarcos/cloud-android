@@ -240,7 +240,9 @@
         "accent": 4294901760,
         "url": "https://diegonmarcos.github.io/mySocials/youtube.html"
       }
-    ]
+    ],
+    "_doc_me_app_package": "applicationId the wallet's `Me` pill launches — cloud-me, which owns the personal-administration surface the wallet does not. Data so repointing it is a JSON edit; blank disables the pill's launch and it reports the app as missing. Baked by libs/wallet/build.gradle into BuildConfig.UI_ME_APP_PACKAGE.",
+    "me_app_package": "com.diegonmarcos.cloudme"
   },
   "release": {
     "artifact": {
