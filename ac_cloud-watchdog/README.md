@@ -94,6 +94,16 @@ fork, same self-generated ECDSA key, same manual `authorized_keys` step.
 
 ## If the app shows an empty interface
 
+**Every page blank, on load, before you touch anything** was a crash in the
+shell's own script: with no data yet it drew the legacy overview boxes against
+the empty placeholder shell and called `.toFixed` on a `{}`, which threw and
+took the rest of the script — the nav handlers included — down with it. The
+overview shows a "waiting for a machine" state now until a machine answers, and
+the number formatters coerce non-numbers to 0 so one bad field can never blank
+the page again. (fixed 2026-09-02)
+
+## If the app cannot reach a machine
+
 It is not reaching the machine, and until 2026-09-02 the usual reason was a
 bug in the panel rather than anything on the phone.
 
