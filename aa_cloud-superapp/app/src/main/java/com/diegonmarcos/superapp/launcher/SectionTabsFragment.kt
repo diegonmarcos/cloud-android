@@ -196,54 +196,59 @@ class SectionTabsFragment : Fragment(), Collapsible {
     }
 
     private fun applyEqualTabs(tabs: TabLayout) {
-        run {
-            val strip = tabs.getChildAt(0) as? ViewGroup ?: return@run
-            val n = strip.childCount
-            if (n == 0) return@run
-            val avail = tabs.width - tabs.paddingStart - tabs.paddingEnd
-            if (avail <= 0) return@run
+        val n = tabs.tabCount
+        if (n == 0) return
+        val avail = tabs.width - tabs.paddingStart - tabs.paddingEnd
+        if (avail <= 0) return
 
-            val labels = (0 until n).mapNotNull { findLabel(strip.getChildAt(it)) }
-            if (labels.isEmpty()) return@run
+        // AppTabsStyle replaced every tab's content with a PILL custom view, and
+        // that pill is what the eye sees. Sizing TabLayout's own TabView does
+        // nothing visible: MODE_FIXED already makes those equal, while the pill
+        // inside stays WRAP_CONTENT and centred, so the strip still reads ragged.
+        // The width has to go on the pill.
+        val pills = (0 until n).mapNotNull { tabs.getTabAt(it)?.customView }
+        if (pills.size != n) return
+        val labels = pills.mapNotNull { findLabel(it) }
+        if (labels.size != n) return
 
-            val dm = tabs.resources.displayMetrics
-            val padPx = (TAB_PAD_DP * dm.density).toInt()
-            val minPx = MIN_SP * dm.scaledDensity
-            val paint = android.text.TextPaint().apply { typeface = labels[0].typeface }
+        val dm = tabs.resources.displayMetrics
+        val padPx = PILL_PAD_DP * dm.density * 2      // makePill's 14dp each side
+        val marginPx = PILL_MARGIN_DP * dm.density * 2 // and its 3dp each side
+        val minPx = MIN_SP * dm.scaledDensity
+        // MODE_FIXED hands every TabView an equal share; the pill must fit in one.
+        val perTab = avail.toFloat() / n
 
-            var sizePx = labels[0].textSize
-            var slot: Int
-            while (true) {
-                paint.textSize = sizePx
-                slot = (paint.measureText(WIDEST) + padPx).toInt()
-                if (slot.toLong() * n <= avail || sizePx <= minPx) break
-                sizePx -= dm.density   // ~1dp a step: fine enough to look smooth
-            }
-
-            // Never narrower than an even share, or a two-tab strip would sit as
-            // two small pills in a wide empty bar.
-            val finalSlot = maxOf(slot, avail / n)
-            val overflows = finalSlot.toLong() * n > avail
-            tabs.tabMode = if (overflows) TabLayout.MODE_SCROLLABLE else TabLayout.MODE_FIXED
-
-            labels.forEach {
-                it.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, sizePx)
-                it.isSingleLine = true
-                it.maxLines = 1
-                it.ellipsize = android.text.TextUtils.TruncateAt.END
-            }
-            for (i in 0 until n) {
-                val tab = strip.getChildAt(i)
-                tab.minimumWidth = finalSlot
-                tab.layoutParams = tab.layoutParams.apply { width = finalSlot }
-            }
-            strip.requestLayout()
+        val paint = android.text.TextPaint().apply {
+            typeface = labels[0].typeface
+            letterSpacing = labels[0].letterSpacing   // 0.08 — real width, not nominal
         }
+        var sizePx = labels[0].textSize
+        var pillPx: Float
+        while (true) {
+            paint.textSize = sizePx
+            pillPx = paint.measureText(WIDEST) + padPx
+            if (pillPx + marginPx <= perTab || sizePx <= minPx) break
+            sizePx -= dm.density        // ~1dp a step
+        }
+
+        // Past the floor there is genuinely no room: scroll rather than clip.
+        val overflows = pillPx + marginPx > perTab
+        tabs.tabMode = if (overflows) TabLayout.MODE_SCROLLABLE else TabLayout.MODE_FIXED
+
+        val width = pillPx.toInt()
+        for (i in 0 until n) {
+            labels[i].setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, sizePx)
+            labels[i].isSingleLine = true
+            labels[i].maxLines = 1
+            labels[i].ellipsize = android.text.TextUtils.TruncateAt.END
+            pills[i].layoutParams = pills[i].layoutParams.apply { this.width = width }
+            pills[i].minimumWidth = width
+        }
+        tabs.requestLayout()
     }
 
-    /** First TextView inside a tab view. TabLayout wraps the label in a
-     *  container whose shape it does not promise, so this walks rather than
-     *  assuming a position. */
+    /** First TextView inside a pill. AppTabsStyle wraps the label in a
+     *  LinearLayout, but this walks rather than assuming that shape stays. */
     private fun findLabel(v: View?): android.widget.TextView? = when (v) {
         null -> null
         is android.widget.TextView -> v
@@ -255,7 +260,9 @@ class SectionTabsFragment : Fragment(), Collapsible {
         /** Seven characters: LNKTREE and CONFIGS are the longest tab labels in
          *  build.json, so this is the real ceiling rather than a guess. */
         private const val WIDEST = "CONFIGS"
-        private const val TAB_PAD_DP = 18f
+        /** makePill's horizontal padding and margin, per side. */
+        private const val PILL_PAD_DP = 14f
+        private const val PILL_MARGIN_DP = 3f
         private const val MIN_SP = 9f
 
         /** Panes we have stable host ids for — see `values/ids.xml`. */
