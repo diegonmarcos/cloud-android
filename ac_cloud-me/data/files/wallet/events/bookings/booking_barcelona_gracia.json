@@ -1,0 +1,12 @@
+{
+  "id": "booking_barcelona_gracia",
+  "kind": "apartment",
+  "brand": "Gràcia Loft Apartments",
+  "tagline": "Studio · Self check-in · 2 guests",
+  "eventLocation": "Carrer de Verdi 145, Barcelona, ES",
+  "number": "BCN-889200",
+  "barcode": "BCN889200ES",
+  "accent": 4278869150,
+  "daysFromNow": 34,
+  "nights": 5
+}

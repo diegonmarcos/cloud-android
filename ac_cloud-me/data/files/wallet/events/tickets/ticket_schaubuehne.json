@@ -1,0 +1,12 @@
+{
+  "id": "ticket_schaubuehne",
+  "kind": "theater",
+  "brand": "Schaubühne",
+  "tagline": "Hamlet — Thomas Ostermeier",
+  "accent": 4284157711,
+  "number": "Reihe 4 · Sitz 9",
+  "eventLocation": "Kurfürstendamm 153, Berlin",
+  "daysFromNow": -42,
+  "eventHour": 19,
+  "eventMinute": 30
+}

@@ -148,9 +148,9 @@ private fun WalletScreen(modeState: MutableState<WalletMode>) {
                 TicketsSubTab.Passes   -> cards.filter { !it.isTicket && it.kind in passKinds }
                 TicketsSubTab.Calendar -> cards.filter { it.isTicket }
             }
-            // Me holds no WalletStore cards at all — its deck is declared in
-            // build.json::ui.socials, so there is nothing here to filter.
-            WalletTab.Me      -> emptyList()
+            // Vcards holds no WalletStore cards at all — its deck is declared
+            // in build.json::ui.socials, so there is nothing here to filter.
+            WalletTab.Vcards  -> emptyList()
             WalletTab.Config  -> emptyList()
         }
     }
@@ -226,7 +226,7 @@ private fun WalletScreen(modeState: MutableState<WalletMode>) {
                         }
                     }
                     else -> when (tab) {
-                        WalletTab.Me     -> WalletMeTab()
+                        WalletTab.Vcards -> WalletVcardsTab()
                         WalletTab.Config -> WalletSystemConfigTab(onImported = refresh)
 
                         WalletTab.Tickets -> when (ticketsSub) {

@@ -15,12 +15,37 @@ Two rules the loader enforces so the split cannot rot:
   on any `page:`/`extapp:` target that points at something that is not there.
 
 Adding a page is still a data edit: one entry in that section's `pages`, one
-file beside its siblings. The folder is the section, so Buro's five tabs, the
+file beside its siblings. The folder is the section, so Buro's tabs, the
 Agenda's two and the Projects' three each live together instead of in one
 1100-line blob where a page was a key prefix and nothing else.
 
-A section with a `target` and no `pages` — Wallet — has no folder here. It
-launches another app and hosts nothing.
+A tab that declares `pages` of its own is a container: it holds no file, its
+children live one folder deeper (`ui/buro/fin/acct.json`) and the app draws a
+second, quieter strip beneath the first. Buro › Fin is the only one — Acct,
+Budget and Portfolio are three views of one question.
+
+A section with a `target` and no `pages` — Wallet, in the bottom bar — has no
+folder here. It launches Cloud Wallet and hosts nothing.
+
+## `files/` — the wallet's source of truth
+
+`files/wallet/{pay,ids,vcards,events}/…` is where the wallet records actually
+live: one JSON file per record, in folders, browsed as folders by Buro ›
+Wallet. `app/build.gradle` ships the tree verbatim as assets, so the browser
+walks it with `AssetManager.list()` and needs no manifest.
+
+Cloud Wallet reads a single bundled `assets/wallet.json` because its decks want
+the whole set in memory at once. That file is **this tree flattened** — not a
+second copy to edit:
+
+```
+./data/regen-wallet-json.py            # tree → ac_cloud-wallet/…/wallet.json
+./data/regen-wallet-json.py --check    # drift check, run by test/
+```
+
+Edit a record here, run the script, commit both. `test/test-ui-pages.sh` fails
+if they disagree, which is what stops the two apps from telling different
+stories about the same card.
 
 ## `calendars.json`
 

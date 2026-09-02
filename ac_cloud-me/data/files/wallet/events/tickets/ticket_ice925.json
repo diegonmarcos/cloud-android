@@ -1,0 +1,12 @@
+{
+  "id": "ticket_ice925",
+  "kind": "train",
+  "brand": "Deutsche Bahn ICE",
+  "tagline": "ICE 925 · Köln → Berlin",
+  "accent": 4292943146,
+  "number": "Wagen 7 · Sitz 33",
+  "eventLocation": "Köln Hbf",
+  "daysFromNow": -28,
+  "eventHour": 7,
+  "eventMinute": 47
+}

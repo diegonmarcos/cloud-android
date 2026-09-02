@@ -1,0 +1,12 @@
+{
+  "id": "ticket_berghain",
+  "kind": "music",
+  "brand": "Berghain · Klubnacht",
+  "tagline": "Friday Klubnacht",
+  "accent": 4280232247,
+  "number": "Doors 23:55",
+  "eventLocation": "Am Wriezener Bahnhof, Berlin",
+  "daysFromNow": 7,
+  "eventHour": 23,
+  "eventMinute": 55
+}

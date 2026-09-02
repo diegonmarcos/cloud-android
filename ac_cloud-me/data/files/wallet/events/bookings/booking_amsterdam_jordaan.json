@@ -1,0 +1,12 @@
+{
+  "id": "booking_amsterdam_jordaan",
+  "kind": "hostel",
+  "brand": "Jordaan Canal Hostel",
+  "tagline": "Private twin · Shared bath",
+  "eventLocation": "Bloemgracht 12, Amsterdam, NL",
+  "number": "AMS-203114",
+  "barcode": "AMS203114NL",
+  "accent": 4280253005,
+  "daysFromNow": 5,
+  "nights": 2
+}

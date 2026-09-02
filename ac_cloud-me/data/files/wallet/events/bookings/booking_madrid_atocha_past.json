@@ -1,0 +1,12 @@
+{
+  "id": "booking_madrid_atocha_past",
+  "kind": "apartment",
+  "brand": "Atocha Central Suites",
+  "tagline": "1-Bedroom · Kitchenette",
+  "eventLocation": "Calle de Atocha 90, Madrid, ES",
+  "number": "MAD-556021",
+  "barcode": "MAD556021ES",
+  "accent": 4288436766,
+  "daysFromNow": -75,
+  "nights": 3
+}

@@ -19,7 +19,19 @@ import org.json.JSONObject
  * Parsing is fail-soft throughout. A malformed blob yields an empty list and
  * an app that opens on a blank page, never one that crashes on launch.
  */
-data class Page(val id: String, val label: String, val icon: String)
+/** A tab. [pages] is non-empty only for a container tab — one that holds a
+ *  second strip instead of content of its own, which is what Buro > Fin is:
+ *  Acct, Budget and Portfolio are three views of one question and do not each
+ *  deserve a top-level tab. */
+data class Page(
+    val id: String,
+    val label: String,
+    val icon: String,
+    val pages: List<Page> = emptyList(),
+) {
+    /** The tab that actually renders when this one is selected. */
+    fun leaf(): Page = pages.firstOrNull()?.leaf() ?: this
+}
 
 data class Section(
     val id: String,
@@ -39,7 +51,14 @@ data class Section(
      *  twice would only create a second thing to keep correct. */
     val stacks: Map<String, JSONArray>,
 ) {
-    fun page(id: String?): Page? = pages.firstOrNull { it.id == id } ?: pages.firstOrNull()
+    /** Resolves a page id against the tab strip AND every sub-strip, so a
+     *  `page:buro/acct` target lands on a sub-page as readily as on a tab. */
+    fun page(id: String?): Page? =
+        pages.flatMap { listOf(it) + it.pages }.firstOrNull { it.id == id } ?: pages.firstOrNull()
+
+    /** The top-level tab holding [id] — itself, when [id] is already a tab. */
+    fun parentOf(id: String?): Page? =
+        pages.firstOrNull { it.id == id || it.pages.any { sub -> sub.id == id } }
     fun stackFor(pageId: String): JSONArray = stacks[pageId] ?: JSONArray()
 }
 
@@ -69,6 +88,24 @@ object Sections {
 
     fun default(): Section? = bottom().firstOrNull() ?: entries.firstOrNull()
 
+    /** One level of `pages`, plus whatever `pages` each of those declares.
+     *  Two levels is all the shell draws, so it is all this reads. */
+    private fun parsePages(arr: JSONArray?, nested: Boolean = false): List<Page> {
+        val out = mutableListOf<Page>()
+        for (j in 0 until (arr?.length() ?: 0)) {
+            val p = arr!!.optJSONObject(j) ?: continue
+            val pid = p.optString("id")
+            if (pid.isBlank()) continue
+            out.add(Page(
+                id = pid,
+                label = p.optString("label", pid),
+                icon = p.optString("icon"),
+                pages = if (nested) emptyList() else parsePages(p.optJSONArray("pages"), true),
+            ))
+        }
+        return out
+    }
+
     private fun load(): List<Section> = runCatching {
         val arr = JSONArray(String(Base64.decode(BuildConfig.UI_SECTIONS_B64, Base64.DEFAULT)))
         val out = mutableListOf<Section>()
@@ -77,15 +114,7 @@ object Sections {
             val id = o.optString("id")
             if (id.isBlank()) continue
 
-            val pages = mutableListOf<Page>()
-            o.optJSONArray("pages")?.let { pa ->
-                for (j in 0 until pa.length()) {
-                    val p = pa.optJSONObject(j) ?: continue
-                    val pid = p.optString("id")
-                    if (pid.isBlank()) continue
-                    pages.add(Page(pid, p.optString("label", pid), p.optString("icon")))
-                }
-            }
+            val pages = parsePages(o.optJSONArray("pages"))
 
             // stack_<page id>. Keyed off the page id rather than a positional
             // index so reordering tabs in JSON can never re-point a tab at

@@ -1,0 +1,12 @@
+{
+  "id": "booking_porto_ribeira_past",
+  "kind": "hotel",
+  "brand": "Ribeira Riverside Hotel",
+  "tagline": "Superior Double · River view",
+  "eventLocation": "Cais da Ribeira 30, Porto, PT",
+  "number": "PRT-1180455",
+  "barcode": "PRT1180455PT",
+  "accent": 4285218720,
+  "daysFromNow": -30,
+  "nights": 4
+}

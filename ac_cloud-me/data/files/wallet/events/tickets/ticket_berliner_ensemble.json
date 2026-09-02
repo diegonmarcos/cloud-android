@@ -1,0 +1,12 @@
+{
+  "id": "ticket_berliner_ensemble",
+  "kind": "theater",
+  "brand": "Berliner Ensemble",
+  "tagline": "Die Dreigroschenoper",
+  "accent": 4287299584,
+  "number": "Reihe 7 · Sitz 14",
+  "eventLocation": "Bertolt-Brecht-Platz 1, Berlin",
+  "daysFromNow": 10,
+  "eventHour": 19,
+  "eventMinute": 30
+}

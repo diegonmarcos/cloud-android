@@ -34,10 +34,18 @@ def b64 = { obj -> groovy.json.JsonOutput.toJson(obj).bytes.encodeBase64().toStr
 def uiPagesDir = file('../data/ui')
 def uiSections = (buildJson.ui.sections ?: []).collect { s ->
     def out = new LinkedHashMap(s)
-    (s.pages ?: []).each { p ->
-        def f = new File(uiPagesDir, "${s.id}/${p.id}.json")
-        if (!f.exists()) throw new GradleException("ui.sections[${s.id}].pages[${p.id}] has no data/ui/${s.id}/${p.id}.json")
+    // A page with `pages` of its own is a container — it holds no content,
+    // its children do, one folder deeper. Sub-page ids stay unique inside the
+    // section, so the flat `stack_<id>` map Sections.kt already reads is
+    // enough and nothing needed a second lookup path.
+    def load = { p, dir ->
+        def f = new File(uiPagesDir, "${dir}/${p.id}.json")
+        if (!f.exists()) throw new GradleException("ui.sections[${s.id}] page '${p.id}' has no data/ui/${dir}/${p.id}.json")
         out["stack_${p.id}"] = new groovy.json.JsonSlurper().parse(f)
+    }
+    (s.pages ?: []).each { p ->
+        if (p.pages) p.pages.each { sub -> load(sub, "${s.id}/${p.id}") }
+        else load(p, s.id)
     }
     out
 }
@@ -74,6 +82,11 @@ android {
     }
 
     buildFeatures { buildConfig = true; compose = true }
+
+    // data/files is shipped verbatim as assets: Buro > Wallet browses the real
+    // wallet records as folders, and AssetManager.list() already enumerates a
+    // directory, so the tree needs no manifest to walk it.
+    sourceSets { main { assets.srcDirs += file('../data/files') } }
 
     // ONE shared Cloud-constellation key — same key as SuperApp/Wallet/Vault.
     signingConfigs {

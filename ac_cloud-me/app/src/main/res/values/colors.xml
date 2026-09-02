@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Cloud Me palette — the same deep violet ground Cloud Wallet uses (#0B0414),
-     so the two apps read as one surface when you cross from Buro → IDs into the
+     so the two apps read as one surface when you cross from Buro → Wallet into the
      wallet's card deck. -->
 <resources>
     <color name="me_bg">#FF0B0414</color>

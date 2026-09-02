@@ -1,0 +1,21 @@
+[
+  {
+    "kind": "fragment",
+    "id": "files",
+    "root": "wallet",
+    "order": [
+      "pay",
+      "ids",
+      "vcards",
+      "events"
+    ],
+    "labels": {
+      "pay": "Pay",
+      "ids": "IDs",
+      "vcards": "Vcards",
+      "events": "Events",
+      "id": "IDs",
+      "doc": "Documents"
+    }
+  }
+]

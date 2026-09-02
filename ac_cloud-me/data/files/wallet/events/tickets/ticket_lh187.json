@@ -1,0 +1,13 @@
+{
+  "id": "ticket_lh187",
+  "kind": "flight",
+  "brand": "Lufthansa",
+  "tagline": "LH 187 · MUC → BER",
+  "accent": 4280172719,
+  "barcode": "M1MARCOS/DIEGO       OPQR45 MUCBERLH 0187",
+  "number": "Seat 8C · Gate H22",
+  "eventLocation": "MUC → BER",
+  "daysFromNow": -3,
+  "eventHour": 18,
+  "eventMinute": 50
+}

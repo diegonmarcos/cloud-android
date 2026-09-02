@@ -82,7 +82,7 @@
     }
   },
   "ui": {
-    "_doc": "Cloud Me's whole navigation is this block: five bottom-nav sections in `order`, everything else reached from the hamburger drawer (bottom_nav:false) or the toolbar gear (toolbar:true). A section's `pages` are its tab strip. Page CONTENT is not here \u2014 each page is a file at data/ui/<section>/<page>.json, loaded by app/build.gradle into `stack_<page id>` at build time, so a page is a page and this block stays the navigation shape alone. A section with a `target` and no `pages` (Wallet) launches another app instead of showing one. Moving Health into the bottom bar is one boolean here.",
+    "_doc": "Cloud Me's whole navigation is this block: five bottom-nav sections in `order`, everything else reached from the hamburger drawer (bottom_nav:false) or the toolbar gear (toolbar:true). A section's `pages` are its tab strip, and a page may declare `pages` of its own \u2014 a second strip below the first, which is what Buro > Fin is. Page CONTENT is not here: each page is a file at data/ui/<section>/<page>.json (a sub-page at .../<page>/<sub>.json), loaded by app/build.gradle into `stack_<page id>` at build time. A section with a `target` and no `pages` (Wallet) launches another app instead of showing one. Moving Health into the bottom bar is one boolean here.",
     "permissions": {
       "runtime": [
         {
@@ -416,7 +416,7 @@
     "default_section": "buro",
     "sections": [
       {
-        "_doc": "Buro \u2014 the paperwork desk. Five tabs because the user named five concerns: the documents behind services and assets, the cards and IDs carried in a pocket, the credentials, and money split the way an accountant splits it \u2014 what HAPPENED (Accounting) against what is PLANNED (Budgeting). Buro deliberately stores nothing itself; every tab is an index into the app that already owns that data.",
+        "_doc": "Buro \u2014 the paperwork desk, in the order the user reaches for it: Wallet (what is carried), Docs (what is filed), Fin (what it costs) and Vault (what unlocks it). Wallet is the OFFICIAL SOURCE of the wallet data \u2014 real files under data/files/wallet/, browsed as folders; Cloud Wallet reads the same records and draws them as 3D cards. Fin is one tab with three sub-pages rather than three tabs, because Acct (what happened), Budget (what is planned) and Portfolio (what is held) are three views of one question.",
         "id": "buro",
         "label": "Buro",
         "icon": "ic_nav_buro",
@@ -424,29 +424,41 @@
         "order": 1,
         "pages": [
           {
+            "id": "wallet",
+            "label": "Wallet",
+            "icon": "ic_wallet"
+          },
+          {
             "id": "docs",
             "label": "Docs",
             "icon": "ic_p_folder"
           },
           {
-            "id": "ids",
-            "label": "IDs",
-            "icon": "ic_p_identities"
+            "id": "fin",
+            "label": "Fin",
+            "icon": "ic_fin",
+            "pages": [
+              {
+                "id": "acct",
+                "label": "Acct",
+                "icon": "ic_fin"
+              },
+              {
+                "id": "budget",
+                "label": "Budget",
+                "icon": "ic_p_c3_reports"
+              },
+              {
+                "id": "portfolio",
+                "label": "Portfolio",
+                "icon": "ic_p_accounts"
+              }
+            ]
           },
           {
             "id": "vault",
             "label": "Vault",
             "icon": "ic_vault"
-          },
-          {
-            "id": "accounting",
-            "label": "Acct",
-            "icon": "ic_fin"
-          },
-          {
-            "id": "budgeting",
-            "label": "Budget",
-            "icon": "ic_p_c3_reports"
           }
         ]
       },

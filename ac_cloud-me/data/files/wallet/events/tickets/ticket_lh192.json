@@ -1,0 +1,13 @@
+{
+  "id": "ticket_lh192",
+  "kind": "flight",
+  "brand": "Lufthansa",
+  "tagline": "LH 192 · BER → MUC",
+  "accent": 4280172719,
+  "barcode": "M1MARCOS/DIEGO       EXXX23 BERMUCLH 0192",
+  "number": "Seat 12A · Gate B14",
+  "eventLocation": "BER → MUC",
+  "daysFromNow": 2,
+  "eventHour": 14,
+  "eventMinute": 35
+}

@@ -1,0 +1,43 @@
+[
+  {
+    "kind": "note",
+    "title": "What is held",
+    "body": "Portfolio is the third view of the same money: Acct is what happened, Budget is what is planned, Portfolio is what was kept. Nothing is aggregated yet and Cloud Me will not invent a balance — the buckets below are the shape of the holdings, and each opens the app that actually knows the number."
+  },
+  {
+    "kind": "cards",
+    "title": "Buckets",
+    "items": [
+      {
+        "title": "Cash & buffer",
+        "subtitle": "Current accounts · emergency fund",
+        "accent": "#66BB6A",
+        "target": "page:buro/acct"
+      },
+      {
+        "title": "Brokerage",
+        "subtitle": "ETFs · equities · bonds",
+        "accent": "#42A5F5",
+        "target": "page:buro/acct"
+      },
+      {
+        "title": "Retirement",
+        "subtitle": "Pension · long-term contributions",
+        "accent": "#7E57C2",
+        "target": "page:buro/acct"
+      },
+      {
+        "title": "Crypto",
+        "subtitle": "Self-custody · exchange balances",
+        "accent": "#FFA726",
+        "target": "page:buro/acct"
+      },
+      {
+        "title": "Property",
+        "subtitle": "Real assets · vehicle · valuables",
+        "accent": "#26A69A",
+        "target": "extapp:cloud-ide"
+      }
+    ]
+  }
+]

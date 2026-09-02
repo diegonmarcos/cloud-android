@@ -1,0 +1,12 @@
+{
+  "id": "booking_lisbon_marvila",
+  "kind": "hotel",
+  "brand": "Marvila Boutique Hotel",
+  "tagline": "Deluxe King · Breakfast included",
+  "eventLocation": "Rua do Açúcar 82, Lisboa, PT",
+  "number": "MRV-4471902",
+  "barcode": "MRV4471902PT",
+  "accent": 4287307327,
+  "daysFromNow": 12,
+  "nights": 3
+}

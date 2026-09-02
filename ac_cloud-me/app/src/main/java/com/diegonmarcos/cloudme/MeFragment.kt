@@ -12,14 +12,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.fragment.app.Fragment
-import com.diegonmarcos.superapp.wallet.WalletMeTab
+import com.diegonmarcos.superapp.wallet.WalletVcardsTab
 
 /**
- * Me — one social card per profile, drawn by libs:wallet's Me tab.
+ * Me — one personal card per profile, drawn by libs:wallet's Vcards tab.
  *
  * This is the same composable Cloud Wallet shows, reading the same
  * `ui.socials` list, deliberately shared rather than reimplemented: the app is
- * called Cloud Me and the wallet's Me tab is the public half of the same
+ * called Cloud Me and the wallet's Vcards tab is the public half of the same
  * identity, so two copies would be two things to keep true.
  */
 class MeFragment : Fragment() {
@@ -29,7 +29,7 @@ class MeFragment : Fragment() {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
             setContent {
                 Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0B0414))) {
-                    WalletMeTab()
+                    WalletVcardsTab()
                 }
             }
         }

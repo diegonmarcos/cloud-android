@@ -1,0 +1,12 @@
+{
+  "id": "ticket_ice1024",
+  "kind": "train",
+  "brand": "Deutsche Bahn ICE",
+  "tagline": "ICE 1024 · Berlin Hbf → München Hbf",
+  "accent": 4292943146,
+  "number": "Wagen 23 · Sitz 71",
+  "eventLocation": "Berlin Hbf",
+  "daysFromNow": 5,
+  "eventHour": 9,
+  "eventMinute": 12
+}
