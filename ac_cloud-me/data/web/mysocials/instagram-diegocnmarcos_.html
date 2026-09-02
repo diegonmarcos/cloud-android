@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<!-- SHARED SOURCE for all instagram-*.html pages — they are symlinks to this file.
+     Do not fork it per account: the account is derived from the page FILENAME by
+     themeFromFilename() in main.ts, which init() applies over the data-theme below
+     before #ig-view renders. The baked value only has to start with "instagram-" so
+     the CSS view selector matches before JS runs. -->
+<html lang="en" data-theme="instagram-diegonmarcos">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Socials — Instagram</title>
+  <meta name="description" content="My Socials — the same profile reimagined as Orkut, Instagram, and LinkedIn">
+  <meta name="theme-color" content="#0a0c14">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style-instagram.css">
+  <script>
+  var _mtm = window._mtm = window._mtm || [];
+  _mtm.push({'mtm.startTime': (new Date().getTime()), 'event': 'mtm.Start'});
+  (function() {
+    var d=document, g=d.createElement('script'), s=d.getElementsByTagName('script')[0];
+    g.async=true; g.src='https://analytics.diegonmarcos.com/matomo/js/container_odwLIyPV.js';
+    s.parentNode.insertBefore(g,s);
+  })();
+  </script>
+<!-- Umami Analytics -->
+<script async src="https://analytics.diegonmarcos.com/umami/script.js" data-website-id="937cbde7-5ec2-450c-9d6a-8117423ac12f"></script>
+<!-- End Umami Analytics -->
+
+    <!-- Data-driven framework: PORTAL_DATA["mySocials"] hydrated by front-data-json-js-wrapper.sh -->
+    <script src="data-mySocials.json.js"></script>
+    <script src="data-ig0-diegocnmarcos_.json.js"></script>
+    <script src="data-ig1-diegocmarcos_.json.js"></script>
+    <script src="data-ig2-diegonmarcos.json.js"></script>
+    <script src="data-linkedin.json.js"></script>
+    <script src="data-pinterest.json.js"></script>
+    <script src="data-tidal.json.js"></script>
+    <script src="data-youtube.json.js"></script>
+    <script src="data-shelf.json.js"></script>
+    <script src="data-vinyl.json.js"></script>
+    <script src="data-bar-cellar.json.js"></script>
+    <script src="data-theater.json.js"></script>
+    <script src="data-menu.json.js"></script>
+    <script>(function(){var d=globalThis.PORTAL_DATA&&PORTAL_DATA["mySocials"];if(d&&d.title)document.title=d.title;})();</script>
+<!-- sw-register: injected by mod_sw_register — DO NOT EDIT BY HAND. Re-runs are idempotent (the marker comment above gates the injection). -->
+<script>
+(function () {
+  // ── Visible boot log: ALWAYS something in console, even if every other
+  // script breaks. If the user sees nothing here, the inline script tag
+  // itself was blocked (CSP, extension, etc.) — not a SW bug.
+  var TAG = '[sw-register]';
+  var t0 = Date.now();
+  console.info(TAG, 'boot', { url: location.href, ua: navigator.userAgent.slice(0, 60) });
+
+  if (!('serviceWorker' in navigator) || !location.protocol.startsWith('http')) {
+    console.info(TAG, 'skip — no serviceWorker or non-http(s) origin');
+    return;
+  }
+
+  var hadController = navigator.serviceWorker.controller !== null;
+  console.info(TAG, 'controller-at-boot', hadController ? navigator.serviceWorker.controller.scriptURL : 'null');
+
+  // ── Kill-switch ALWAYS available on window: dev can call from console
+  //    or the auto-watchdog below uses it when the page stays blank.
+  window.__resetSW = function (reason) {
+    console.warn(TAG, '__resetSW invoked', { reason: reason || 'manual' });
+    return navigator.serviceWorker.getRegistrations()
+      .then(function (regs) {
+        console.info(TAG, 'unregistering ' + regs.length + ' SW(s)');
+        return Promise.all(regs.map(function (r) { return r.unregister(); }));
+      })
+      .then(function () {
+        return caches.keys().then(function (keys) {
+          console.info(TAG, 'purging ' + keys.length + ' cache(s)', keys);
+          return Promise.all(keys.map(function (k) { return caches.delete(k); }));
+        });
+      })
+      .then(function () {
+        console.info(TAG, 'reset complete — reloading');
+        location.reload();
+      });
+  };
+
+  // ── Reload on controllerchange ONLY when an OLD SW was replaced by a NEW one
+  //    (post-deploy update). Skip on first-ever activation — reloading then
+  //    aborts the in-flight `defer` script.js and the SPA never boots.
+  var reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', function () {
+    console.info(TAG, 'controllerchange', {
+      newController: navigator.serviceWorker.controller ? navigator.serviceWorker.controller.scriptURL : 'null',
+      hadController: hadController,
+      willReload: hadController && !reloading
+    });
+    if (!hadController || reloading) return;
+    reloading = true;
+    location.reload();
+  });
+
+  function reg() {
+    console.info(TAG, 'registering ./script-service-worker.js');
+    navigator.serviceWorker.register('./script-service-worker.js')
+      .then(function (r) {
+        console.info(TAG, 'register OK', {
+          scope: r.scope,
+          installing: !!r.installing,
+          waiting: !!r.waiting,
+          active: !!r.active
+        });
+      })
+      .catch(function (e) {
+        console.error(TAG, 'register FAILED', e && e.message);
+      });
+  }
+  if ('requestIdleCallback' in window) requestIdleCallback(reg); else setTimeout(reg, 1);
+
+  // ── Watchdog: if a SW is controlling the page AND the body's #app stays
+  //    empty after 4 seconds AND there's no SPA mark in the DOM, assume the
+  //    SW poisoned the response (stale precache, hash mismatch, partial
+  //    fetch). Auto-reset and reload — the next load fetches fresh from
+  //    network with no SW controller.
+  //
+  //    Only fires when hadController = true (i.e. NOT first-ever load).
+  //    The 4s threshold is conservative — even a slow 3G load completes
+  //    its critical-path script within 2s.
+  if (hadController) {
+    setTimeout(function () {
+      var app = document.getElementById('app');
+      var appEmpty = !app || (app.childElementCount === 0 && !app.textContent);
+      var bodyEmpty = !document.body || document.body.childElementCount <= 1;
+      console.info(TAG, 'watchdog t+' + (Date.now() - t0) + 'ms', {
+        appEmpty: appEmpty, bodyEmpty: bodyEmpty,
+        controller: navigator.serviceWorker.controller ? 'yes' : 'no'
+      });
+      if (appEmpty && bodyEmpty && navigator.serviceWorker.controller && !reloading) {
+        reloading = true;
+        window.__resetSW('watchdog: app + body still empty after 4s with SW in control');
+      }
+    }, 4000);
+  }
+})();
+</script>
+<!-- console-log: injected by mod_console_log — DO NOT EDIT BY HAND. Re-runs are idempotent (the marker comment above gates the injection). Single-namespace observability SDK (Sentry/OpenObserve-style). All logic ships in console-logs.js (compiled from console-logs.ts). Loaded synchronously, NO async/defer, so console.* + window.onerror + unhandledrejection are patched BEFORE any other script runs. Public API on window.consoleLogs.{captureException, captureMessage, addBreadcrumb, path, sessionId, exists, size, read, readJSON, tail, clear, download}. JSON Lines on disk in the origin's OPFS sandbox at console.log. -->
+<script src="console-logs.js"></script>
+<!-- end console-log -->
+  </head>
+<body>
+
+  <!-- Theme / mode switcher — always visible -->
+  <a class="theme-switch__home" href="index.html" aria-label="Home" title="Home">&#8962;</a>
+    <div class="theme-switch" id="theme-switch"></div>
+
+  <!-- ═══════════════ MY PROFILE VIEW (rendered by JS) ═══════════════ -->
+  <div class="view view--myprofile" id="me-view"></div>
+
+  <!-- ═══════════════ ORKUT VIEW ═══════════════ -->
+  <div class="view view--orkut">
+  <nav class="navbar">
+    <div class="navbar__inner">
+      <a href="#" class="navbar__logo">
+        <span class="navbar__logo-text">My</span><span class="navbar__logo-accent">Socials</span>
+      </a>
+      <div class="navbar__search">
+        <input type="text" class="navbar__search-input" placeholder="Search people, communities...">
+        <button class="navbar__search-btn" aria-label="Search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </button>
+      </div>
+      <div class="navbar__links">
+        <a href="#" class="navbar__link navbar__link--active">Home</a>
+        <a href="#" class="navbar__link">Profile</a>
+        <a href="#" class="navbar__link">Scraps</a>
+        <a href="#" class="navbar__link">Communities</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="layout">
+    <aside class="sidebar">
+      <div class="profile-card">
+        <div class="profile-card__avatar" id="avatar">
+          <div class="profile-card__avatar-placeholder">D</div>
+        </div>
+        <h1 class="profile-card__name">Diego N. Marcos</h1>
+        <p class="profile-card__tagline">Software Engineer & Explorer</p>
+        <div class="profile-card__stats">
+          <div class="profile-card__stat">
+            <span class="profile-card__stat-value" id="friends-count">142</span>
+            <span class="profile-card__stat-label">friends</span>
+          </div>
+          <div class="profile-card__stat">
+            <span class="profile-card__stat-value">38</span>
+            <span class="profile-card__stat-label">communities</span>
+          </div>
+          <div class="profile-card__stat">
+            <span class="profile-card__stat-value">95</span>
+            <span class="profile-card__stat-label">fans</span>
+          </div>
+        </div>
+        <div class="trust-meter">
+          <div class="trust-meter__row">
+            <span class="trust-meter__label">cool</span>
+            <div class="trust-meter__bar"><div class="trust-meter__fill trust-meter__fill--cool"></div></div>
+          </div>
+          <div class="trust-meter__row">
+            <span class="trust-meter__label">trusty</span>
+            <div class="trust-meter__bar"><div class="trust-meter__fill trust-meter__fill--trusty"></div></div>
+          </div>
+          <div class="trust-meter__row">
+            <span class="trust-meter__label">sexy</span>
+            <div class="trust-meter__bar"><div class="trust-meter__fill trust-meter__fill--sexy"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="box">
+        <h3 class="box__title">social</h3>
+        <div class="box__row"><span class="box__label">relationship:</span><span class="box__value">single</span></div>
+        <div class="box__row"><span class="box__label">birthday:</span><span class="box__value">November 15</span></div>
+        <div class="box__row"><span class="box__label">city:</span><span class="box__value">Berlin, Germany</span></div>
+        <div class="box__row"><span class="box__label">country:</span><span class="box__value">Brazil</span></div>
+      </div>
+
+      <div class="box">
+        <h3 class="box__title">photos <span class="box__count">(24)</span></h3>
+        <div class="photo-grid" id="photo-grid"></div>
+      </div>
+    </aside>
+
+    <section class="content">
+      <div class="box">
+        <h3 class="box__title">friends <span class="box__count" id="friends-label">(142)</span></h3>
+        <div class="friends-grid" id="friends-grid"></div>
+        <a href="#" class="box__more">view all friends</a>
+      </div>
+
+      <div class="box">
+        <h3 class="box__title">scraps <span class="box__count">(47)</span></h3>
+        <div class="scrap-composer">
+          <textarea class="scrap-input" placeholder="Write a scrap..." rows="3"></textarea>
+          <button class="scrap-send">send scrap</button>
+        </div>
+        <div class="scraps-list" id="scraps-list"></div>
+      </div>
+
+      <div class="box">
+        <h3 class="box__title">communities <span class="box__count">(38)</span></h3>
+        <div class="communities-grid" id="communities-grid"></div>
+        <a href="#" class="box__more">view all communities</a>
+      </div>
+
+      <div class="box">
+        <h3 class="box__title">testimonials <span class="box__count">(12)</span></h3>
+        <div class="testimonials-list" id="testimonials-list"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p class="footer__text">My Socials &mdash; one profile across every era of social media</p>
+    <p class="footer__sub">Orkut · Instagram · LinkedIn — switch below.</p>
+  </footer>
+  </div>
+
+  <!-- ═══════════════ INSTAGRAM VIEW (rendered by JS) ═══════════════ -->
+  <div class="view view--instagram ig" id="ig-view"></div>
+  <!-- ═══════════════ FACEBOOK VIEW (rendered by JS) ═══════════════ -->
+  <div class="view view--facebook" id="facebook-view"></div>
+
+  <!-- ═══════════════ LINKEDIN VIEW (rendered by JS) ═══════════════ -->
+  <div class="view view--linkedin li" id="li-view"></div>
+
+  <!-- ═══════════════ PINTEREST VIEW (rendered by JS) ═══════════════ -->
+  <div class="view view--pinterest pin" id="pin-view"></div>
+
+  <!-- ═══════════════ TIDAL VIEW (rendered by JS) ═══════════════ -->
+  <div class="view view--tidal tid" id="tid-view"></div>
+
+  <!-- ═══════════════ STRAVA VIEW (rendered by JS) ═══════════════ -->
+
+  <!-- ═══════════════ YOUTUBE VIEW (rendered by JS) ═══════════════ -->
+  <div class="view view--youtube yt" id="yt-view"></div>
+
+  <!-- ═══════════════ ICQ VIEW (rendered by JS) ═══════════════ -->
+  <div class="view view--icq icq-view" id="icq-view"></div>
+
+  <!-- ═══════════════ SHELTER VIEW (rendered by JS) ═══════════════ -->
+  <div class="view view--shelf" id="shelf-view"></div>
+
+  <!-- ═══════════════ VINYL VIEW (rendered by JS) ═══════════════ -->
+  <div class="view view--vinyl" id="vinyl-view"></div>
+
+  <!-- ═══════════════ BAR CELLAR VIEW (rendered by JS) ═══════════════ -->
+  <div class="view view--bar-cellar" id="bar-cellar-view"></div>
+
+  <!-- ═══════════════ MENU VIEW (rendered by JS) ═══════════════ -->
+  <div class="view view--menu" id="menu-view"></div>
+
+  <script src="script.js"></script>
+
+  <!-- ═══════════════ THEATER VIEW (rendered by JS) ═══════════════ -->
+  <div class="view view--theater" id="theater-view"></div>
+  <!-- ═══════════════ STORY VIEW (rendered by JS) ═══════════════ -->
+  <div class="view view--story" id="story-view"></div>
+
+</body>
+</html>

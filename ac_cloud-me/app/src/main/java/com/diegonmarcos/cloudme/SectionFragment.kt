@@ -191,6 +191,7 @@ class SectionFragment : Fragment() {
         "agenda" -> AgendaFragment.newInstance(AgendaFragment.MODE_EVENTS)
         "todo"   -> AgendaFragment.newInstance(AgendaFragment.MODE_TODOS)
         "files"  -> FilesFragment.newInstance(o)
+        "web"    -> WebFragment.newInstance(o)
         else     -> null
     }
 

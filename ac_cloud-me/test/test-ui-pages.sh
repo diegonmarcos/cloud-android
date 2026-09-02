@@ -88,6 +88,23 @@ print(f"checked {len(files)} pages, {len(bar)} bar sections, {len(roots)} file t
 sys.exit(1 if bad else 0)
 PY
 
+# Every `web` block must point at a page that is actually bundled.
+python3 - <<'PYWEB'
+import json, os, sys
+bad = []
+for root, _, names in os.walk("data/ui"):
+    for n in names:
+        if not n.endswith(".json"):
+            continue
+        for b in json.load(open(os.path.join(root, n))):
+            if isinstance(b, dict) and b.get("id") == "web":
+                if not os.path.exists(os.path.join("data/web", b.get("url", ""))):
+                    bad.append(f"{root}/{n}: web block has no data/web/{b.get('url')}")
+for b in bad:
+    print("FAIL:", b)
+sys.exit(1 if bad else 0)
+PYWEB
+
 # A literal-dollar escape in Kotlin is almost always a generated-code accident:
 # "${'$'}x" is the string $x, not the value of x. One of those turned every
 # page asset path into a filename that could not exist, and the fail-soft
@@ -100,7 +117,6 @@ fi
 # Cloud Wallet's bundled wallet.json is this tree flattened, not a second copy.
 ./data/regen-wallet-json.py --check
 
-# Profile > About is generated from the LinkedIn profile, not typed twice.
-# Skipped when the sibling front repo is not checked out — CI has the committed
-# output and does not need the source.
-./data/regen-profile.py --check 2>/dev/null || echo "profile source not present — skipped"
+# Profile ships the real mySocials pages. Skipped when the sibling front repo
+# is not checked out — CI has the committed bundle and does not need the source.
+./data/regen-web.py --check 2>/dev/null || echo "mySocials source not present — skipped"

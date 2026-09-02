@@ -96,6 +96,9 @@ android {
         main {
             assets.srcDirs += file('../data/files')
             assets.srcDirs += file('../data/ui')
+            // The real mySocials pages, so Profile renders the actual LinkedIn
+            // and Instagram layouts instead of an approximation of them.
+            assets.srcDirs += file('../data/web')
         }
     }
 
