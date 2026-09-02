@@ -587,6 +587,9 @@ android {
         buildConfigField "String", "BUILD_TIMESTAMP",       "\"${buildTimestamp}\""
         buildConfigField "String", "UI_SECTIONS_JSON_B64",  "\"${uiSectionsB64}\""
         buildConfigField "String", "CONSTELLATION_FLEET_B64", "\"${constellationFleetB64}\""
+        // DECLARATIVE fleet token: build.sh exports SUPERAPP_FLEET_TOKEN from the
+        // vault sops secret; empty on an unsigned dev build (falls back at runtime).
+        buildConfigField "String", "FLEET_TOKEN", "\"${System.getenv('SUPERAPP_FLEET_TOKEN') ?: ''}\""
         buildConfigField "String", "UI_PERMISSIONS_RUNTIME_B64", "\"${uiPermissionsRuntimeB64}\""
         buildConfigField "String", "UI_PERMISSIONS_ROLES_B64", "\"${uiPermissionsRolesB64}\""
         buildConfigField "String", "UI_PERMISSIONS_PRIVILEGED_B64", "\"${uiPermissionsPrivilegedB64}\""

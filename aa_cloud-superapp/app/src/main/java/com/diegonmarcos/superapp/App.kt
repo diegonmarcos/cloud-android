@@ -77,6 +77,18 @@ class App : Application(), WorkManagerConfiguration.Provider {
         // Capture process-start time before anything else so About →
         // Battery & Usage can report the real uptime.
         AppProcessUptime.initOnce()
+        // Fleet token is DECLARATIVE: BuildConfig.FLEET_TOKEN is baked from the
+        // sops secret (build.sh exports SUPERAPP_FLEET_TOKEN from the vault, the
+        // same value the cloud-superapp-mcp env is rendered with). Seed it into
+        // the slot DevControlPrefs/FleetToken read, BEFORE DevControlServer.start
+        // captures the token, so there is no random per-install token and no
+        // "regenerate". Empty (unsigned dev build) falls back to the adopt/mint
+        // path unchanged.
+        runCatching {
+            val declared = BuildConfig.FLEET_TOKEN
+            if (declared.isNotBlank())
+                com.diegonmarcos.superapp.devtools.DevControlPrefs(this).adopt(declared)
+        }
         // DevControlServer FIRST so even if anything downstream
         // crashes I can still curl /logcat / /trace / /crashes from
         // this device's shell to debug.

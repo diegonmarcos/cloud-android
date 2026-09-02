@@ -1484,7 +1484,7 @@ class DevControlFragment : Fragment() {
                 else           -> "✗ Reachable from LAN — bind addr ${bound ?: "?"}"
             })
             row(ctx, it, "Token",    prefs.token)
-            it.addView(small(ctx, "Bearer token — long-press to copy. Endpoints follow /api/{group}/{op} (e.g. /api/system/info, /api/diagnostics/logcat, /api/tracker/counts). Full catalog: GET /api/docs."))
+            it.addView(small(ctx, "Bearer token — long-press to copy. DECLARATIVE: baked from the vault sops secret (BuildConfig.FLEET_TOKEN), the same value cloud-superapp-mcp is configured with, so it is stable across installs and there is nothing to regenerate. Endpoints follow /api/{group}/{op}. Full catalog: GET /api/docs."))
 
             // ── SSH (Termux & co.) — detect installed terminal emulators and
             //    whether each is running an sshd we can reach on localhost.
@@ -1526,24 +1526,10 @@ class DevControlFragment : Fragment() {
                 }
             })
 
-            // Regenerate the bearer token. Rotates the cached value AND
-            // restarts the server so the new token is bound to the
-            // accept loop instead of the stale one captured at start().
-            it.addView(actionButton(ctx, "Regenerate API token", GRAY) {
-                val fresh = prefs.resetToken()
-                // Bounce the server so the in-memory token (captured at
-                // start) is replaced by the fresh value.
-                if (DevControlServer.isRunning()) {
-                    DevControlServer.stop()
-                    DevControlServer.start(requireContext().applicationContext)
-                }
-                Toast.makeText(requireContext(),
-                    "New token: ${fresh.take(8)}…", Toast.LENGTH_SHORT).show()
-                // Re-render so the new token + restarted server status
-                // populate immediately.
-                parentFragmentManager.beginTransaction().detach(this@DevControlFragment).commitNow()
-                parentFragmentManager.beginTransaction().attach(this@DevControlFragment).commitNow()
-            })
+            // Regenerate REMOVED: the token is now declarative (BuildConfig.FLEET_TOKEN
+            // from the vault sops secret, seeded in App.onCreate). Rotating it on one
+            // device would only split the fleet from the value the MCP and every other
+            // member hold; rotation, if ever needed, is a vault secret change + rebuild.
             // Self-contained ADB (libs:shizuku-adb-debug-tools): jump to
             // Developer options to flip Wireless Debugging ON, then read the
             // pairing/connect ports for /api/adb/pair + /api/adb/connect. The

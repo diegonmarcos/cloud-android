@@ -280,7 +280,10 @@ class PermissionsFragment : Fragment() {
         ) + roles
     }
 
-    override fun onResume() { super.onResume(); if (view != null) rebuildFragment() }
+    // NO onResume->rebuildFragment: rebuildFragment() detaches+attaches this
+    // fragment, and attach() re-runs onResume, which re-rebuilds — an infinite
+    // detach/attach loop that hung and crashed the screen on open (2026-09-03).
+    // State refreshes on the next navigation to the tab, which is enough.
 
     // ── UI helpers ────────────────────────────────────────────────────
 

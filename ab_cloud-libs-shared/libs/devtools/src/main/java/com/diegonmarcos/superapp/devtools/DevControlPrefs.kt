@@ -32,12 +32,6 @@ class DevControlPrefs(context: Context) {
         get() = sp.getBoolean(K_ENABLED, true)
         set(value) { sp.edit().putBoolean(K_ENABLED, value).apply() }
 
-    fun resetToken(): String {
-        val fresh = UUID.randomUUID().toString().replace("-", "")
-        sp.edit().putString(K_TOKEN, fresh).apply()
-        return fresh
-    }
-
     /** True once a token exists on disk. Distinguishes "never adopted" from
      *  "adopted earlier", which [FleetToken] needs because reading [token]
      *  would silently mint a local one and split the fleet in two. */

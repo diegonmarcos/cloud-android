@@ -196,6 +196,18 @@ _resolve_signing() {
   export ANDROID_KEY_PASSWORD="$key_pw"
   export ANDROID_KEY_ALIAS="$alias_"
   log "signing: ONE shared constellation key (alias $alias_) from vault/$ks_rel"
+
+  # DECLARATIVE fleet token: same sops file as the signing passwords (it is the
+  # android-fleet secret). Baked into BuildConfig.FLEET_TOKEN (gradle reads this
+  # env) and rendered into cloud-superapp-mcp's env from the SAME vault key, so
+  # phone and MCP share one stable value. Only SuperApp needs it baked; other
+  # apps adopt it at runtime over the signature-guarded provider.
+  if [ -z "${SUPERAPP_FLEET_TOKEN:-}" ]; then
+    fleet_tok="$(sops --config /dev/null -d --extract '["fleet_token"]' "$vault/$sec_rel" 2>/dev/null || true)"
+    [ -n "$fleet_tok" ] && export SUPERAPP_FLEET_TOKEN="$fleet_tok" \
+      && log "fleet token: declarative value from vault/$sec_rel baked into BuildConfig.FLEET_TOKEN" \
+      || errlog "fleet token: 'fleet_token' not in $sec_rel — BuildConfig.FLEET_TOKEN empty, runtime falls back to adopt/mint (add it to make the token declarative + MCP-usable)"
+  fi
 }
 
 # ── signature enforcement gate — the ONE guarantee ───────────────────────
