@@ -5117,29 +5117,29 @@
         "tiles": []
       },
       {
-        "_doc": "Linktree · Suite slide — all links from data/linktree.json slide id=suite rendered as URL-target tiles in a horizontal-scroll strip. tiles_from_linktree is handled by Sections.homeGroups().",
-        "title": "Linktree · Suite",
+        "_doc": "Lnktree · Suite slide — all links from data/linktree.json slide id=suite rendered as URL-target tiles in a horizontal-scroll strip. tiles_from_linktree is handled by Sections.homeGroups().",
+        "title": "Lnktree · Suite",
         "scroll": "horizontal",
         "tiles_from_linktree": "suite",
         "tiles": []
       },
       {
-        "_doc": "Linktree · Cloud slide — all links from data/linktree.json slide id=cloud.",
-        "title": "Linktree · Cloud",
+        "_doc": "Lnktree · Cloud slide — all links from data/linktree.json slide id=cloud.",
+        "title": "Lnktree · Cloud",
         "scroll": "horizontal",
         "tiles_from_linktree": "cloud",
         "tiles": []
       },
       {
-        "_doc": "Linktree · Lab Tools slide — all links from data/linktree.json slide id=lab-tools.",
-        "title": "Linktree · Lab Tools",
+        "_doc": "Lnktree · Lab Tools slide — all links from data/linktree.json slide id=lab-tools.",
+        "title": "Lnktree · Lab Tools",
         "scroll": "horizontal",
         "tiles_from_linktree": "lab-tools",
         "tiles": []
       },
       {
-        "_doc": "Linktree · Circus slide — all links from data/linktree.json slide id=circus.",
-        "title": "Linktree · Circus",
+        "_doc": "Lnktree · Circus slide — all links from data/linktree.json slide id=circus.",
+        "title": "Lnktree · Circus",
         "scroll": "horizontal",
         "tiles_from_linktree": "circus",
         "tiles": []
