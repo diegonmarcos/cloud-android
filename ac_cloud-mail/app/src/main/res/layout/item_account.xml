@@ -349,30 +349,45 @@
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/tvError" />
 
+            <!-- comms: centered packed chain, order Sync > Folders > Edit > Log -->
             <Button
                 android:id="@+id/btnSync"
                 style="?android:attr/buttonStyleSmall"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
                 android:drawableTop="@drawable/twotone_sync_24"
                 android:text="@string/title_synchronize_now"
                 android:textAllCaps="false"
                 android:textSize="10sp"
+                app:layout_constraintHorizontal_chainStyle="packed"
                 app:layout_constraintStart_toEndOf="@id/vwColor"
+                app:layout_constraintEnd_toStartOf="@id/btnFolders"
                 app:layout_constraintTop_toBottomOf="@id/btnHelp" />
+
+            <Button
+                android:id="@+id/btnFolders"
+                style="?android:attr/buttonStyleSmall"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:drawableTop="@drawable/twotone_folder_24"
+                android:text="@string/page_folders"
+                android:textAllCaps="false"
+                android:textSize="10sp"
+                app:layout_constraintStart_toEndOf="@id/btnSync"
+                app:layout_constraintEnd_toStartOf="@id/btnEdit"
+                app:layout_constraintTop_toTopOf="@id/btnSync" />
 
             <Button
                 android:id="@+id/btnEdit"
                 style="?android:attr/buttonStyleSmall"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
                 android:drawableTop="@drawable/twotone_edit_24"
                 android:text="@string/title_edit_account"
                 android:textAllCaps="false"
                 android:textSize="10sp"
-                app:layout_constraintStart_toEndOf="@id/btnSync"
+                app:layout_constraintStart_toEndOf="@id/btnFolders"
+                app:layout_constraintEnd_toStartOf="@id/btnLog"
                 app:layout_constraintTop_toTopOf="@id/btnSync" />
 
             <Button
@@ -380,12 +395,12 @@
                 style="?android:attr/buttonStyleSmall"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="6dp"
                 android:drawableTop="@drawable/twotone_dns_24"
                 android:text="@string/title_log"
                 android:textAllCaps="false"
                 android:textSize="10sp"
                 app:layout_constraintStart_toEndOf="@id/btnEdit"
+                app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintTop_toTopOf="@id/btnSync" />
 
             <View

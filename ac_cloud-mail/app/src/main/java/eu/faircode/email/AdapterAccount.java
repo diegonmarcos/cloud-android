@@ -134,6 +134,7 @@ public class AdapterAccount extends RecyclerView.Adapter<AdapterAccount.ViewHold
         private TextView tvError;
         private Button btnHelp;
         private Button btnSync;
+        private Button btnFolders;
         private Button btnEdit;
         private Button btnLog;
         private Group grpSettings;
@@ -170,6 +171,7 @@ public class AdapterAccount extends RecyclerView.Adapter<AdapterAccount.ViewHold
             tvError = itemView.findViewById(R.id.tvError);
             btnHelp = itemView.findViewById(R.id.btnHelp);
             btnSync = itemView.findViewById(R.id.btnSync);
+            btnFolders = itemView.findViewById(R.id.btnFolders);
             btnEdit = itemView.findViewById(R.id.btnEdit);
             btnLog = itemView.findViewById(R.id.btnLog);
             grpSettings = itemView.findViewById(R.id.grpSettings);
@@ -206,6 +208,7 @@ public class AdapterAccount extends RecyclerView.Adapter<AdapterAccount.ViewHold
             ibInbox.setOnClickListener(this);
             btnHelp.setOnClickListener(this);
             btnSync.setOnClickListener(this);
+            btnFolders.setOnClickListener(this);
             btnEdit.setOnClickListener(this);
             btnLog.setOnClickListener(this);
         }
@@ -216,6 +219,7 @@ public class AdapterAccount extends RecyclerView.Adapter<AdapterAccount.ViewHold
             ibInbox.setOnClickListener(null);
             btnHelp.setOnClickListener(null);
             btnSync.setOnClickListener(null);
+            btnFolders.setOnClickListener(null);
             btnEdit.setOnClickListener(null);
             btnLog.setOnClickListener(null);
         }
@@ -395,6 +399,7 @@ public class AdapterAccount extends RecyclerView.Adapter<AdapterAccount.ViewHold
                 btnHelp.setVisibility(account.error == null ? View.GONE : View.VISIBLE);
 
                 btnSync.setVisibility(View.VISIBLE);
+                btnFolders.setVisibility(View.VISIBLE);
                 btnEdit.setVisibility(View.VISIBLE);
                 btnLog.setVisibility(View.VISIBLE);
 
@@ -453,6 +458,7 @@ public class AdapterAccount extends RecyclerView.Adapter<AdapterAccount.ViewHold
                 btnHelp.setVisibility(View.GONE);
 
                 btnSync.setVisibility(View.GONE);
+                btnFolders.setVisibility(View.GONE);
                 btnEdit.setVisibility(View.GONE);
                 btnLog.setVisibility(View.GONE);
 
@@ -490,6 +496,17 @@ public class AdapterAccount extends RecyclerView.Adapter<AdapterAccount.ViewHold
                 TupleAccountFolder account = (pos == RecyclerView.NO_POSITION ? null : items.get(pos));
                 if (account != null && account.tbd == null)
                     ServiceSynchronize.reload(context, account.id, true, "account sync button");
+                return;
+            }
+
+            if (view.getId() == R.id.btnFolders) {
+                // Works from BOTH modes: ActivityView handles the "folders:<id>"
+                // intent action (checkIntents ~2221) by navigating to that
+                // account's folder list; from settings this simply re-enters
+                // the main activity there.
+                context.startActivity(new Intent(context, ActivityView.class)
+                        .setAction("folders:" + account.id)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
                 return;
             }
 
