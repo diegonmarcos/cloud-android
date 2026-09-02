@@ -166,6 +166,11 @@ class WatchdogSsh(private val ctx: Context) {
      */
     private fun posix(cmd: String) = "sh -c '" + cmd.replace("'", "'\\''") + "'"
 
+    /** Lowercase hex sha256, to compare against the env's `sha256sum`. */
+    private fun sha256Hex(b: ByteArray): String =
+        java.security.MessageDigest.getInstance("SHA-256").digest(b)
+            .joinToString("") { "%02x".format(it) }
+
     /**
      * Run one command and return its stdout.
      *
@@ -260,10 +265,14 @@ class WatchdogSsh(private val ctx: Context) {
      * nothing added to PATH, and no way for the panel to drift from the app
      * driving it, because they shipped together.
      *
-     * Pushed only when the size differs, which is enough: these come from one
-     * release and change together, so a byte-identical length means the same
-     * build. A hash would cost a second round trip on every open to answer a
-     * question the length already answers.
+     * Pushed when the CONTENT differs, by sha256, in the one exec that used to
+     * read the size. Size was not enough and the assumption it rested on —
+     * "these change together, so a byte-identical length means the same build"
+     * — was simply false: the daemon's hostname fix left the binary exactly
+     * 725168 bytes, matched the stale copy on length, and so was never pushed,
+     * for as long as the size check stood. A content hash is the same single
+     * round trip and cannot be fooled that way; a device without sha256sum
+     * falls back to the old size comparison rather than pushing every time.
      */
     private fun ensureTools(backend: String): Result<Unit> = runCatching {
         val dir = REMOTE_DIR
@@ -275,9 +284,23 @@ class WatchdogSsh(private val ctx: Context) {
             val src = File(ctx.applicationInfo.nativeLibraryDir, lib)
             if (!src.isFile) error("$lib missing — this build carries no binary for this device's ABI")
             val local = src.readBytes()
-            val have = exec(backend, "stat -c %s '$dir/$name' 2>/dev/null || echo 0")
-                .getOrDefault("0").trim().toLongOrNull() ?: 0L
-            if (have == local.size.toLong()) continue
+            // sha256 first, size as the fallback the string carries after a
+            // space — one exec answers both, and the far side picks size only
+            // when it has no sha256sum.
+            val want = sha256Hex(local)
+            val probe = exec(
+                backend,
+                "f='$dir/$name'; if [ -f \"\$f\" ]; then " +
+                    "set -- \$(sha256sum \"\$f\" 2>/dev/null); " +
+                    "printf '%s %s' \"\$1\" \"\$(stat -c %s \"\$f\" 2>/dev/null)\"; " +
+                    "else printf ' 0'; fi",
+            ).getOrDefault(" 0").trim().split(' ')
+            val haveHash = probe.getOrNull(0).orEmpty()
+            val haveSize = probe.getOrNull(1)?.toLongOrNull() ?: 0L
+            val same =
+                if (haveHash.isNotEmpty()) haveHash == want
+                else haveSize == local.size.toLong()
+            if (same) continue
             // cat > file: the env may have no scp, no rsync and no curl, and
             // this needs none of them — the bytes ride the channel already open.
             val ch = connect(backend).openChannel("exec") as ChannelExec
