@@ -71,6 +71,13 @@ public class JmapSync {
     // known-complete, so a too-low ceiling silently disabled removals on any
     // folder bigger than it.
     private static final int SYNC_LIMIT = 5000; // newest N per mailbox per pass
+    // Inserts per folder per pass. Phase 1b walks folders in map order and a
+    // handful of giant filter views (Dd/Ac/Inbox, thousands under-synced since
+    // the SYNC_LIMIT bump) ate the entire pass: 12,622 inserts logged, ZERO
+    // for 24 House (server=473 stored=200 across two passes an hour apart).
+    // The pass is cancelled before small folders get a turn. Cap so every
+    // folder progresses each pass; the big views backfill over several.
+    private static final int INSERT_CAP_PER_PASS = 300;
 
     // op.tries cap for processOperations -- Core.java's LOCAL_RETRY_MAX/
     // TOTAL_RETRY_MAX are private to that class, so this is a local constant
@@ -485,6 +492,8 @@ public class JmapSync {
         // (read elsewhere) applied. The IMAP path does the same three things
         // in Core.onSynchronizeMessages; JMAP had only ever done the first.
         Set<String> serverIds = new HashSet<>();
+        int inserted = 0;
+        boolean capLogged = false;
         for (Email email : emails) {
             if (email.getId() == null)
                 continue;
@@ -506,6 +515,16 @@ public class JmapSync {
 
             if (!insertNew)
                 continue; // reconcile-only pass: existing rows only
+
+            if (inserted >= INSERT_CAP_PER_PASS) {
+                if (!capLogged) {
+                    capLogged = true;
+                    EntityLog.log(context, "JMAP " + folder.name + " insert capped at "
+                            + INSERT_CAP_PER_PASS + "/pass, remainder next pass");
+                }
+                continue;
+            }
+            inserted++;
 
             EntityMessage message = buildMessage(account, folder, email);
             try {
