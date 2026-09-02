@@ -86,17 +86,60 @@ public class DebugDumpReceiver extends BroadcastReceiver {
 
         sb.append("\r\n--- prefs ---\r\n");
         try {
-            sb.append("inline_threads=")
-                    .append(androidx.preference.PreferenceManager
-                            .getDefaultSharedPreferences(context)
-                            .getBoolean("inline_threads", false)).append("\r\n");
-            sb.append("threading=")
-                    .append(androidx.preference.PreferenceManager
-                            .getDefaultSharedPreferences(context)
-                            .getBoolean("threading", true)).append("\r\n");
+            android.content.SharedPreferences prefs =
+                    androidx.preference.PreferenceManager.getDefaultSharedPreferences(context);
+            sb.append("inline_threads=").append(prefs.getBoolean("inline_threads", false)).append("\r\n");
+            sb.append("threading=").append(prefs.getBoolean("threading", true)).append("\r\n");
+            // comms: the whole unread-style decision chain, so "the cue does not
+            // change" can be split into data vs paint from one dump.
+            sb.append("theme=").append(prefs.getString("theme", "<unset>")).append("\r\n");
+            sb.append("comms_theme_migrated=").append(prefs.contains("comms_theme_migrated")).append("\r\n");
+            sb.append("comms_unread_uses_theme=").append(prefs.contains("comms_unread_uses_theme")).append("\r\n");
+            sb.append("highlight_unread=").append(prefs.getBoolean("highlight_unread", true)).append("\r\n");
+            sb.append("highlight_subject=").append(prefs.getBoolean("highlight_subject", false)).append("\r\n");
+            sb.append("seen_delay=").append(prefs.getInt("seen_delay", 0)).append("\r\n");
         } catch (Throwable ex) {
             sb.append(ex).append("\r\n");
         }
+
+        sb.append("\r\n--- unread paint (resolved through the ACTIVE theme) ---\r\n");
+        try {
+            Context themed = ApplicationEx.getThemedContext(context, FragmentDialogTheme.getTheme(context));
+            int cu = Helper.resolveColor(themed, R.attr.colorUnread);
+            int cr = Helper.resolveColor(themed, R.attr.colorRead);
+            int ch = Helper.resolveColor(themed, R.attr.colorUnreadHighlight);
+            boolean hu = androidx.preference.PreferenceManager
+                    .getDefaultSharedPreferences(context).getBoolean("highlight_unread", true);
+            int hc = androidx.preference.PreferenceManager
+                    .getDefaultSharedPreferences(context).getInt("highlight_color", ch);
+            int effectiveUnread = (hu ? hc : cu);
+            sb.append("attr colorUnread=").append(String.format("#%08x", cu)).append("\r\n");
+            sb.append("attr colorRead=").append(String.format("#%08x", cr)).append("\r\n");
+            sb.append("EFFECTIVE unread=").append(String.format("#%08x", effectiveUnread)).append("\r\n");
+            sb.append("EFFECTIVE read=").append(String.format("#%08x", cr)).append("\r\n");
+            if (effectiveUnread == cr)
+                sb.append("IDENTICAL: no colour cue possible\r\n");
+        } catch (Throwable ex) {
+            sb.append(stack(ex));
+        }
+
+        // Is it the data? If the user "read" these and ui_seen is still 0, the
+        // paint is innocent -- the seen flag never lands.
+        sb.append("\r\n--- seen state (data) ---\r\n");
+        query(context, sb,
+                "SELECT folder.name, COUNT(*) AS total" +
+                " , SUM(NOT message.ui_seen) AS ui_unseen" +
+                " , SUM(NOT message.seen) AS srv_unseen" +
+                " FROM message JOIN folder ON folder.id = message.folder" +
+                " WHERE NOT message.ui_hide" +
+                " GROUP BY folder.id HAVING ui_unseen > 0 ORDER BY ui_unseen DESC LIMIT 15");
+        sb.append("newest inbox rows:\r\n");
+        query(context, sb,
+                "SELECT message.id, datetime(message.received/1000,'unixepoch') AS received" +
+                " , message.ui_seen, message.seen" +
+                " FROM message JOIN folder ON folder.id = message.folder" +
+                " WHERE folder.type = 'Inbox' AND NOT message.ui_hide" +
+                " ORDER BY message.received DESC LIMIT 15");
 
         // What is actually in the shade right now. getActiveNotifications() only ever
         // returns this app's own notifications, so it needs no listener permission.
