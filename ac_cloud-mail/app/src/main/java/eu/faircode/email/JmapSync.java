@@ -252,13 +252,18 @@ public class JmapSync {
                 folder.selectable = true;
                 folder.id = db.folder().insertFolder(folder);
                 EntityLog.log(context, "JMAP created folder=" + name + " type=" + type);
-            } else if (noPhoneSync(name) && Boolean.TRUE.equals(folder.synchronize)) {
-                // Existing probe folder still syncing (it was created before the
-                // rule): turn it off and drop its local mirror rows in one go.
-                db.folder().setFolderSynchronize(folder.id, false);
-                folder.synchronize = false;
+            } else if (noPhoneSync(name)) {
+                // Existing probe folder: make sure sync is off AND drop its local
+                // mirror rows. Not gated on the sync flag — on-device the folder
+                // was already synchronize=false yet still carried 2699 stale rows
+                // (2026-09-02), and those rows are the cost, not the flag.
+                if (Boolean.TRUE.equals(folder.synchronize)) {
+                    db.folder().setFolderSynchronize(folder.id, false);
+                    folder.synchronize = false;
+                }
                 int purged = db.message().deleteMessagesKeep(folder.id, 0);
-                EntityLog.log(context, "JMAP no-phone-sync folder=" + name + " purged=" + purged);
+                if (purged > 0)
+                    EntityLog.log(context, "JMAP no-phone-sync folder=" + name + " purged=" + purged);
             } else {
                 if (!repaired && !Boolean.TRUE.equals(folder.synchronize) && !noPhoneSync(name)) {
                     db.folder().setFolderSynchronize(folder.id, true);
