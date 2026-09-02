@@ -285,6 +285,17 @@ public class JmapSync {
         // 2) Messages — per synchronized folder, insert any not already stored.
         String backfillKey = "comms_jmap_backfill_0064";
         boolean backfilled = prefs.getBoolean(backfillKey, false);
+        // PHASE 1a: reconcile-only sweep over EVERY folder before anything
+        // heavy: keyword sync + stale-mirror removals on existing rows. This
+        // is the whole visible read/unread fix, and it must never wait behind
+        // an insert flood or an op backlog.
+        for (Map.Entry<Long, String> e : folderToMailbox.entrySet()) {
+            EntityFolder folder = db.folder().getFolder(e.getKey());
+            if (folder == null || !folder.synchronize)
+                continue;
+            syncMessages(context, account, folder, e.getValue(), jmap, false);
+        }
+
         for (Map.Entry<Long, String> e : folderToMailbox.entrySet()) {
             EntityFolder folder = db.folder().getFolder(e.getKey());
             if (folder == null || !folder.synchronize)
@@ -408,6 +419,19 @@ public class JmapSync {
 
     private static void syncMessages(Context context, EntityAccount account,
                                      EntityFolder folder, String mailboxId, JmapService jmap) throws Exception {
+        syncMessages(context, account, folder, mailboxId, jmap, true);
+    }
+
+    // [insertNew]=false is the reconcile-only mode: keywords + removals on
+    // EXISTING rows, no inserts. Phase 1a below runs it across every folder
+    // first because that is the entirety of what the user SEES (stale unread
+    // mirrors dying, read state converging); inserting a state-axis view's
+    // thousands of new mirror rows (Cb Read after the 2026-09-02 view
+    // widening) is invisible bulk work that was starving it at ~30s/row under
+    // list-query contention.
+    private static void syncMessages(Context context, EntityAccount account,
+                                     EntityFolder folder, String mailboxId, JmapService jmap,
+                                     boolean insertNew) throws Exception {
         DB db = DB.getInstance(context);
 
         // Existing server ids already stored (uidl = JMAP Email.id) → local row id.
@@ -437,6 +461,9 @@ public class JmapSync {
                 reconcileKeywords(db, folder, localId, email);
                 continue;
             }
+
+            if (!insertNew)
+                continue; // reconcile-only pass: existing rows only
 
             EntityMessage message = buildMessage(account, folder, email);
             try {
