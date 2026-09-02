@@ -19,7 +19,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.annotation.DrawableRes
+import androidx.compose.material3.Icon
+import androidx.compose.ui.res.painterResource
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -68,75 +73,92 @@ enum class TicketsSubTab(val label: String) {
 // ─── Tab strips ───────────────────────────────────────────────────────────────
 
 /**
- * Top-level strip: IDs · Pay · Me · Vcards · Events, with Config as the gear
- * at the right end.
+ * Top-level strip: IDs · Pay · Me · Vcards · Events.
  *
  * NOT built from WalletTab.values() any more, because the strip and the enum
- * no longer describe the same set. Config is a destination without a pill, and
- * Me is a pill without a destination — it launches cloud-me, the separate app
- * that owns the personal-administration surface this one deliberately does not.
+ * no longer describe the same set. Config has no pill at all — it is
+ * [WalletConfigGear], down in the opposite corner — and Me is a pill without a
+ * destination: it launches cloud-me, the separate app that owns the
+ * personal-administration surface this one deliberately does not.
  *
  * The pills scroll horizontally. Five at widthIn(min = 70.dp) plus their gaps
- * already exceed a 360dp phone before the gear takes its corner, and a Row
- * that overflows clips silently — the last pill simply is not there.
+ * already exceed a 360dp phone, and a Row that overflows clips silently — the
+ * last pill simply is not there.
  */
 @Composable
 internal fun WalletTabStrip(
     selected: WalletTab,
     onSelect: (WalletTab) -> Unit,
     onOpenMe: () -> Unit,
-    onOpenConfig: () -> Unit,
 ) {
-    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                // end padding reserves the gear's corner so a scrolled pill
-                // never slides underneath it.
-                .padding(start = 16.dp, end = 56.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Pill(WalletTab.IDs.label, WalletTab.IDs == selected) { onSelect(WalletTab.IDs) }
-            Pill(WalletTab.Pay.label, WalletTab.Pay == selected) { onSelect(WalletTab.Pay) }
-            // Never "selected": tapping it leaves this app entirely.
-            Pill("Me", active = false, onClick = onOpenMe)
-            Pill(WalletTab.Vcards.label, WalletTab.Vcards == selected) { onSelect(WalletTab.Vcards) }
-            Pill(WalletTab.Tickets.label, WalletTab.Tickets == selected) { onSelect(WalletTab.Tickets) }
-        }
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(end = 12.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .background(if (selected == WalletTab.Config) Color(0xFF7C3AED) else Color(0x22FFFFFF))
-                .clickable { onOpenConfig() }
-                .padding(horizontal = 11.dp, vertical = 9.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            // A glyph, not an icon resource: material-icons-extended is not a
-            // dependency here and one gear does not justify adding it.
-            Text(text = "\u2699", color = Color.White, fontSize = 15.sp)
-        }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Pill(WalletTab.IDs.label, R.drawable.ic_tab_ids, WalletTab.IDs == selected) { onSelect(WalletTab.IDs) }
+        Pill(WalletTab.Pay.label, R.drawable.ic_tab_pay, WalletTab.Pay == selected) { onSelect(WalletTab.Pay) }
+        // Never "selected": tapping it leaves this app entirely.
+        Pill("Me", R.drawable.ic_tab_me, active = false, onClick = onOpenMe)
+        Pill(WalletTab.Vcards.label, R.drawable.ic_tab_vcards, WalletTab.Vcards == selected) { onSelect(WalletTab.Vcards) }
+        Pill(WalletTab.Tickets.label, R.drawable.ic_tab_events, WalletTab.Tickets == selected) { onSelect(WalletTab.Tickets) }
     }
 }
 
-/** One strip pill. */
+/**
+ * Config, as a gear in the bottom-right corner.
+ *
+ * It floats over the content rather than taking a row of its own: a wallet is
+ * a stack of cards and one settings button does not deserve a permanent 44dp
+ * band under them. The one control it could cover is [WalletArchiveToggle],
+ * which reserves this corner for exactly that reason.
+ */
 @Composable
-private fun Pill(label: String, active: Boolean, onClick: () -> Unit) {
+internal fun WalletConfigGear(active: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier
-            .widthIn(min = 70.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .background(if (active) Color(0xFF7C3AED) else Color(0x22FFFFFF))
+            .padding(end = 16.dp, bottom = 16.dp)
+            .clip(CircleShape)
+            .background(if (active) Color(0xFF7C3AED) else Color(0xE62A2140))
             .clickable { onClick() }
-            .padding(horizontal = 14.dp, vertical = 9.dp),
+            .padding(11.dp),
         contentAlignment = Alignment.Center,
     ) {
+        Icon(
+            painter = painterResource(R.drawable.ic_tab_config),
+            contentDescription = "Config",
+            tint = Color.White,
+            modifier = Modifier.size(20.dp),
+        )
+    }
+}
+
+/** One strip pill: icon over label, so the strip is readable at a glance and
+ *  still says what it means — an icon-only bar makes IDs and Vcards a guess. */
+@Composable
+private fun Pill(label: String, @DrawableRes icon: Int, active: Boolean, onClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .widthIn(min = 66.dp)
+            .clip(RoundedCornerShape(18.dp))
+            .background(if (active) Color(0xFF7C3AED) else Color(0x22FFFFFF))
+            .clickable { onClick() }
+            .padding(horizontal = 12.dp, vertical = 7.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Icon(
+            painter = painterResource(icon),
+            contentDescription = null,
+            tint = if (active) Color.White else Color(0xCCFFFFFF),
+            modifier = Modifier.size(18.dp),
+        )
         Text(
             text = label,
             color = Color.White,
-            fontSize = 13.sp,
+            fontSize = 11.sp,
             fontWeight = if (active) FontWeight.SemiBold else FontWeight.Normal,
         )
     }
@@ -190,7 +212,10 @@ internal fun WalletArchiveToggle(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            // end reserves WalletConfigGear's corner, which floats over this
+            // bar's right edge — a settings tap that lands on Archive instead
+            // is worse than an off-centre bar.
+            .padding(start = 16.dp, end = 68.dp, vertical = 10.dp),
     ) {
         Box(
             modifier = Modifier

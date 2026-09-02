@@ -99,8 +99,7 @@ private fun TicketStrip(ticket: WalletStore.Card, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .height(96.dp)
-            .shadow(elevation = 6.dp, shape = RoundedCornerShape(14.dp))
-            .clip(RoundedCornerShape(14.dp))
+            .card3d(shape = RoundedCornerShape(14.dp), elevation = 10f)
             .background(Brush.linearGradient(listOf(accent, base)))
             .clickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically,

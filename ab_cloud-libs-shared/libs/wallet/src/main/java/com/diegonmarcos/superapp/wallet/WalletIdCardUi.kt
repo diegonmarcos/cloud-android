@@ -182,9 +182,10 @@ private val BrInkNavy    = Color(0xFF0A3161)
 @Composable
 private fun CardShell(modifier: Modifier, background: Brush, content: @Composable () -> Unit) {
     Box(
+        // card3d owns the shadow and the clipping now — it has to, because a
+        // shadow cast before the rotation belongs to the flat card.
         modifier = modifier
-            .shadow(elevation = 16.dp, shape = RoundedCornerShape(20.dp))
-            .clip(RoundedCornerShape(20.dp))
+            .card3d(shape = RoundedCornerShape(20.dp), elevation = 16f)
             .background(background),
     ) { content() }
 }

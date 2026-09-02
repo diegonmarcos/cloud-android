@@ -195,17 +195,13 @@ private fun WalletScreen(modeState: MutableState<WalletMode>) {
         return c
     }
 
+    val hideChrome = mode is WalletMode.Full || mode is WalletMode.Config
     Box(modifier = Modifier.fillMaxSize().background(Color(0xFF0B0414))) {
         Column(modifier = Modifier.fillMaxSize()) {
-            val hideChrome = mode is WalletMode.Full || mode is WalletMode.Config
             if (!hideChrome) {
                 WalletTabStrip(
                     selected = tab,
                     onOpenMe = onOpenMe,
-                    onOpenConfig = {
-                        tab  = WalletTab.Config
-                        mode = WalletMode.Idle
-                    },
                     onSelect = { next ->
                         if (next != tab) {
                             tab  = next
@@ -316,6 +312,16 @@ private fun WalletScreen(modeState: MutableState<WalletMode>) {
                             showAddTile  = true,
                         )
                     }
+                }
+            }
+        }
+        // Bottom-right corner, floating over the deck — the strip up top is for
+        // where you are going, this is for how the app behaves.
+        if (!hideChrome) {
+            Box(modifier = Modifier.align(Alignment.BottomEnd)) {
+                WalletConfigGear(active = tab == WalletTab.Config) {
+                    tab  = WalletTab.Config
+                    mode = WalletMode.Idle
                 }
             }
         }

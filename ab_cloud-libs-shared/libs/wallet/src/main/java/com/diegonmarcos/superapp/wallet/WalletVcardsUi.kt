@@ -134,6 +134,7 @@ private fun VcardCard(s: Social, onTap: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .height(112.dp)
+            .card3d(shape = RoundedCornerShape(16.dp), elevation = 12f)
             .clickable(onClick = onTap),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = accent),

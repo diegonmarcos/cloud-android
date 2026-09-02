@@ -425,8 +425,7 @@ private fun GenericCardView(
     )
     Box(
         modifier = modifier
-            .shadow(elevation = 8.dp, shape = RoundedCornerShape(20.dp))
-            .clip(RoundedCornerShape(20.dp))
+            .card3d(shape = RoundedCornerShape(20.dp), elevation = 8f)
             .background(Brush.linearGradient(listOf(accent, base)))
             .padding(20.dp),
     ) {

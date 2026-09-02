@@ -92,8 +92,7 @@ private fun BookingStrip(booking: WalletStore.Card, onClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .shadow(6.dp, shape = RoundedCornerShape(14.dp))
-            .clip(RoundedCornerShape(14.dp))
+            .card3d(shape = RoundedCornerShape(14.dp), elevation = 10f)
             .background(Brush.linearGradient(listOf(accent, base)))
             .clickable(onClick = onClick)
             .padding(16.dp),
