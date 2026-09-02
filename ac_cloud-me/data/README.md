@@ -4,9 +4,14 @@
 
 `ui/<section>/<page>.json` is the content of that page: the `stack_<page id>`
 array the renderer walks. `build.json::ui.sections` keeps only the navigation
-shape — id, label, icon, bar/drawer placement, and the `pages` list — and
-`app/build.gradle` folds each file back in as `stack_<page id>` at build time,
-which is where `Sections.kt` already looks. Nothing in the Kotlin changed.
+shape — id, label, icon, bar/drawer placement, and the `pages` list. The files
+themselves ship as **assets**, and `Sections.stack()` reads one when its page
+opens.
+
+They used to be folded into `BuildConfig` at build time. That hit javac's 64KB
+limit on a String constant the first time a page carried a real profile's worth
+of text: a BuildConfig field is the wrong home for content that grows with the
+data, because the shape is bounded and the content is not.
 
 Two rules the loader enforces so the split cannot rot:
 

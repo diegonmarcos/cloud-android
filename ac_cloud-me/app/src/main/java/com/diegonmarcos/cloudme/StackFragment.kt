@@ -52,8 +52,11 @@ class StackFragment : Fragment() {
             addView(col)
         }
 
-        val section = Sections.byId(arguments?.getString(ARG_SECTION))
-        val stack = section?.stackFor(arguments?.getString(ARG_PAGE).orEmpty()) ?: JSONArray()
+        val stack = Sections.stack(
+            ctx,
+            arguments?.getString(ARG_SECTION).orEmpty(),
+            arguments?.getString(ARG_PAGE).orEmpty(),
+        )
         for (i in 0 until stack.length()) {
             val block = stack.optJSONObject(i) ?: continue
             renderBlock(ctx, col, block)

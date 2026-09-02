@@ -72,6 +72,13 @@ for r in roots:
     elif not any(n.endswith(".json") for _, _, ns in os.walk(f"data/files/{r}") for n in ns):
         bad.append(f"files block root '{r}' — data/files/{r}/ holds no records")
 
+# data/ui and data/files merge into one asset root, so a section folder must
+# not collide with a top-level folder in the wallet tree.
+if os.path.isdir("data/files"):
+    for name in os.listdir("data/files"):
+        if name in pages and pages[name]:
+            bad.append(f"section '{name}' collides with data/files/{name}/ in the asset root")
+
 bar = [s for s in secs if s.get("bottom_nav")]
 if len(bar) > 5:
     bad.append(f"{len(bar)} bottom_nav sections — BottomNavigationView drops the sixth")

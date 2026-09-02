@@ -46,10 +46,6 @@ data class Section(
      *  and a bar slot pointing at it beats a second copy of it here. */
     val target: String,
     val pages: List<Page>,
-    /** page id → that page's content list, kept as raw JSON because
-     *  [StackFragment] switches on `kind` and modelling nine block shapes
-     *  twice would only create a second thing to keep correct. */
-    val stacks: Map<String, JSONArray>,
 ) {
     /** Resolves a page id against the tab strip AND every sub-strip, so a
      *  `page:buro/acct` target lands on a sub-page as readily as on a tab. */
@@ -59,7 +55,6 @@ data class Section(
     /** The top-level tab holding [id] — itself, when [id] is already a tab. */
     fun parentOf(id: String?): Page? =
         pages.firstOrNull { it.id == id || it.pages.any { sub -> sub.id == id } }
-    fun stackFor(pageId: String): JSONArray = stacks[pageId] ?: JSONArray()
 }
 
 object Sections {
@@ -87,6 +82,32 @@ object Sections {
     fun toolbarSection(): Section? = entries.firstOrNull { it.toolbar }
 
     fun default(): Section? = bottom().firstOrNull() ?: entries.firstOrNull()
+
+    /**
+     * One page's content list, read from assets when the page opens.
+     *
+     * NOT baked into BuildConfig: the stacks grow with the data — a real
+     * profile is tens of kilobytes on its own — and javac caps a String
+     * constant at 64KB. The navigation shape is bounded and stays in
+     * BuildConfig; the content is a file, read once per page open.
+     *
+     * A sub-page lives one folder deeper, under its container tab. Missing or
+     * malformed yields an empty list and a page that says so, never a crash —
+     * the build already refuses a page with no file, so reaching the fallback
+     * means the asset was lost after the build, not that JSON went untested.
+     */
+    fun stack(ctx: Context, sectionId: String, pageId: String): JSONArray {
+        val section = byId(sectionId) ?: return JSONArray()
+        val parent = section.parentOf(pageId)
+        val path = if (parent != null && parent.id != pageId) {
+            "${'$'}sectionId/${'$'}{parent.id}/${'$'}pageId.json"
+        } else {
+            "${'$'}sectionId/${'$'}pageId.json"
+        }
+        return runCatching {
+            JSONArray(ctx.assets.open(path).bufferedReader().use { it.readText() })
+        }.getOrDefault(JSONArray())
+    }
 
     /** One level of `pages`, plus whatever `pages` each of those declares.
      *  Two levels is all the shell draws, so it is all this reads. */
@@ -116,15 +137,6 @@ object Sections {
 
             val pages = parsePages(o.optJSONArray("pages"))
 
-            // stack_<page id>. Keyed off the page id rather than a positional
-            // index so reordering tabs in JSON can never re-point a tab at
-            // another tab's content.
-            val stacks = mutableMapOf<String, JSONArray>()
-            for (key in o.keys()) {
-                if (!key.startsWith("stack_")) continue
-                o.optJSONArray(key)?.let { stacks[key.removePrefix("stack_")] = it }
-            }
-
             out.add(
                 Section(
                     id = id,
@@ -135,7 +147,6 @@ object Sections {
                     order = o.optInt("order", Int.MAX_VALUE),
                     target = o.optString("target"),
                     pages = pages,
-                    stacks = stacks,
                 )
             )
         }

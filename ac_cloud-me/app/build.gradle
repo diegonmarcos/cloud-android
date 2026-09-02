@@ -25,31 +25,31 @@ def buildTimestamp = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss 'UTC'")
 // tab strip or tile list anywhere in the Kotlin — adding a page is a JSON edit.
 def b64 = { obj -> groovy.json.JsonOutput.toJson(obj).bytes.encodeBase64().toString() }
 
-// build.json::ui.sections carries the navigation SHAPE; each page's content is
-// its own file at data/ui/<section>/<page>.json and is folded back in here as
-// `stack_<page id>`, exactly where Sections.kt already looks for it. A declared
-// page with no file is a build failure rather than a blank tab on the phone —
-// the whole point of splitting the stacks out was to make a missing page
-// visible, and a fail-soft loader would hide it again.
+// build.json::ui.sections carries the navigation SHAPE only — ids, labels,
+// icons, placement. Page CONTENT is NOT baked in: the stacks ship as assets
+// (see sourceSets below) and Sections.kt reads one when its page opens.
+//
+// They used to be folded in here, and that hit javac's 64KB limit on a String
+// constant the moment Profile gained a real profile's worth of text. A
+// BuildConfig field is the wrong home for content that grows with the data:
+// the shape is bounded, the content is not.
+//
+// A declared page with no file is still a build failure rather than a blank
+// tab on the phone — the check moves here, the loader does not become
+// fail-soft.
 def uiPagesDir = file('../data/ui')
-def uiSections = (buildJson.ui.sections ?: []).collect { s ->
-    def out = new LinkedHashMap(s)
-    // A page with `pages` of its own is a container — it holds no content,
-    // its children do, one folder deeper. Sub-page ids stay unique inside the
-    // section, so the flat `stack_<id>` map Sections.kt already reads is
-    // enough and nothing needed a second lookup path.
-    def load = { p, dir ->
-        def f = new File(uiPagesDir, "${dir}/${p.id}.json")
-        if (!f.exists()) throw new GradleException("ui.sections[${s.id}] page '${p.id}' has no data/ui/${dir}/${p.id}.json")
-        out["stack_${p.id}"] = new groovy.json.JsonSlurper().parse(f)
+(buildJson.ui.sections ?: []).each { s ->
+    def check = { p, dir ->
+        if (!new File(uiPagesDir, "${dir}/${p.id}.json").exists()) {
+            throw new GradleException("ui.sections[${s.id}] page '${p.id}' has no data/ui/${dir}/${p.id}.json")
+        }
     }
     (s.pages ?: []).each { p ->
-        if (p.pages) p.pages.each { sub -> load(sub, "${s.id}/${p.id}") }
-        else load(p, s.id)
+        if (p.pages) p.pages.each { sub -> check(sub, "${s.id}/${p.id}") }
+        else check(p, s.id)
     }
-    out
 }
-def uiSectionsB64     = b64(uiSections)
+def uiSectionsB64     = b64(buildJson.ui.sections ?: [])
 def uiExternalAppsB64 = b64(buildJson.ui.external_apps ?: [])
 def uiPermsRuntimeB64 = b64(buildJson.ui.permissions?.runtime ?: [])
 def profile           = buildJson.ui.profile_default ?: [:]
@@ -83,10 +83,21 @@ android {
 
     buildFeatures { buildConfig = true; compose = true }
 
-    // data/files is shipped verbatim as assets: Buro > Wallet browses the real
-    // wallet records as folders, and AssetManager.list() already enumerates a
-    // directory, so the tree needs no manifest to walk it.
-    sourceSets { main { assets.srcDirs += file('../data/files') } }
+    // Both data trees ship verbatim as assets. data/files so Buro > Wallet can
+    // browse the real wallet records as folders — AssetManager.list()
+    // enumerates a directory, so the tree needs no manifest. data/ui so a page
+    // is read when it opens instead of being carried in a String constant.
+    //
+    // They merge into one asset root, so a section id must not collide with a
+    // top-level folder under data/files. test-ui-pages.sh fails if one ever
+    // does; today the only candidate is `wallet`, and the Wallet bar section
+    // has no pages and therefore no data/ui/wallet/ folder.
+    sourceSets {
+        main {
+            assets.srcDirs += file('../data/files')
+            assets.srcDirs += file('../data/ui')
+        }
+    }
 
     // ONE shared Cloud-constellation key — same key as SuperApp/Wallet/Vault.
     signingConfigs {

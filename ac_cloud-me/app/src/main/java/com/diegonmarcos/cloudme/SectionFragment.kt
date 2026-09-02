@@ -173,7 +173,7 @@ class SectionFragment : Fragment() {
     }
 
     private fun contentFor(section: Section, page: Page): Fragment {
-        val stack = section.stackFor(page.id)
+        val stack = Sections.stack(requireContext(), section.id, page.id)
         val single = if (stack.length() == 1) stack.optJSONObject(0) else null
         if (single != null && single.optString("kind") == "fragment") {
             libraryFragment(single)?.let { return it }
