@@ -185,7 +185,7 @@ private fun CardShell(modifier: Modifier, background: Brush, content: @Composabl
         // card3d owns the shadow and the clipping now — it has to, because a
         // shadow cast before the rotation belongs to the flat card.
         modifier = modifier
-            .card3d(shape = RoundedCornerShape(20.dp), elevation = 16f)
+            .card3d(corner = 20.dp, elevation = 16f)
             .background(background),
     ) { content() }
 }

@@ -21,15 +21,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.drawscope.drawOutline
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlin.random.Random
 
@@ -61,7 +61,7 @@ import kotlin.random.Random
  */
 @Composable
 internal fun Modifier.card3d(
-    shape: Shape = RoundedCornerShape(20.dp),
+    corner: Dp = 20.dp,
     /** Degrees at the very edge of the card under your finger. */
     maxTilt: Float = 20f,
     /** Lie-back at rest — the card sits on a surface, facing slightly up. */
@@ -74,7 +74,7 @@ internal fun Modifier.card3d(
     edge: Color = Color(0xFF150E24),
     elevation: Float = 18f,
 ): Modifier {
-    val cardShape = shape
+    val cardShape = RoundedCornerShape(corner)
     var tiltX by remember { mutableFloatStateOf(0f) }
     var tiltY by remember { mutableFloatStateOf(0f) }
     var pressed by remember { mutableFloatStateOf(0f) }
@@ -145,15 +145,15 @@ internal fun Modifier.card3d(
         .drawBehind {
             // The slab. Copies of the face outline stepped away from the
             // viewer, so the card has a side you can see.
-            val outline = cardShape.createOutline(size, layoutDirection, this)
-            // Direction the stock recedes in: down-right at rest, swinging
-            // with the tilt so the visible edge changes as the card turns.
+            // Direction the stock recedes in: sideways at rest, swinging with
+            // the tilt so the visible edge changes as the card turns.
             val step = thickness.dp.toPx() / STEPS
             val dx = (0.90f + liveY() / maxTilt * 0.85f) * step
             val dy = (0.45f - (liveX() - restTilt) / maxTilt * 0.50f) * step
+            val radius = CornerRadius(corner.toPx())
             for (i in STEPS downTo 1) {
                 translate(dx * i, dy * i) {
-                    drawOutline(outline, color = edge)
+                    drawRoundRect(color = edge, cornerRadius = radius)
                 }
             }
         }
