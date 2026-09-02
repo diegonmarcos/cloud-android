@@ -190,8 +190,16 @@ public class JmapSync {
                 // into a 60-minute dead account (measured 2026-09-02: caddy
                 // bounce at 13:05, next retry would have been 14:06). A blip
                 // must retry in a minute; only a sustained outage backs off.
-                long wait = (consecutiveFailures <= 0 ? base
-                        : Math.min(base * 2, 60_000L << Math.min(consecutiveFailures - 1, 6)));
+                // Cap HARD at 5 minutes. The old cap was min(base*2, 60s<<min(f-1,6)):
+                // with a poll_interval > ~32 min that resolves to 64 MINUTES, so a
+                // burst of failures against a briefly-slow server (oci-mail JMAP
+                // swings 1.8-7.4s under load) backed the account off for over an
+                // hour and mail simply stopped fetching (measured 2026-09-02: zero
+                // JMAP connects for 65 min after 22:05). A phone must retry within
+                // minutes; a truly-down server just gets polled every 5 min, cheap.
+                long BACKOFF_CAP_MS = 300_000L; // 5 min
+                long wait = (consecutiveFailures <= 0 ? Math.min(base, BACKOFF_CAP_MS)
+                        : Math.min(BACKOFF_CAP_MS, 60_000L << Math.min(consecutiveFailures - 1, 6)));
                 state.acquire(wait, false);
             } catch (InterruptedException ex) {
                 break; // account stopped / network change
