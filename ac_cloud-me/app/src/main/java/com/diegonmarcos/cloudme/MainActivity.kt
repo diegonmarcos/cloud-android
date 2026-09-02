@@ -89,7 +89,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
         bottomNav.setOnItemSelectedListener { item ->
-            Sections.bottom().getOrNull(item.itemId - 1)?.let { open(it.id); true } ?: false
+            select(Sections.bottom().getOrNull(item.itemId - 1))
         }
     }
 
@@ -105,7 +105,7 @@ class MainActivity : AppCompatActivity() {
         }
         nav.setNavigationItemSelectedListener { item ->
             drawer.closeDrawer(GravityCompat.START)
-            drawerSections.getOrNull(item.itemId - 1)?.let { open(it.id); true } ?: false
+            select(drawerSections.getOrNull(item.itemId - 1))
         }
         nav.getHeaderView(0)?.let { header ->
             header.findViewById<TextView>(R.id.header_name)?.text =
@@ -135,6 +135,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     // ── navigation ───────────────────────────────────────────────────
+
+    /** One tap on a bar or drawer item. A section with a `target` launches
+     *  something else and reports "not selected", so the bar keeps its
+     *  highlight on the page you are still on and will come back to. */
+    private fun select(section: Section?): Boolean = when {
+        section == null -> false
+        section.target.isNotBlank() -> { onTarget(section.target); false }
+        else -> { open(section.id); true }
+    }
 
     /** The single entry point for showing a section. Everything — bar, drawer,
      *  gear, tile targets, restored state — comes through here. */

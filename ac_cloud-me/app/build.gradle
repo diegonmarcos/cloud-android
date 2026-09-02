@@ -24,7 +24,24 @@ def buildTimestamp = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss 'UTC'")
 // decoded once at process start by Sections.kt. There is no hardcoded menu,
 // tab strip or tile list anywhere in the Kotlin — adding a page is a JSON edit.
 def b64 = { obj -> groovy.json.JsonOutput.toJson(obj).bytes.encodeBase64().toString() }
-def uiSectionsB64     = b64(buildJson.ui.sections ?: [])
+
+// build.json::ui.sections carries the navigation SHAPE; each page's content is
+// its own file at data/ui/<section>/<page>.json and is folded back in here as
+// `stack_<page id>`, exactly where Sections.kt already looks for it. A declared
+// page with no file is a build failure rather than a blank tab on the phone —
+// the whole point of splitting the stacks out was to make a missing page
+// visible, and a fail-soft loader would hide it again.
+def uiPagesDir = file('../data/ui')
+def uiSections = (buildJson.ui.sections ?: []).collect { s ->
+    def out = new LinkedHashMap(s)
+    (s.pages ?: []).each { p ->
+        def f = new File(uiPagesDir, "${s.id}/${p.id}.json")
+        if (!f.exists()) throw new GradleException("ui.sections[${s.id}].pages[${p.id}] has no data/ui/${s.id}/${p.id}.json")
+        out["stack_${p.id}"] = new groovy.json.JsonSlurper().parse(f)
+    }
+    out
+}
+def uiSectionsB64     = b64(uiSections)
 def uiExternalAppsB64 = b64(buildJson.ui.external_apps ?: [])
 def uiPermsRuntimeB64 = b64(buildJson.ui.permissions?.runtime ?: [])
 def profile           = buildJson.ui.profile_default ?: [:]

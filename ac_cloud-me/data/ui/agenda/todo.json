@@ -1,0 +1,8 @@
+[
+  {
+    "kind": "fragment",
+    "id": "todo",
+    "title": "Open items",
+    "subtitle": "CalDAV tasks \u2014 libs:cal TodoStore"
+  }
+]

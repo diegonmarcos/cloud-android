@@ -1,0 +1,7 @@
+[
+  {
+    "kind": "permissions",
+    "title": "Runtime permissions",
+    "subtitle": "Declared in build.json::ui.permissions.runtime"
+  }
+]

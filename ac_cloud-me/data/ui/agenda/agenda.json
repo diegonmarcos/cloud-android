@@ -1,0 +1,8 @@
+[
+  {
+    "kind": "fragment",
+    "id": "agenda",
+    "title": "Next 30 days",
+    "subtitle": "CalDAV events \u2014 libs:cal"
+  }
+]

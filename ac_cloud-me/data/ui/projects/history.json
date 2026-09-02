@@ -1,0 +1,7 @@
+[
+  {
+    "kind": "note",
+    "title": "No trips recorded yet",
+    "body": "Travel history is a record, and Cloud Me will not invent one. Entries appear here as they are added to data/ui/projects/history.json \u2014 a `cards` block, one card per trip, with meta rows for dates and places. The renderer is already live; the list is simply empty."
+  }
+]

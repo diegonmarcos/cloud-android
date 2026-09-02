@@ -1,6 +1,6 @@
 {
   "name": "cloud-me",
-  "description": "Diego's Cloud Me — the personal-administration half of the constellation. Where Cloud SuperApp is the launcher for everything the cloud runs, Cloud Me is the launcher for everything the PERSON runs: paperwork and money (Buro), what is due (Agenda), the public profile (Me), travel (Projects) and study (Studying), with Health in the drawer. It stores almost nothing of its own — cards live in Cloud Wallet, passwords in Cloud Vault, files in Cloud IDE, health records in Health Connect — and is the one screen that indexes all of them.",
+  "description": "Diego's Cloud Me \u2014 the personal-administration half of the constellation. Where Cloud SuperApp is the launcher for everything the cloud runs, Cloud Me is the launcher for everything the PERSON runs: paperwork and money (Buro), what is due (Agenda), the public profile (Me), travel (Projects) and study (Studying), with Health in the drawer. It stores almost nothing of its own \u2014 cards live in Cloud Wallet, passwords in Cloud Vault, files in Cloud IDE, health records in Health Connect \u2014 and is the one screen that indexes all of them.",
   "category": "android",
   "build": {
     "type": "gradle",
@@ -28,13 +28,13 @@
     "enabled": true
   },
   "toolchain": {
-    "_doc": "Pinned for reproducibility — all derived in flake.nix. Bump here, rebuild devShell.",
+    "_doc": "Pinned for reproducibility \u2014 all derived in flake.nix. Bump here, rebuild devShell.",
     "agp": "8.7.3",
     "gradle": "8.10.2",
     "kotlin": "2.3.20",
     "jdk": "17"
   },
-  "_doc_modules": "Every libs:* entry is shared BY REFERENCE (`dir`) out of ab_cloud-libs-shared/libs — Cloud Me owns no library source of its own. That is the whole design: the app is an assembly. libs:health draws MyHealth, libs:fin draws the accounting dashboard, libs:wallet draws the Me tab's social cards, libs:cal supplies the events and todos behind Agenda. A fix in any of them lands here on the next build with no copy to keep in step.",
+  "_doc_modules": "Every libs:* entry is shared BY REFERENCE (`dir`) out of ab_cloud-libs-shared/libs \u2014 Cloud Me owns no library source of its own. That is the whole design: the app is an assembly. libs:health draws MyHealth, libs:fin draws the accounting dashboard, libs:wallet draws the Me tab's social cards, libs:cal supplies the events and todos behind Agenda. A fix in any of them lands here on the next build with no copy to keep in step.",
   "modules": {
     "app": {
       "type": "application",
@@ -82,7 +82,7 @@
     }
   },
   "ui": {
-    "_doc": "Cloud Me's whole navigation is this block. Five bottom-nav sections in `order`, everything else reached from the hamburger drawer (bottom_nav:false) or the toolbar gear (toolbar:true). A section's `pages` are its tab strip; each page's content is the `stack_<page id>` list beside it, so a page id is a data key and two tabs can never accidentally render the same list. Moving Health into the bottom bar is one boolean here.",
+    "_doc": "Cloud Me's whole navigation is this block: five bottom-nav sections in `order`, everything else reached from the hamburger drawer (bottom_nav:false) or the toolbar gear (toolbar:true). A section's `pages` are its tab strip. Page CONTENT is not here \u2014 each page is a file at data/ui/<section>/<page>.json, loaded by app/build.gradle into `stack_<page id>` at build time, so a page is a page and this block stays the navigation shape alone. A section with a `target` and no `pages` (Wallet) launches another app instead of showing one. Moving Health into the bottom bar is one boolean here.",
     "permissions": {
       "runtime": [
         {
@@ -103,7 +103,7 @@
       "company": "LEAFY",
       "location": "Berlin/DE",
       "website": "linktree.diegonmarcos.com",
-      "titles": "| Product Engineering  💾 | Venture Capital n' Portfolio Management 🎩 | Civil Structural Engineer B.Sc. 🏗️ | Brazilian/Spanish @BERlin.de 🏛️ |",
+      "titles": "| Product Engineering  \ud83d\udcbe | Venture Capital n' Portfolio Management \ud83c\udfa9 | Civil Structural Engineer B.Sc. \ud83c\udfd7\ufe0f | Brazilian/Spanish @BERlin.de \ud83c\udfdb\ufe0f |",
       "repos": [
         {
           "label": "unix",
@@ -124,7 +124,7 @@
       ],
       "consolidated_config": "cloud/2_configs/dist/_cloud-data-consolidated.json"
     },
-    "_doc_socials": "Read by libs:wallet (UI_SOCIALS_B64) to draw the Me tab. Same list Cloud Wallet ships — the consumer-wins-with-fallback rule in libs/wallet/build.gradle means whichever app builds the module supplies it, so it must be declared here too.",
+    "_doc_socials": "Read by libs:wallet (UI_SOCIALS_B64) to draw the Me tab. Same list Cloud Wallet ships \u2014 the consumer-wins-with-fallback rule in libs/wallet/build.gradle means whichever app builds the module supplies it, so it must be declared here too.",
     "socials": [
       {
         "id": "bar-cellar",
@@ -178,7 +178,7 @@
         "id": "instagram-diegonmarcos",
         "label": "Instagram",
         "handle": "@diegonmarcos",
-        "stat": "1005 followers · 63 posts",
+        "stat": "1005 followers \u00b7 63 posts",
         "accent": 4292948076,
         "url": "https://diegonmarcos.github.io/mySocials/instagram-diegonmarcos.html"
       },
@@ -193,7 +193,7 @@
       {
         "id": "menu",
         "label": "Casa Marcos",
-        "handle": "cuisine & vins · berlin",
+        "handle": "cuisine & vins \u00b7 berlin",
         "stat": "",
         "accent": 4279657780,
         "url": "https://diegonmarcos.github.io/mySocials/menu.html"
@@ -255,7 +255,7 @@
         "url": "https://diegonmarcos.github.io/mySocials/youtube.html"
       }
     ],
-    "_doc_myfin_mock": "Read by libs:fin (UI_MYFIN_MOCK_B64) to draw Buro → Accounting. Copied from the SuperApp; it is still the beta mock the module was written against, not a live aggregator feed.",
+    "_doc_myfin_mock": "Read by libs:fin (UI_MYFIN_MOCK_B64) to draw Buro \u2192 Accounting. Copied from the SuperApp; it is still the beta mock the module was written against, not a live aggregator feed.",
     "myfin_mock": {
       "currency": "EUR",
       "net_worth": 124850.42,
@@ -345,7 +345,7 @@
         },
         {
           "date": "2026-06-07",
-          "payee": "Salary — LEAFY GmbH",
+          "payee": "Salary \u2014 LEAFY GmbH",
           "amount": 5400.0,
           "category": "Income"
         },
@@ -363,13 +363,13 @@
         },
         {
           "date": "2026-06-06",
-          "payee": "DEGIRO — VWCE buy",
+          "payee": "DEGIRO \u2014 VWCE buy",
           "amount": -800.0,
           "category": "Investment"
         },
         {
           "date": "2026-06-05",
-          "payee": "Berlin Rent — June",
+          "payee": "Berlin Rent \u2014 June",
           "amount": -1450.0,
           "category": "Rent"
         }
@@ -416,7 +416,7 @@
     "default_section": "buro",
     "sections": [
       {
-        "_doc": "Buro — the paperwork desk. Five tabs because the user named five concerns: the documents behind services and assets, the cards and IDs carried in a pocket, the credentials, and money split the way an accountant splits it — what HAPPENED (Accounting) against what is PLANNED (Budgeting). Buro deliberately stores nothing itself; every tab is an index into the app that already owns that data.",
+        "_doc": "Buro \u2014 the paperwork desk. Five tabs because the user named five concerns: the documents behind services and assets, the cards and IDs carried in a pocket, the credentials, and money split the way an accountant splits it \u2014 what HAPPENED (Accounting) against what is PLANNED (Budgeting). Buro deliberately stores nothing itself; every tab is an index into the app that already owns that data.",
         "id": "buro",
         "label": "Buro",
         "icon": "ic_nav_buro",
@@ -448,215 +448,10 @@
             "label": "Budget",
             "icon": "ic_p_c3_reports"
           }
-        ],
-        "stack_docs": [
-          {
-            "kind": "link_grid",
-            "title": "Where the paper lives",
-            "subtitle": "Cloud Me indexes; these apps hold the files",
-            "links": [
-              {
-                "label": "Files",
-                "icon": "ic_p_folder",
-                "target": "extapp:cloud-ide"
-              },
-              {
-                "label": "Notes",
-                "icon": "ic_code",
-                "target": "extapp:cloud-ide"
-              },
-              {
-                "label": "Media",
-                "icon": "ic_p_c3_reports",
-                "target": "extapp:cloud-media-center"
-              },
-              {
-                "label": "Repos",
-                "icon": "ic_world",
-                "target": "https://github.com/diegonmarcos"
-              }
-            ]
-          },
-          {
-            "kind": "section_title",
-            "title": "Services & Assets"
-          },
-          {
-            "kind": "note",
-            "title": "One folder per domain",
-            "body": "These are folders, not records. Cloud Me shows the domains life-admin actually splits into and opens the file app at each one; nothing about a contract, a policy or a payment is stored on the phone."
-          },
-          {
-            "kind": "cards",
-            "items": [
-              {
-                "title": "Housing",
-                "subtitle": "Lease · utilities · registration",
-                "accent": "#7E57C2",
-                "target": "extapp:cloud-ide"
-              },
-              {
-                "title": "Vehicle",
-                "subtitle": "Registration · insurance · service",
-                "accent": "#42A5F5",
-                "target": "extapp:cloud-ide"
-              },
-              {
-                "title": "Insurance",
-                "subtitle": "Health · liability · contents",
-                "accent": "#26A69A",
-                "target": "extapp:cloud-ide"
-              },
-              {
-                "title": "Taxes",
-                "subtitle": "Filings · receipts · correspondence",
-                "accent": "#66BB6A",
-                "target": "extapp:cloud-ide"
-              },
-              {
-                "title": "Employment",
-                "subtitle": "Contracts · payslips · certificates",
-                "accent": "#FFA726",
-                "target": "extapp:cloud-ide"
-              },
-              {
-                "title": "Banking",
-                "subtitle": "Statements · mandates · cards",
-                "accent": "#EF5350",
-                "target": "extapp:cloud-ide"
-              },
-              {
-                "title": "Health admin",
-                "subtitle": "Invoices · claims · prescriptions",
-                "accent": "#EC407A",
-                "target": "extapp:cloud-ide"
-              }
-            ]
-          }
-        ],
-        "stack_ids": [
-          {
-            "kind": "link_grid",
-            "title": "Carried in the pocket",
-            "subtitle": "Cloud Wallet is the store — these open it on the right deck",
-            "links": [
-              {
-                "label": "Pay",
-                "icon": "ic_wallet",
-                "target": "extapp:cloud-wallet"
-              },
-              {
-                "label": "IDs",
-                "icon": "ic_p_identities",
-                "target": "extapp:cloud-wallet"
-              },
-              {
-                "label": "Events",
-                "icon": "ic_p_cal_day",
-                "target": "extapp:cloud-wallet"
-              },
-              {
-                "label": "Me",
-                "icon": "ic_nav_me",
-                "target": "page:me/me"
-              }
-            ]
-          },
-          {
-            "kind": "note",
-            "title": "Why this tab holds no cards",
-            "body": "Cloud Wallet already owns the card deck, its expiry dates and its QR codes. A second copy here would be a second thing to keep correct, so Buro → IDs is an index into that app rather than a store of its own."
-          }
-        ],
-        "stack_vault": [
-          {
-            "kind": "link_grid",
-            "title": "Credentials",
-            "subtitle": "Cloud Vault — Vaultwarden at vault.diegonmarcos.com",
-            "links": [
-              {
-                "label": "Passwords",
-                "icon": "ic_p_vault_pw",
-                "target": "extapp:cloud-vault"
-              },
-              {
-                "label": "Identities",
-                "icon": "ic_p_identities",
-                "target": "extapp:cloud-vault"
-              },
-              {
-                "label": "Open vault",
-                "icon": "ic_vault",
-                "target": "extapp:cloud-vault"
-              }
-            ]
-          },
-          {
-            "kind": "note",
-            "title": "Nothing secret reaches this app",
-            "body": "Cloud Me never reads the vault. It launches Cloud Vault, which holds the only copy of the credentials and is the only app with the key. That is why this tab shows no counts — reading them would mean unlocking the vault from here."
-          }
-        ],
-        "stack_accounting": [
-          {
-            "kind": "fragment",
-            "id": "fin",
-            "title": "Accounting",
-            "subtitle": "What happened — libs:fin, rendered from build.json::ui.myfin_mock"
-          }
-        ],
-        "stack_budgeting": [
-          {
-            "kind": "note",
-            "title": "What is planned",
-            "body": "Budgeting is the forward half of Buro → Financial: envelopes and their limits, against which Accounting reports the actuals. No aggregator is wired yet, so the envelopes below carry no amounts — they are the categories the budget is kept in, and each opens the accounting view for the same category."
-          },
-          {
-            "kind": "cards",
-            "title": "Envelopes",
-            "items": [
-              {
-                "title": "Fixed",
-                "subtitle": "Rent · utilities · insurance · subscriptions",
-                "accent": "#7E57C2",
-                "target": "page:buro/accounting"
-              },
-              {
-                "title": "Living",
-                "subtitle": "Groceries · household · transport",
-                "accent": "#26A69A",
-                "target": "page:buro/accounting"
-              },
-              {
-                "title": "Health",
-                "subtitle": "Insurance excess · pharmacy · gym",
-                "accent": "#EC407A",
-                "target": "page:buro/accounting"
-              },
-              {
-                "title": "Travel",
-                "subtitle": "Flights · stays · local transport",
-                "accent": "#42A5F5",
-                "target": "page:projects/trips"
-              },
-              {
-                "title": "Study",
-                "subtitle": "Courses · books · certifications",
-                "accent": "#FFA726",
-                "target": "page:studying/courses"
-              },
-              {
-                "title": "Savings",
-                "subtitle": "Transfers out · buffer · investments",
-                "accent": "#66BB6A",
-                "target": "page:buro/accounting"
-              }
-            ]
-          }
         ]
       },
       {
-        "_doc": "Agenda — the only section that reads live data with no other app in front of it. Both tabs come from libs:cal: Agenda from CalEngine.events over the next 30 days, Todo from TodoStore, which is the CalDAV VTODO mirror. The user asked for the agenda and todo of Buro AND of health issues; both already land in the same CalDAV account, so the filter is a category on the item, not a second data source.",
+        "_doc": "Agenda \u2014 the only section that reads live data with no other app in front of it. Both tabs come from libs:cal: Agenda from CalEngine.events over the next 30 days, Todo from TodoStore, which is the CalDAV VTODO mirror. The user asked for the agenda and todo of Buro AND of health issues; both already land in the same CalDAV account, so the filter is a category on the item, not a second data source.",
         "id": "agenda",
         "label": "Agenda",
         "icon": "ic_nav_agenda",
@@ -673,26 +468,10 @@
             "label": "Todo",
             "icon": "ic_p_more"
           }
-        ],
-        "stack_agenda": [
-          {
-            "kind": "fragment",
-            "id": "agenda",
-            "title": "Next 30 days",
-            "subtitle": "CalDAV events — libs:cal"
-          }
-        ],
-        "stack_todo": [
-          {
-            "kind": "fragment",
-            "id": "todo",
-            "title": "Open items",
-            "subtitle": "CalDAV tasks — libs:cal TodoStore"
-          }
         ]
       },
       {
-        "_doc": "Me — the app's namesake and its centre slot. One page: the social cards from libs:wallet's Me tab, the same deck Cloud Wallet shows, sourced from ui.socials and mirroring front-diegonmarcos/b-Media/mySocials. It is the public half of the wallet, which is why it is shared code rather than a second implementation.",
+        "_doc": "Me \u2014 the app's namesake and its centre slot. One page: the social cards from libs:wallet's Me tab, the same deck Cloud Wallet shows, sourced from ui.socials and mirroring front-diegonmarcos/b-Media/mySocials. It is the public half of the wallet, which is why it is shared code rather than a second implementation.",
         "id": "me",
         "label": "Me",
         "icon": "ic_nav_me",
@@ -704,22 +483,21 @@
             "label": "Me",
             "icon": "ic_nav_me"
           }
-        ],
-        "stack_me": [
-          {
-            "kind": "fragment",
-            "id": "me"
-          }
         ]
       },
       {
-        "_doc": "Projects — travel. The bottom-nav button says Projects and Trips lives inside it, which leaves room for the other project kinds to arrive as tabs without moving the button. Management (what a trip needs before you go) is separated from History (where you have been), because the first is a checklist and the second is a record.",
+        "_doc": "Projects \u2014 what is being worked on, travelled to, or studied. Studying leads because it is the standing project; Trips is the one with a date, and History is its record. Studying was a bottom-nav section of its own until it became a tab here \u2014 study management is a project, and the freed bar slot went to Wallet, which is a different app entirely.",
         "id": "projects",
         "label": "Projects",
         "icon": "ic_nav_trips",
         "bottom_nav": true,
         "order": 4,
         "pages": [
+          {
+            "id": "studying",
+            "label": "Studying",
+            "icon": "ic_nav_studying"
+          },
           {
             "id": "trips",
             "label": "Trips",
@@ -730,136 +508,20 @@
             "label": "History",
             "icon": "ic_map_pin"
           }
-        ],
-        "stack_trips": [
-          {
-            "kind": "link_grid",
-            "title": "Trip management",
-            "subtitle": "The apps a trip actually runs on",
-            "links": [
-              {
-                "label": "Bookings",
-                "icon": "ic_p_cal_day",
-                "target": "extapp:cloud-wallet"
-              },
-              {
-                "label": "Calendar",
-                "icon": "ic_nav_agenda",
-                "target": "extapp:cloud-calendar"
-              },
-              {
-                "label": "Maps",
-                "icon": "ic_map_pin",
-                "target": "extapp:cloud-nav"
-              },
-              {
-                "label": "Docs",
-                "icon": "ic_p_folder",
-                "target": "extapp:cloud-ide"
-              }
-            ]
-          },
-          {
-            "kind": "note",
-            "title": "Before you go",
-            "body": "The four checklists below are the parts of a trip that are forgettable and expensive to forget. Each opens the app that holds that piece — Cloud Me tracks the shape of a trip, not its contents."
-          },
-          {
-            "kind": "cards",
-            "items": [
-              {
-                "title": "Documents & visas",
-                "subtitle": "Passport validity · visa · vaccination record",
-                "accent": "#7E57C2",
-                "target": "extapp:cloud-wallet"
-              },
-              {
-                "title": "Bookings",
-                "subtitle": "Flights · stays · transfers · car",
-                "accent": "#42A5F5",
-                "target": "extapp:cloud-wallet"
-              },
-              {
-                "title": "Money",
-                "subtitle": "Cards accepted · cash · travel budget",
-                "accent": "#66BB6A",
-                "target": "page:buro/budgeting"
-              },
-              {
-                "title": "Health",
-                "subtitle": "Insurance · prescriptions · pharmacy",
-                "accent": "#EC407A",
-                "target": "page:health/summary"
-              }
-            ]
-          }
-        ],
-        "stack_history": [
-          {
-            "kind": "note",
-            "title": "No trips recorded yet",
-            "body": "Travel history is a record, and Cloud Me will not invent one. Entries appear here as they are added to build.json under ui.sections[projects].stack_history — a `cards` block, one card per trip, with meta rows for dates and places. The renderer is already live; the list is simply empty."
-          }
         ]
       },
       {
-        "_doc": "Studying — study management. Courses is the tracker (a card per course, with an optional progress bar the renderer draws when `progress` is present); Notes is the index into where the studying actually happens. Like History it starts empty rather than seeded with an invented syllabus.",
-        "id": "studying",
-        "label": "Studying",
-        "icon": "ic_nav_studying",
+        "_doc": "Wallet \u2014 the only bar item that is not a destination. It has no `pages`; its `target` is handed to MainActivity.onTarget, which launches Cloud Wallet. The deck, its expiry dates and its QR codes live in that app, and the bar slot Studying vacated is worth more as one tap to it than as a second copy of it here.",
+        "id": "wallet",
+        "label": "Wallet",
+        "icon": "ic_wallet",
         "bottom_nav": true,
         "order": 5,
-        "pages": [
-          {
-            "id": "courses",
-            "label": "Courses",
-            "icon": "ic_nav_studying"
-          },
-          {
-            "id": "notes",
-            "label": "Notes",
-            "icon": "ic_code"
-          }
-        ],
-        "stack_courses": [
-          {
-            "kind": "note",
-            "title": "No courses tracked yet",
-            "body": "Add one as a card under ui.sections[studying].stack_courses. A card with a `progress` field between 0 and 100 renders a progress bar; `meta` rows carry whatever the course needs — provider, deadline, hours done."
-          }
-        ],
-        "stack_notes": [
-          {
-            "kind": "link_grid",
-            "title": "Where studying happens",
-            "links": [
-              {
-                "label": "Notes",
-                "icon": "ic_code",
-                "target": "extapp:cloud-ide"
-              },
-              {
-                "label": "Files",
-                "icon": "ic_p_folder",
-                "target": "extapp:cloud-ide"
-              },
-              {
-                "label": "Media",
-                "icon": "ic_p_c3_reports",
-                "target": "extapp:cloud-media-center"
-              },
-              {
-                "label": "Repos",
-                "icon": "ic_world",
-                "target": "https://github.com/diegonmarcos"
-              }
-            ]
-          }
-        ]
+        "target": "extapp:cloud-wallet"
       },
       {
-        "_doc": "Health — the full MyHealth surface from libs:health, the same three pages the SuperApp shows, reading Health Connect locally with no network call. It sits in the hamburger drawer because the bottom bar was spoken for; `bottom_nav: true` and an `order` are the only edits needed to promote it.",
-        "_doc_metrics": "Data-driven metric taxonomy — read by SummaryPage / TimelinePage / ConfigsPage to render the per-metric tiles + drill-downs. Each metric maps to one-or-more Health Connect record types via `records` (matched at runtime by class simple-name) + the perm subset via `perm_keys`. Add a metric = one entry here + tile icon. Removing a metric here removes it from all 3 top-level pages.",
+        "_doc": "Health \u2014 the full MyHealth surface from libs:health, the same three pages the SuperApp shows, reading Health Connect locally with no network call. It sits in the hamburger drawer because the bottom bar was spoken for; `bottom_nav: true` and an `order` are the only edits needed to promote it.",
+        "_doc_metrics": "Data-driven metric taxonomy \u2014 read by SummaryPage / TimelinePage / ConfigsPage to render the per-metric tiles + drill-downs. Each metric maps to one-or-more Health Connect record types via `records` (matched at runtime by class simple-name) + the perm subset via `perm_keys`. Add a metric = one entry here + tile icon. Removing a metric here removes it from all 3 top-level pages.",
         "id": "health",
         "label": "Health",
         "icon": "ic_nav_health",
@@ -879,27 +541,6 @@
             "id": "configs",
             "label": "Configs",
             "icon": "ic_nav_configs"
-          }
-        ],
-        "stack_summary": [
-          {
-            "kind": "fragment",
-            "id": "health",
-            "page": "summary"
-          }
-        ],
-        "stack_timeline": [
-          {
-            "kind": "fragment",
-            "id": "health",
-            "page": "timeline"
-          }
-        ],
-        "stack_configs": [
-          {
-            "kind": "fragment",
-            "id": "health",
-            "page": "configs"
           }
         ],
         "metrics": [
@@ -1028,7 +669,7 @@
         ]
       },
       {
-        "_doc": "Configs — reached from the gear at the top right rather than the drawer, because it is the one destination you want from wherever you are. About carries the version, the commit and the self-update control; Permissions requests the runtime permissions declared in ui.permissions.runtime.",
+        "_doc": "Configs \u2014 reached from the gear at the top right rather than the drawer, because it is the one destination you want from wherever you are. About carries the version, the commit and the self-update control; Permissions requests the runtime permissions declared in ui.permissions.runtime.",
         "id": "configs",
         "label": "Configs",
         "icon": "ic_nav_configs",
@@ -1044,45 +685,6 @@
             "id": "permissions",
             "label": "Permissions",
             "icon": "ic_p_vault_pw"
-          }
-        ],
-        "stack_about": [
-          {
-            "kind": "about",
-            "title": "Cloud Me"
-          },
-          {
-            "kind": "link_grid",
-            "title": "The rest of the constellation",
-            "links": [
-              {
-                "label": "SuperApp",
-                "icon": "ic_link_tile",
-                "target": "extapp:cloud-superapp"
-              },
-              {
-                "label": "Wallet",
-                "icon": "ic_wallet",
-                "target": "extapp:cloud-wallet"
-              },
-              {
-                "label": "Vault",
-                "icon": "ic_vault",
-                "target": "extapp:cloud-vault"
-              },
-              {
-                "label": "Source",
-                "icon": "ic_world",
-                "target": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ac_cloud-me"
-              }
-            ]
-          }
-        ],
-        "stack_permissions": [
-          {
-            "kind": "permissions",
-            "title": "Runtime permissions",
-            "subtitle": "Declared in build.json::ui.permissions.runtime"
           }
         ]
       }

@@ -1,0 +1,29 @@
+[
+  {
+    "kind": "link_grid",
+    "title": "Credentials",
+    "subtitle": "Cloud Vault \u2014 Vaultwarden at vault.diegonmarcos.com",
+    "links": [
+      {
+        "label": "Passwords",
+        "icon": "ic_p_vault_pw",
+        "target": "extapp:cloud-vault"
+      },
+      {
+        "label": "Identities",
+        "icon": "ic_p_identities",
+        "target": "extapp:cloud-vault"
+      },
+      {
+        "label": "Open vault",
+        "icon": "ic_vault",
+        "target": "extapp:cloud-vault"
+      }
+    ]
+  },
+  {
+    "kind": "note",
+    "title": "Nothing secret reaches this app",
+    "body": "Cloud Me never reads the vault. It launches Cloud Vault, which holds the only copy of the credentials and is the only app with the key. That is why this tab shows no counts \u2014 reading them would mean unlocking the vault from here."
+  }
+]

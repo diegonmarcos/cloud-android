@@ -1,0 +1,8 @@
+[
+  {
+    "kind": "fragment",
+    "id": "fin",
+    "title": "Accounting",
+    "subtitle": "What happened \u2014 libs:fin, rendered from build.json::ui.myfin_mock"
+  }
+]

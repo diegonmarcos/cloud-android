@@ -1,0 +1,32 @@
+[
+  {
+    "kind": "about",
+    "title": "Cloud Me"
+  },
+  {
+    "kind": "link_grid",
+    "title": "The rest of the constellation",
+    "links": [
+      {
+        "label": "SuperApp",
+        "icon": "ic_link_tile",
+        "target": "extapp:cloud-superapp"
+      },
+      {
+        "label": "Wallet",
+        "icon": "ic_wallet",
+        "target": "extapp:cloud-wallet"
+      },
+      {
+        "label": "Vault",
+        "icon": "ic_vault",
+        "target": "extapp:cloud-vault"
+      },
+      {
+        "label": "Source",
+        "icon": "ic_world",
+        "target": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ac_cloud-me"
+      }
+    ]
+  }
+]

@@ -1,0 +1,37 @@
+[
+  {
+    "kind": "section_title",
+    "title": "Courses"
+  },
+  {
+    "kind": "note",
+    "title": "No courses tracked yet",
+    "body": "Add one as a card in data/ui/projects/studying.json. A card with a `progress` field between 0 and 100 renders a progress bar; `meta` rows carry whatever the course needs \u2014 provider, deadline, hours done."
+  },
+  {
+    "kind": "link_grid",
+    "title": "Where studying happens",
+    "links": [
+      {
+        "label": "Notes",
+        "icon": "ic_code",
+        "target": "extapp:cloud-ide"
+      },
+      {
+        "label": "Files",
+        "icon": "ic_p_folder",
+        "target": "extapp:cloud-ide"
+      },
+      {
+        "label": "Media",
+        "icon": "ic_p_c3_reports",
+        "target": "extapp:cloud-media-center"
+      },
+      {
+        "label": "Repos",
+        "icon": "ic_world",
+        "target": "https://github.com/diegonmarcos"
+      }
+    ]
+  }
+]

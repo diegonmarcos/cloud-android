@@ -1,0 +1,63 @@
+[
+  {
+    "kind": "link_grid",
+    "title": "Trip management",
+    "subtitle": "The apps a trip actually runs on",
+    "links": [
+      {
+        "label": "Bookings",
+        "icon": "ic_p_cal_day",
+        "target": "extapp:cloud-wallet"
+      },
+      {
+        "label": "Calendar",
+        "icon": "ic_nav_agenda",
+        "target": "extapp:cloud-calendar"
+      },
+      {
+        "label": "Maps",
+        "icon": "ic_map_pin",
+        "target": "extapp:cloud-nav"
+      },
+      {
+        "label": "Docs",
+        "icon": "ic_p_folder",
+        "target": "extapp:cloud-ide"
+      }
+    ]
+  },
+  {
+    "kind": "note",
+    "title": "Before you go",
+    "body": "The four checklists below are the parts of a trip that are forgettable and expensive to forget. Each opens the app that holds that piece \u2014 Cloud Me tracks the shape of a trip, not its contents."
+  },
+  {
+    "kind": "cards",
+    "items": [
+      {
+        "title": "Documents & visas",
+        "subtitle": "Passport validity \u00b7 visa \u00b7 vaccination record",
+        "accent": "#7E57C2",
+        "target": "extapp:cloud-wallet"
+      },
+      {
+        "title": "Bookings",
+        "subtitle": "Flights \u00b7 stays \u00b7 transfers \u00b7 car",
+        "accent": "#42A5F5",
+        "target": "extapp:cloud-wallet"
+      },
+      {
+        "title": "Money",
+        "subtitle": "Cards accepted \u00b7 cash \u00b7 travel budget",
+        "accent": "#66BB6A",
+        "target": "page:buro/budgeting"
+      },
+      {
+        "title": "Health",
+        "subtitle": "Insurance \u00b7 prescriptions \u00b7 pharmacy",
+        "accent": "#EC407A",
+        "target": "page:health/summary"
+      }
+    ]
+  }
+]

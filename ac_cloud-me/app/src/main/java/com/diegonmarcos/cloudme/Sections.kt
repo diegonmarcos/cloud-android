@@ -28,6 +28,11 @@ data class Section(
     val bottomNav: Boolean,
     val toolbar: Boolean,
     val order: Int,
+    /** Non-blank ⇒ this bar/drawer item is a launch target, not a page host:
+     *  the string goes to [MainActivity.onTarget] and nothing in this app is
+     *  shown. Wallet is the one today — the card deck lives in Cloud Wallet,
+     *  and a bar slot pointing at it beats a second copy of it here. */
+    val target: String,
     val pages: List<Page>,
     /** page id → that page's content list, kept as raw JSON because
      *  [StackFragment] switches on `kind` and modelling nine block shapes
@@ -99,6 +104,7 @@ object Sections {
                     bottomNav = o.optBoolean("bottom_nav", false),
                     toolbar = o.optBoolean("toolbar", false),
                     order = o.optInt("order", Int.MAX_VALUE),
+                    target = o.optString("target"),
                     pages = pages,
                     stacks = stacks,
                 )
