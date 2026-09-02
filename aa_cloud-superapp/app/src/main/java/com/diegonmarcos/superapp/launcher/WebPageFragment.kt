@@ -49,6 +49,25 @@ class WebPageFragment : Fragment() {
             )
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
+            // HONOUR <meta name="viewport">. Off by default in a WebView —
+            // and with it off the tag is ignored entirely, so the WebView
+            // lays the page out at a width of its own choosing. The linktree
+            // is mobile-first (18 of its rules are @media(max-width: 768px))
+            // and declares `width=device-width`, so the moment that tag is
+            // ignored the layout viewport lands above 768, every mobile rule
+            // is skipped and the desktop layout renders on a phone. Chrome
+            // sets these two; a bare WebView does not, which is the whole
+            // difference between the site in the browser and the site here.
+            settings.useWideViewPort = true
+            // Fit content to the view when a page IS wider than the WebView.
+            // A no-op for a page that sizes to device-width — it is the net
+            // under the next embedded page that does not.
+            settings.loadWithOverviewMode = true
+            // The page asks for user-scalable=yes (0.3–2.0). Pinch-zoom needs
+            // the built-in controls enabled; displayZoomControls=false keeps
+            // the gesture and drops the deprecated on-screen ± overlay.
+            settings.builtInZoomControls = true
+            settings.displayZoomControls = false
             // Keep navigation INSIDE the page. Without a WebViewClient the
             // platform hands every link to an ACTION_VIEW chooser, so the
             // first tap leaves the app — which is the one thing an embedded
