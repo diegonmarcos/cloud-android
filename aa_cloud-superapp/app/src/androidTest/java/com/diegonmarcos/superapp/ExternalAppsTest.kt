@@ -82,13 +82,24 @@ class ExternalAppsTest {
         }
     }
 
-    /** The three Comms tiles the user named map to the three comms forks. */
+    /** The three Comms tiles the user named still resolve to real apps.
+     *
+     *  Was asserting `extapp:cloud-comms/{mail,chat,matrix}` on
+     *  `comms.tilesShared` — three ways wrong at once, and silently so. The
+     *  `cloud-comms` parent with its three forks was split into three
+     *  first-class external apps, so no target carries a fork key any more;
+     *  and communication has no `tiles_shared` list, it declares one
+     *  `tiles_<page>` list per facet, so `tilesShared` was empty and
+     *  `assertTrue(byTarget.containsKey(...))` was asserting against an empty
+     *  map. Read the same tilesByPage every other surface reads. */
     @Test fun commsSection_tilesPointAtForks() {
         val comms = Sections.byId("communication")
         assertNotNull("communication section must exist", comms)
-        val byTarget = comms!!.tilesShared.associateBy { it.target }
-        assertTrue(byTarget.containsKey("extapp:cloud-comms/mail"))
-        assertTrue(byTarget.containsKey("extapp:cloud-comms/chat"))
-        assertTrue(byTarget.containsKey("extapp:cloud-comms/matrix"))
+        val targets = comms!!.tilesByPage.values.flatten().map { it.target }.toSet()
+        for (t in listOf("extapp:cloud-mail", "extapp:cloud-matrix", "extapp:cloud-chat")) {
+            assertTrue("communication must still carry $t (has: $targets)", targets.contains(t))
+            assertNotNull("$t must name a declared external app",
+                Sections.externalApp(t.removePrefix("extapp:")))
+        }
     }
 }

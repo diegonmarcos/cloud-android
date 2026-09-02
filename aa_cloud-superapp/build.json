@@ -2516,6 +2516,13 @@
             "id": "config",
             "label": "WireGuard",
             "icon": "ic_wg"
+          },
+          {
+            "id": "status",
+            "label": "Mesh",
+            "icon": "ic_wg",
+            "hidden": true,
+            "_doc": "Target of the two `WG mesh` tiles (Inboxes ▸ Cloud-RSS and Cloud ▸ C3). SectionPages.factoryFor has mapped wg/status to C3MeshFragment all along, but the page was never declared here, so pageFragment fell through to SectionFragment.forSection and the tiles opened the WireGuard config screen instead of the mesh. hidden: the section's own child list stays the single `config` page it has always shown."
           }
         ]
       },
@@ -2605,6 +2612,20 @@
             "id": "logs",
             "label": "Logs",
             "icon": "ic_p_logs"
+          },
+          {
+            "id": "dagu",
+            "label": "Dagu",
+            "icon": "ic_p_c3_workflows",
+            "hidden": true,
+            "_doc": "Target of the `Dagu events` tile and of the Cloud-RSS stack's `Dagu · Workflow runs` link. SectionPages routes c3/dagu to OpsPages.fragmentForDagu() (the native DAG list), but the page was undeclared, so both entry points landed on the C3 section instead. hidden: it is reached by tile, not from the section's child list."
+          },
+          {
+            "id": "gha",
+            "label": "GHA",
+            "icon": "ic_p_c3_workflows",
+            "hidden": true,
+            "_doc": "Target of the `GHA events` tile. Declared so the target resolves and the tile lands on PageContentFragment's stub, which is what an un-wired page is supposed to do here. There is NO native fragment yet — libs:ops OpsPages says as much ('future \"gha\" once that lands'); until it does, this is a placeholder, not a working screen."
           }
         ]
       },
@@ -3223,7 +3244,7 @@
         "kind": "phone_configs"
       }
     ],
-    "_doc_swipe_walk": "Horizontal swipe (left/right) walk-list - the CIRCULAR ordered list of navigation stops the bottom-nav swipe-cycle steps through. Replaces the old 'cycle the 4 bottom-nav sections' behaviour: now it also visits each section's pages and the Home-Apps overlay. Each stop: `section` (id in ui.sections, or 'home' for the Home-Apps sheet) + ONE optional refinement - `page` (any page id of that section: apps|admin|cloud|phone|c3|...), or `sheet` (cloud|phone, opens the Home-Apps AppDrawerSheet on that body page). Left-swipe = next (down the list), right-swipe = previous; wraps at both ends. Reorder/add/remove stops here - no Kotlin edit. Consumed by MainActivity.walkStep / Sections.swipeWalk().",
+    "_doc_swipe_walk": "Horizontal swipe (left/right) walk-list - the CIRCULAR ordered list of navigation stops the bottom-nav swipe-cycle steps through. Replaces the old 'cycle the 4 bottom-nav sections' behaviour: now it also visits each section's pages and the Home-Apps overlay. Each stop: `section` (id in ui.sections, or 'home' for the Home-Apps sheet) + ONE optional refinement - `page` (any page id of that section: apps|admin|cloud|phone|c3|...), or `sheet` (cloud|phone, opens the Home-Apps AppDrawerSheet on that body page). Left-swipe = next (down the list), right-swipe = previous; wraps at both ends. Reorder/add/remove stops here - no Kotlin edit. Consumed by MainActivity.walkStep / Sections.swipeWalk(). Entries name a REAL section + page: infos-apps/infos-admin outlived the Apps|Admin facets Projects used to have and had been walking to page:infos/apps and page:infos/admin, neither of which exists — the walk step silently fell through to the section instead of the page.",
     "swipe_walk": [
       {
         "id": "comms",
@@ -3231,16 +3252,16 @@
         "label": "Inboxes"
       },
       {
-        "id": "infos-apps",
+        "id": "infos-my-pm",
         "section": "infos",
-        "page": "apps",
-        "label": "Infos · Apps"
+        "page": "my-pm",
+        "label": "Projects · My-PM"
       },
       {
-        "id": "infos-admin",
+        "id": "infos-work-pm",
         "section": "infos",
-        "page": "admin",
-        "label": "Infos · Admin"
+        "page": "work-pm",
+        "label": "Projects · Work-PM"
       },
       {
         "id": "home-apps-cloud",

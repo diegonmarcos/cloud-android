@@ -523,6 +523,150 @@ done < <(command grep -rl 'PackageInstaller.SessionParams(' --include=*.kt --inc
 # which are regenerated from upstream + patches - editing them is reverted on
 # the next sync (feedback: submodules/forks, edit the source).
 
+# 19. Every `section:X` / `page:X/Y` target in a build.json must name a section
+#     and page that build.json declares. Nothing resolves these at build time:
+#     an unknown target falls through to SectionFragment.forSection and opens
+#     the SECTION, so a tile pointing at a page nobody declared looks like it
+#     works. Four shipped that way - two `WG mesh` tiles and the `Dagu events`
+#     tile reached page:wg/status and page:c3/dagu, both of which had a Kotlin
+#     factory in SectionPages and no page in build.json, so they quietly opened
+#     the wrong screen; two swipe_walk stops still named Projects' retired
+#     Apps|Admin facets. Also covers swipe_walk's section+page pairs and
+#     home_groups' tiles_from_section (including its "<section>/<page>" form).
+while IFS=$'\t' read -r status msg; do
+    [ -z "$status" ] && continue
+    note "$status" "$msg"
+done < <(python3 - <<'PY'
+import glob, json
+
+SKIP = ('action:', 'extapp:', 'app:', 'http', 'intent:', 'stub:', 'mode:')
+
+def strings(o):
+    """Every string VALUE, skipping _doc* keys — those are prose that quotes
+    the grammar ("a node with section:null is terminal") and would otherwise
+    read as a target."""
+    if isinstance(o, dict):
+        for k, v in o.items():
+            if not str(k).startswith('_doc'):
+                yield from strings(v)
+    elif isinstance(o, list):
+        for v in o:
+            yield from strings(v)
+    elif isinstance(o, str):
+        yield o
+
+for bj in sorted(glob.glob('*/build.json')):
+    try:
+        ui = (json.load(open(bj)).get('ui') or {})
+    except Exception as e:
+        print(f'FAIL\t{bj} is not parseable JSON: {e}')
+        continue
+    secs = ui.get('sections')
+    if not secs:
+        continue
+    S = {s['id']: s for s in secs}
+    # allPages: hidden pages are routable by target, just not listed as children.
+    PG = {sid: {p['id'] for p in s.get('pages', [])} for sid, s in S.items()}
+    bad = []
+
+    for v in strings(ui):
+        if v.startswith('section:'):
+            sid = v.split(':', 1)[1]
+            if sid not in S:
+                bad.append(f'{v} -> no such section')
+        elif v.startswith('page:'):
+            sid, _, pid = v.split(':', 1)[1].partition('/')
+            if sid not in S:
+                bad.append(f'{v} -> no such section')
+            elif pid and pid not in PG[sid]:
+                bad.append(f'{v} -> section {sid} declares no page {pid}')
+
+    for w in ui.get('swipe_walk', []):
+        sid, pid = w.get('section'), w.get('page')
+        if sid and sid != 'home' and sid not in S:
+            bad.append(f'swipe_walk[{w.get("id")}] -> no such section {sid}')
+        elif sid in PG and pid and pid not in PG[sid]:
+            bad.append(f'swipe_walk[{w.get("id")}] -> section {sid} declares no page {pid}')
+
+    for g in ui.get('home_groups', []):
+        ref = g.get('tiles_from_section')
+        if not ref:
+            continue
+        sid, _, pid = ref.partition('/')
+        if sid not in S:
+            bad.append(f'home_groups[{g.get("title")}] tiles_from_section={ref} -> no such section')
+        elif pid and f'tiles_{pid}' not in S[sid]:
+            bad.append(f'home_groups[{g.get("title")}] tiles_from_section={ref} -> {sid} has no tiles_{pid} list')
+
+    for b in bad:
+        print(f'FAIL\t{bj}: {b}')
+    if not bad:
+        print(f'ok\t{bj}: every section:/page: target resolves')
+PY
+)
+
+# 20. No blob baked into a BuildConfig String may approach javac's 65535-byte
+#     constant limit. This is not a soft limit and the error names neither the
+#     field nor the cause - "BuildConfig.java:35: error: constant string too
+#     long" is the whole message - so it costs a CI round trip to even locate.
+#     It has now bitten twice in one day: UI_SECTIONS_B64 grew past it on a day
+#     of editing section prose, and LINKTREE_JSON_B64 was being baked with its
+#     file indentation and reached 71,368. Both fixes (strip _doc* keys,
+#     re-serialise compact) are mirrored here so the number checked is the
+#     number gradle bakes; the WARN line leaves ~10 KB of headroom so a blob is
+#     caught while growing rather than at the cliff.
+while IFS=$'\t' read -r status msg; do
+    [ -z "$status" ] && continue
+    note "$status" "$msg"
+done < <(python3 - <<'PY'
+import base64, glob, json
+
+LIMIT, WARN = 65535, 55000
+
+def strip_docs(o):
+    if isinstance(o, dict):
+        return {k: strip_docs(v) for k, v in o.items() if not str(k).startswith('_doc')}
+    if isinstance(o, list):
+        return [strip_docs(v) for v in o]
+    return o
+
+def baked(o):
+    """What app/build.gradle produces: stripDocs, JsonOutput.toJson (compact),
+    then encodeBase64."""
+    j = json.dumps(strip_docs(o), separators=(',', ':'), ensure_ascii=False)
+    return len(base64.b64encode(j.encode()))
+
+rows = []
+for bj in sorted(glob.glob('*/build.json')):
+    app = bj.split('/')[0]
+    try:
+        d = json.load(open(bj))
+    except Exception:
+        continue
+    for k, v in (d.get('ui') or {}).items():
+        if not str(k).startswith('_doc') and isinstance(v, (dict, list)):
+            rows.append((baked(v), f'{app} ui.{k}'))
+    for f in sorted(glob.glob(f'{app}/data/*.json')):
+        try:
+            rows.append((baked(json.load(open(f))), f))
+        except Exception:
+            pass
+
+worst = 0
+for n, name in sorted(rows, reverse=True):
+    worst = max(worst, n)
+    if n >= LIMIT:
+        print(f'FAIL\t{name} bakes {n} base64 bytes — over javac\'s {LIMIT}-byte '
+              f'string-constant ceiling; the build fails with "constant string too long"')
+    elif n >= WARN:
+        print(f'FAIL\t{name} bakes {n} base64 bytes — still under the {LIMIT} ceiling '
+              f'but past the {WARN} line, so the next paragraph breaks the build')
+if worst < WARN:
+    print(f'ok\tevery baked blob is clear of javac\'s {LIMIT}-byte wall '
+          f'(largest {worst})')
+PY
+)
+
 [ "$fail" -eq 0 ] && echo "PASS — shared modules wired, no duplicated trees." \
                   || echo "FAIL — see above."
 exit "$fail"
