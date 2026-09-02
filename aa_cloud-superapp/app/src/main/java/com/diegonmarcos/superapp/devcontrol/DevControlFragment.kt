@@ -176,11 +176,17 @@ class DevControlFragment : Fragment() {
                 val h = android.widget.HorizontalScrollView(ctx).apply { addView(logView) }
                 addView(h)
             }
+            // Scope is a THREE-way choice, not a checkbox, because the three
+            // cases are read three different ways (see readLogcat): own process
+            // in-process, everything through the Shizuku shell, one app by uid.
+            var scopeUid = -1              // -1 = this app, -2 = all apps, else a uid
+            var scopePkg = ""              // label for the picked app
             var errorsOnly = false
             fun refresh() {
                 logView.text = "Loading…"
+                val uid = scopeUid; val eo = errorsOnly
                 Thread {
-                    val out = readLogcat(errorsOnly)
+                    val out = readLogcat(ctx, uid, eo)
                     logView.post { logView.text = out }
                 }.start()
             }
@@ -189,26 +195,55 @@ class DevControlFragment : Fragment() {
                 layoutParams = LinearLayout.LayoutParams(0,
                     ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
             }
-            val filters = LinearLayout(ctx).apply {
-                orientation = LinearLayout.HORIZONTAL
-                addView(btn("All") { errorsOnly = false; refresh() })
-                addView(btn("Errors only") { errorsOnly = true; refresh() })
+            fun row() = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
+
+            // row 0 — whose logs
+            val scopeRow = row().apply {
+                addView(btn("This App") { scopeUid = -1; scopePkg = ""; refresh() })
+                addView(btn("All Apps") { scopeUid = -2; scopePkg = ""; refresh() })
+                addView(btn("Select a App") {
+                    pickApp(ctx) { label, uid ->
+                        scopeUid = uid; scopePkg = label; refresh()
+                    }
+                })
             }
-            val actions = LinearLayout(ctx).apply {
-                orientation = LinearLayout.HORIZONTAL
+            // row 1 — which level
+            val filters = row().apply {
+                addView(btn("All Logs") { errorsOnly = false; refresh() })
+                addView(btn("Error Logs") { errorsOnly = true; refresh() })
+            }
+            // row 2 — what to do with the buffer
+            val actions = row().apply {
                 addView(btn("Refresh") { refresh() })
-                addView(btn("Copy all") {
+                addView(btn("Copy All") {
                     val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE)
                         as android.content.ClipboardManager
                     cm.setPrimaryClip(
                         android.content.ClipData.newPlainText("logcat", logView.text))
                     android.widget.Toast.makeText(ctx, "Copied", android.widget.Toast.LENGTH_SHORT).show()
                 })
-                // Same buffer as "Copy all", posted instead of pasted: hands the
+                // SAF, not a FileProvider: the user picks the destination, so
+                // this needs no provider declaration and no storage permission.
+                addView(btn("Export File") {
+                    pendingExport = logView.text.toString()
+                    val stamp = java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.US)
+                        .format(java.util.Date())
+                    val who = when {
+                        scopeUid == -1 -> "thisapp"
+                        scopeUid == -2 -> "allapps"
+                        else -> scopePkg.ifBlank { "uid$scopeUid" }
+                    }
+                    runCatching { exportLog.launch("logcat-$who-$stamp.log") }
+                        .onFailure {
+                            android.widget.Toast.makeText(ctx,
+                                "No file picker available", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                })
+                // Same buffer as "Copy All", posted instead of pasted: hands the
                 // dump straight to c3-infra-api so a broken phone reports its own
                 // evidence. Secrets are stripped in LogUpload.redact before it
                 // leaves the device.
-                addView(btn("Send to cloud") {
+                addView(btn("Post c3-api") {
                     val text = logView.text.toString()
                     val endpoint = BuildConfig.LOG_INGEST_URL
                     android.widget.Toast.makeText(ctx, "Sending…", android.widget.Toast.LENGTH_SHORT).show()
@@ -227,6 +262,7 @@ class DevControlFragment : Fragment() {
                     }
                 })
             }
+            box.addView(scopeRow)
             box.addView(filters)
             box.addView(actions)
             box.addView(logScroll)
@@ -234,12 +270,86 @@ class DevControlFragment : Fragment() {
         }
     }
 
-    private fun readLogcat(errorsOnly: Boolean): String = runCatching {
-        val cmd = if (errorsOnly) arrayOf("logcat", "-d", "-v", "time", "*:E")
-                  else arrayOf("logcat", "-d", "-v", "time")
-        Runtime.getRuntime().exec(cmd).inputStream.bufferedReader().readText()
-            .ifBlank { "(empty — Android only lets an app read its OWN logs; use the app, then Refresh)" }
-    }.getOrElse { "logcat read failed: ${it.message}" }
+    /**
+     * Read the log buffer for one scope.
+     *
+     * The three scopes are read three DIFFERENT ways, which is why this is not
+     * one command with a flag:
+     *
+     *   uid == -1  this app   — Runtime.exec in our own process. Android hands
+     *                           an unprivileged app only its own lines, which
+     *                           is the whole reason the other two exist.
+     *   uid == -2  all apps   — the Shizuku shell channel (uid 2000), which
+     *                           holds READ_LOGS and therefore sees everything.
+     *   uid >= 0   one app    — same channel, narrowed with `--uid`. By UID and
+     *                           not by pid: a pid needs the app to be RUNNING,
+     *                           while the uid is stable and works for an app
+     *                           that has already crashed — which is usually the
+     *                           app whose log you want.
+     *
+     * When Shizuku is not available the elevated scopes say so and name the
+     * reason, rather than silently falling back to this app's own lines and
+     * looking like the other app logged nothing.
+     */
+    private fun readLogcat(ctx: Context, uid: Int, errorsOnly: Boolean): String {
+        val level = if (errorsOnly) " *:E" else ""
+        if (uid == -1) {
+            return runCatching {
+                val cmd = if (errorsOnly) arrayOf("logcat", "-d", "-v", "time", "*:E")
+                          else arrayOf("logcat", "-d", "-v", "time")
+                Runtime.getRuntime().exec(cmd).inputStream.bufferedReader().readText()
+                    .ifBlank { "(empty — Android only lets an app read its OWN logs; use the app, then Refresh)" }
+            }.getOrElse { "logcat read failed: ${it.message}" }
+        }
+        val filter = if (uid == -2) "" else " --uid=$uid"
+        val out = com.diegonmarcos.superapp.adbdebug.ShizukuAdb.exec(
+            ctx, "logcat -d -v time$filter$level")
+        return out?.ifBlank { "(empty — nothing in the buffer for this scope)" }
+            ?: ("Reading another app's logs needs the Shizuku shell (uid 2000), which holds " +
+                "READ_LOGS.\n\nShizuku status: " +
+                com.diegonmarcos.superapp.adbdebug.ShizukuAdb.status() +
+                "\n\nStart Shizuku and grant this app, then Refresh. \"This App\" works without it.")
+    }
+
+    /** Buffer handed to the SAF writer — the picker is async, so the text has to
+     *  survive the round trip. */
+    private var pendingExport: String = ""
+
+    /** Save-as through the system picker: no FileProvider to declare and no
+     *  storage permission to request, and the user chooses the destination. */
+    private val exportLog =
+        registerForActivityResult(
+            androidx.activity.result.contract.ActivityResultContracts.CreateDocument("text/plain")
+        ) { uri ->
+            if (uri == null) return@registerForActivityResult
+            val ok = runCatching {
+                requireContext().contentResolver.openOutputStream(uri)?.use {
+                    it.write(pendingExport.toByteArray())
+                }
+            }.isSuccess
+            Toast.makeText(requireContext(),
+                if (ok) "Exported ${pendingExport.length} chars" else "Export failed",
+                Toast.LENGTH_SHORT).show()
+        }
+
+    /** Pick an installed app; hands back its label and UID for `logcat --uid`. */
+    private fun pickApp(ctx: Context, onPicked: (String, Int) -> Unit) {
+        val pm = ctx.packageManager
+        val apps = runCatching {
+            pm.getInstalledApplications(0)
+                .map { (pm.getApplicationLabel(it).toString()) to it.uid }
+                .sortedBy { it.first.lowercase() }
+        }.getOrDefault(emptyList())
+        if (apps.isEmpty()) {
+            Toast.makeText(ctx, "No apps visible", Toast.LENGTH_SHORT).show(); return
+        }
+        val labels = apps.map { it.first }.toTypedArray()
+        androidx.appcompat.app.AlertDialog.Builder(ctx)
+            .setTitle("Logs for which app")
+            .setItems(labels) { _, i -> onPicked(apps[i].first, apps[i].second) }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, s: Bundle?): View {
         val ctx = inflater.context
@@ -257,6 +367,19 @@ class DevControlFragment : Fragment() {
         scroll.addView(column)
 
         column.addView(title(ctx, "About Cloud SuperApp"))
+
+        // Placeholder for the section index. It is added HERE so it lands at the
+        // top of the page, but populated at the END — the anchors do not exist
+        // until every section has been laid out.
+        val indexBox = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { bottomMargin = dp(4) }
+        }
+        macroAnchors.clear()
+        column.addView(indexBox)
 
         addLogcatSection(ctx, column)
 
@@ -1399,6 +1522,53 @@ class DevControlFragment : Fragment() {
         column.addView(actionButton(ctx, "Copy All Infos") { copyAll() })
         if (copyOnOpen) { copyOnOpen = false; copyAll() }
 
+        // ── Section index ────────────────────────────────────────────────
+        // Built last, shown first. The page is ~30 sections in eight macro
+        // groups and was reachable only by scrolling; these jump straight to a
+        // group. Derived from macroAnchors, so a new macroHeader appears here
+        // automatically and a removed one cannot leave a dead link behind.
+        indexBox.addView(TextView(ctx).apply {
+            text = "Jump to"
+            setTextColor(0xFF9B93AB.toInt()); textSize = 12f
+            setPadding(0, dp(4), 0, dp(6))
+        })
+        var indexRow: LinearLayout? = null
+        macroAnchors.entries.forEachIndexed { i, (label, anchor) ->
+            if (i % 3 == 0) {
+                indexRow = LinearLayout(ctx).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                    ).apply { bottomMargin = dp(6) }
+                }
+                indexBox.addView(indexRow)
+            }
+            indexRow?.addView(TextView(ctx).apply {
+                text = label
+                setTextColor(0xFFE9D8FD.toInt()); textSize = 12f
+                gravity = android.view.Gravity.CENTER
+                isClickable = true; isFocusable = true
+                setPadding(dp(6), dp(8), dp(6), dp(8))
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    cornerRadius = dp(10).toFloat()
+                    setColor(0x22B794F4)
+                    setStroke(dp(1), 0x44B794F4)
+                }
+                layoutParams = LinearLayout.LayoutParams(
+                    0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f
+                ).apply { marginStart = dp(3); marginEnd = dp(3) }
+                // anchor.top is measured against `column`, which IS the
+                // ScrollView's only child, so it is already the scroll offset.
+                setOnClickListener { scroll.smoothScrollTo(0, (anchor.top - dp(8)).coerceAtLeast(0)) }
+            })
+        }
+        // Pad the last row so two chips do not stretch across three slots.
+        val remainder = macroAnchors.size % 3
+        if (remainder != 0) repeat(3 - remainder) {
+            indexRow?.addView(View(ctx), LinearLayout.LayoutParams(0, 1, 1f))
+        }
+
         return scroll
     }
 
@@ -1620,8 +1790,16 @@ class DevControlFragment : Fragment() {
 
     /** Big macro-section divider ("☁ CLOUD", "📱 PHONE") splitting the
      *  About page into the cloud-identity half and the phone-device half. */
+    /** Every macro group registers itself here as it is built, so the index at
+     *  the top of the page is DERIVED from the page rather than being a second
+     *  list to keep in step. Add a macroHeader and it appears in the index; the
+     *  two cannot disagree. */
+    private val macroAnchors = LinkedHashMap<String, View>()
+
     private fun macroHeader(ctx: Context, text: String) = TextView(ctx).apply {
         this.text = text
+        // Label without the leading emoji + spacing: "🔍  LOGCAT" -> "LOGCAT".
+        macroAnchors[text.dropWhile { !it.isLetter() }.trim()] = this
         setTextColor(0xFFE9D8FD.toInt())
         textSize = 17f
         setTypeface(typeface, android.graphics.Typeface.BOLD)
