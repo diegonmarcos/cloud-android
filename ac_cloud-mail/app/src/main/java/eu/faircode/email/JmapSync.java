@@ -452,7 +452,13 @@ public class JmapSync {
         for (Email email : emails) {
             if (email.getId() == null)
                 continue;
-            serverIds.add(email.getId());
+            // Position-paged Email/query against a mailbox that is receiving
+            // mail can return overlapping pages (positions shift between
+            // requests), so the same id may appear twice in [emails] — seen on
+            // device 2026-09-02 as double inserts of one uidl. add() returning
+            // false = already handled this pass.
+            if (!serverIds.add(email.getId()))
+                continue;
 
             Long localId = have.get(email.getId());
             if (localId != null) {
