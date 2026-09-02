@@ -187,8 +187,12 @@ public class DebugDumpReceiver extends BroadcastReceiver {
             sb.append(stack(ex));
         }
 
-        sb.append("\r\n--- logcat ---\r\n");
-        sb.append(logcat());
+        sb.append("\r\n--- logcat");
+        sb.append(context.checkSelfPermission(android.Manifest.permission.READ_LOGS)
+                == android.content.pm.PackageManager.PERMISSION_GRANTED
+                ? " (FULL system, READ_LOGS granted)" : " (own uid only)");
+        sb.append(" ---\r\n");
+        sb.append(logcat(context));
 
         return sb.toString();
     }
@@ -237,16 +241,25 @@ public class DebugDumpReceiver extends BroadcastReceiver {
     }
 
     private static String logcat() {
-        // Own process only -- that is all an unprivileged uid may read, and it
-        // is where AdapterMessage's swallowed Log.e(ex) lands.
+        return logcat(null);
+    }
+
+    private static String logcat(Context context) {
+        // Own process by default -- that is all an unprivileged uid may read,
+        // and it is where AdapterMessage's swallowed Log.e(ex) lands. When the
+        // one-time shell grant is in place (see the READ_LOGS declaration in
+        // the manifest), the same dump carries the FULL system log instead.
+        boolean full = context != null &&
+                context.checkSelfPermission(android.Manifest.permission.READ_LOGS)
+                        == android.content.pm.PackageManager.PERMISSION_GRANTED;
         StringBuilder sb = new StringBuilder();
         Process proc = null;
         try {
-            proc = new ProcessBuilder("logcat",
-                    "-d",
-                    "-v", "threadtime",
-                    "-t", LOGCAT_LINES,
-                    "--pid=" + android.os.Process.myPid())
+            java.util.List<String> cmd = new java.util.ArrayList<>(java.util.Arrays.asList(
+                    "logcat", "-d", "-v", "threadtime", "-t", LOGCAT_LINES));
+            if (!full)
+                cmd.add("--pid=" + android.os.Process.myPid());
+            proc = new ProcessBuilder(cmd)
                     .redirectErrorStream(true)
                     .start();
             try (BufferedReader br = new BufferedReader(

@@ -3,6 +3,17 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:installLocation="internalOnly">
 
+    <!-- comms: development permission - undeclarable-by-request but GRANTABLE
+         once from a shell (rish/adb/superapp_grant):
+           pm grant com.diegonmarcos.comms.mail android.permission.READ_LOGS
+         The grant persists across reboots AND app updates (only uninstall
+         clears it), and it must be DECLARED here or pm grant refuses it.
+         With it held, the debug dump captures the FULL system logcat instead
+         of only this uid's slice. -->
+    <uses-permission
+        android:name="android.permission.READ_LOGS"
+        tools:ignore="ProtectedPermissions" />
+
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
