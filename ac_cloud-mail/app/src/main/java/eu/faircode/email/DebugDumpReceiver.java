@@ -55,6 +55,13 @@ public class DebugDumpReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
         final Context ctx = context.getApplicationContext();
+        // comms: every dump broadcast also fires an update check. The About
+        // auto-check is throttled to 1/hour behind a static field and the only
+        // reset is a drawer tap -- unreachable when driving the device over
+        // ssh, which turned a published fix into a 30-minute wait on
+        // 2026-09-02. The debug tap is already the remote-ops door; an update
+        // check through it costs one conditional GET when nothing is new.
+        CommsUpdateWorker.checkNow(ctx);
         final PendingResult result = goAsync();
         new Thread(new Runnable() {
             @Override
