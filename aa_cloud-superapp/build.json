@@ -1999,7 +1999,7 @@
             "facet": true
           }
         ],
-        "_doc_phone_app_groups": "Curated phone apps surfaced in Phone, grouped under the same titled sections used by Cloud (AI · Data Primary · Data Apps · Tools Primary · Tools Dashboards · Configs). Group order = render order. Each group renders as a subhead + UI_PHONE_GRID_COLUMNS-col grid (6 by default). Missing packages silently hidden — editing this list never breaks the render. Add a new group = add an object here; add an app to an existing group = append to its packages array.",
+        "_doc_phone_app_groups": "Curated phone apps for Phone ▸ Apps ▸ Quickmarks. THIRD-PARTY ONLY: anything the constellation already offers a way into is reached from Cloud ▸ Apps, and SuitePhoneAppsFragment filters those out of this page's enumerated sections (All Apps, Smart Folders, Active Apps). This list is NOT filtered at runtime — a curated entry that never renders is worse than no entry — so keep our own packages out of it here. Group order = render order; each renders as a subhead + UI_PHONE_GRID_COLUMNS-col grid. Missing packages are silently hidden.",
         "phone_app_groups": [
           {
             "title": "AI",
@@ -2032,7 +2032,6 @@
               "rs.ltt.android",
               "com.mattermost.rn",
               "com.beeper.android",
-              "com.diegonmarcos.comms.dialer",
               "org.fossify.phone"
             ],
             "folders": [
@@ -2054,7 +2053,6 @@
             "packages": [
               "md.obsidian",
               "com.sec.android.gallery3d",
-              "com.diegonmarcos.cloudcalendar",
               "com.samsung.android.app.contacts",
               "com.aspiro.tidal",
               "com.x8bit.bitwarden"
@@ -2064,18 +2062,11 @@
             "title": "Tools Primary",
             "packages": [
               "com.brave.browser",
-              "com.diegonmarcos.cloudnews",
               "com.google.android.apps.maps",
               "com.google.android.apps.walletnfcrel",
               "com.google.android.apps.translate",
               "com.sec.android.app.clockpackage",
               "com.sec.android.app.popupcalculator"
-            ]
-          },
-          {
-            "title": "Tools Dashboards",
-            "packages": [
-              "com.diegonmarcos.superapp"
             ]
           },
           {

@@ -1281,6 +1281,27 @@ object Sections {
 
     fun externalApp(id: String): ExternalApp? = externalApps().firstOrNull { it.id == id }
 
+    /** Every package the constellation already offers a way into — the hub,
+     *  the resigned-stock alt, the install target and every fork of each
+     *  ui.external_apps entry, plus [ownPackage].
+     *
+     *  Derived from that roster rather than matched on a "com.diegonmarcos."
+     *  prefix: two of our entries are not ours by name (cloud-sheets is
+     *  com.collabora.libreoffice, and the matrix/chat alt packages are the
+     *  stock upstream ids), so a prefix test would leak exactly the apps a
+     *  user is most likely to also have installed from a store. */
+    fun constellationPackages(ownPackage: String): Set<String> {
+        val out = mutableSetOf(ownPackage)
+        for (a in externalApps()) {
+            out += a.hubPackage
+            out += a.altPackage
+            out += a.installPackage
+            out += a.forks.values
+        }
+        out.remove("")
+        return out
+    }
+
     /** data/linktree.json — mirror of front/a-Portals/linktree/src/data/
      *  projects.json. Lookup is by `slide.id` (suite | lab-tools |
      *  circus | cloud). Used by [StackPanel.kind] = "linktree_slide". */

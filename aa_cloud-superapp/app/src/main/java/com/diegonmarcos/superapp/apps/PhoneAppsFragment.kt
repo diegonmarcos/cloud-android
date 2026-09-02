@@ -207,7 +207,11 @@ class PhoneAppsFragment : Fragment() {
          *  and SuitePhoneAppsFragment's merged Suite→Phone page, which
          *  embeds this exact rendering inline instead of navigating to
          *  a separate "more" screen. */
-        fun renderAllApps(ctx: Context, rootCol: LinearLayout) {
+        fun renderAllApps(
+            ctx: Context,
+            rootCol: LinearLayout,
+            exclude: Set<String> = emptySet(),
+        ) {
             // Process-level cache populated by [warmUp] at app launch. By
             // the time the user navigates here it's usually already
             // primed → render is instant. If the user got here BEFORE the
@@ -216,8 +220,17 @@ class PhoneAppsFragment : Fragment() {
             // as v1 of the Phone tab. The render path is otherwise
             // identical for hot + cold.
             val folders  = sCachedFolders ?: PhoneFolders.loadFromBuildConfig().also { sCachedFolders = it }
-            val apps     = sCachedApps    ?: collectLaunchableAppsStatic(ctx).also { sCachedApps = it }
-            val grouped  = sCachedGrouped ?: PhoneAppClassifier.groupByFolder(apps, folders).also { sCachedGrouped = it }
+            val all      = sCachedApps    ?: collectLaunchableAppsStatic(ctx).also { sCachedApps = it }
+            val apps     = if (exclude.isEmpty()) all else all.filter { it.packageName !in exclude }
+            // The grouped cache is only reusable for the UNFILTERED set — and
+            // must not be WRITTEN from a filtered one either, or the next
+            // caller that wants every app silently gets somebody else's
+            // subset. A caller that excludes pays one regroup.
+            val grouped  = if (exclude.isEmpty()) {
+                sCachedGrouped ?: PhoneAppClassifier.groupByFolder(apps, folders).also { sCachedGrouped = it }
+            } else {
+                PhoneAppClassifier.groupByFolder(apps, folders)
+            }
             val columns  = BuildConfig.UI_PHONE_GRID_COLUMNS
 
             // Skip empty folders entirely — One UI hides them too, and an
@@ -258,8 +271,13 @@ class PhoneAppsFragment : Fragment() {
          *  dialog with the filtered apps. Rules operate over the SAME
          *  master `apps` list so contents track the source enumeration in
          *  lockstep. Shared the same way as [renderAllApps]. */
-        fun renderSmartFolders(ctx: Context, rootCol: LinearLayout) {
-            val apps = sCachedApps ?: collectLaunchableAppsStatic(ctx).also { sCachedApps = it }
+        fun renderSmartFolders(
+            ctx: Context,
+            rootCol: LinearLayout,
+            exclude: Set<String> = emptySet(),
+        ) {
+            val all  = sCachedApps ?: collectLaunchableAppsStatic(ctx).also { sCachedApps = it }
+            val apps = if (exclude.isEmpty()) all else all.filter { it.packageName !in exclude }
             val columns = BuildConfig.UI_PHONE_GRID_COLUMNS
             val smart = PhoneSmartFolders.loadFromBuildConfig()
             val visibleSmart = smart.mapNotNull { sf ->

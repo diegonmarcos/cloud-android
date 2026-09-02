@@ -1,6 +1,7 @@
 package com.diegonmarcos.superapp.apps
 import com.diegonmarcos.superapp.BuildConfig
 import com.diegonmarcos.superapp.launcher.AppLongPressMenu
+import com.diegonmarcos.superapp.launcher.Sections
 import com.diegonmarcos.superapp.App
 import com.diegonmarcos.superapp.R
 import com.diegonmarcos.superapp.datamanager.AppUsageProvider
@@ -93,6 +94,19 @@ class SuitePhoneAppsFragment : Fragment() {
         val byPkg = PhoneAppsFragment.snapshot(ctx).associateBy { it.packageName }
         val columns = BuildConfig.UI_PHONE_GRID_COLUMNS
 
+        // Phone is the THIRD-PARTY half of the launcher. Everything the
+        // constellation already offers a way into lives one tab over in
+        // Cloud ▸ Apps, and listing it here too put the same icon in both —
+        // so the ENUMERATED sections below drop it.
+        //
+        // Only the enumerated ones. Quickmarks is a curated list
+        // (build.json::sections[id=phone].phone_app_groups) and is left alone
+        // on purpose: filtering a hand-written list leaves entries that are
+        // declared and never render, which is the "declared but not behaving"
+        // trap. Our packages came out of that list in build.json instead,
+        // where you can see them go.
+        val ourApps = Sections.constellationPackages(ctx.packageName)
+
         fun resolve(pkg: String): AppInfo? {
             byPkg[pkg]?.let { app ->
                 // icon is nullable on PhoneApp (getBadgedIcon can throw).
@@ -169,11 +183,12 @@ class SuitePhoneAppsFragment : Fragment() {
         //    Data-driven: build.json::sections[id=suite].active_apps →
         //    UsageStatsManager recency via libs:datamanager. Hidden when the
         //    usage-access grant is missing (recentUsed → empty) or nothing
-        //    launchable matches. Own package filtered out (it's always hot).
+        //    launchable matches. Constellation packages filtered out — the
+        //    superapp is always hot, and the rest belong to Cloud ▸ Apps.
         if (BuildConfig.UI_SUITE_ACTIVE_APPS_ENABLED) {
             val recent = AppUsageProvider.recentUsed(ctx)
                 .asSequence()
-                .filter { it != ctx.packageName }
+                .filter { it !in ourApps }
                 .mapNotNull { resolve(it) }
                 .take(BuildConfig.UI_SUITE_ACTIVE_APPS_LIMIT.coerceAtLeast(1))
                 .toList()
@@ -225,14 +240,14 @@ class SuitePhoneAppsFragment : Fragment() {
         root.post {
             if (!isAdded) return@post
             root.addView(subhead(ctx, "All Apps"))
-            PhoneAppsFragment.renderAllApps(ctx, root)
+            PhoneAppsFragment.renderAllApps(ctx, root, ourApps)
 
             // ── Smart Folders — dynamic folders (Samsung, Google, Recent 7,
             //    …), same shared renderer as PhoneAppsFragment. Self-headed.
             root.post {
                 if (!isAdded) return@post
                 root.addView(sectionDivider(ctx))
-                PhoneAppsFragment.renderSmartFolders(ctx, root)
+                PhoneAppsFragment.renderSmartFolders(ctx, root, ourApps)
             }
         }
 
