@@ -293,14 +293,32 @@ public class JmapSync {
             EntityFolder folder = db.folder().getFolder(e.getKey());
             if (folder == null || !folder.synchronize)
                 continue;
-            syncMessages(context, account, folder, e.getValue(), jmap, false);
+            try {
+                syncMessages(context, account, folder, e.getValue(), jmap, false);
+            } catch (Throwable ex) {
+                // One folder's timeout must not abort the sweep: on a starved
+                // edge (rs.ltt.jmap's fixed ~10s call timeout, load-21 proxy)
+                // a fatal per-folder failure meant folders late in HashMap
+                // order NEVER got their reconcile — the same starvation the
+                // sweep exists to end, reintroduced by error handling.
+                Log.w(folder.name + " reconcile", ex);
+                EntityLog.log(context, "JMAP " + folder.name + " reconcile skipped: "
+                        + ex.getClass().getSimpleName());
+            }
         }
 
         for (Map.Entry<Long, String> e : folderToMailbox.entrySet()) {
             EntityFolder folder = db.folder().getFolder(e.getKey());
             if (folder == null || !folder.synchronize)
                 continue;
-            syncMessages(context, account, folder, e.getValue(), jmap);
+            try {
+                syncMessages(context, account, folder, e.getValue(), jmap);
+            } catch (Throwable ex) {
+                Log.w(folder.name + " sync", ex);
+                EntityLog.log(context, "JMAP " + folder.name + " sync skipped: "
+                        + ex.getClass().getSimpleName());
+                continue;
+            }
             // Operations DELIBERATELY not drained here -- see phase 2 below.
             // The interleaved drain let one folder's deep post-backfill BODY
             // backlog starve every later folder's reconciliation (measured
