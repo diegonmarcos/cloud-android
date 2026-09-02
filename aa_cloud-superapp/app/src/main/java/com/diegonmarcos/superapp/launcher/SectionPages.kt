@@ -40,11 +40,21 @@ object SectionPages {
     fun pagesFor(sectionId: String, includeHidden: Boolean = false): List<Page> {
         val section = Sections.byId(sectionId) ?: return emptyList()
         return (if (includeHidden) section.allPages else section.pages).map { p ->
-            Page(p.id, p.label, p.iconName ?: "", p.action, p.isAction) { factoryFor(sectionId, p.id, p.label) }
+            Page(p.id, p.label, p.iconName ?: "", p.action, p.isAction) {
+                factoryFor(sectionId, p.id, p.label, p.url)
+            }
         }
     }
 
-    private fun factoryFor(sectionId: String, pageId: String, label: String): Fragment = when {
+    private fun factoryFor(
+        sectionId: String,
+        pageId: String,
+        label: String,
+        url: String = "",
+    ): Fragment = when {
+        // A page that declares a `url` IS that page. Checked first and by
+        // data, so embedding the next one is a build.json edit, not a branch.
+        url.isNotBlank() -> WebPageFragment.newInstance(url)
         sectionId == "mail"  -> MailPages.fragmentFor(pageId)
         // Phone ▸ Apps: installed Android apps, not build.json tile data — so
         // it is an ordinary page here, unlike its `facet: true` sibling Configs.

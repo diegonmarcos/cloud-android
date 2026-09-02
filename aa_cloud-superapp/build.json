@@ -426,7 +426,7 @@
         {
           "label": "Cloud",
           "icon": "ic_suite",
-          "target": "page:cloud/cloud"
+          "target": "page:cloud/apps"
         },
         {
           "label": "Phone",
@@ -436,7 +436,7 @@
         {
           "label": "Labs",
           "icon": "ic_p_sol_tools",
-          "target": "page:cloud/labs"
+          "target": "page:cloud/linktree"
         },
         {
           "label": "C3",
@@ -1048,7 +1048,7 @@
     "_doc": "Navigation taxonomy - data-driven source for MainActivity's BottomNavigationView (bottom buttons), DrawerLayout (left-side collapsable 2-level menu), and per-section Toolbar menus. Every section child is a PAGE: one `pages` list per section feeds the section grid, the bottom-nav long-press fan, the Sirius ring and the tablet detail pane. The retired `tab:` and `mode:` target prefixes and the per-section `long_press` list were all just 'open child X of section Y' - write `page:<section>/<page>`. Adding a new section = one entry here + one drawable + one fragment placeholder.",
     "_doc_bottom_cap": "BottomNavigationView hard-caps at 5 items (Material design rule, enforced by NavigationBarMenu.addInternal → IllegalArgumentException). Sections with bottom_nav=false appear ONLY in the drawer; secondary / ops-y sections live there. Drive does the same: 4 in the bottom bar, the rest are drawer overflow.",
     "_doc_home_index": "The `home` section is the master index — its content is a TileGrid of every other section. Lives at the center of the bottom nav (replacing Chat, which moves to drawer-only). Tapping any drawer tab or bottom-nav button always lands the right-pane on that section's TileGrid (sub-pages as squared tiles).",
-    "_doc_aggregator_sections": "Aggregator sections are pure NAV - their tiles deep-link into real content sections via target ids ('section:X' | 'page:X/Y' | 'action:X'). Each declares tiles_shared (same in both modes), tiles_apps, tiles_admin, and/or the stack_* equivalents. Its children are plain `pages`; the ones marked \"facet\": true render THIS section's tiles_<page-id> / stack_<page-id> / tile_groups instead of a SectionPages fragment (LauncherNavController.aggregatorPage), which is how Suite's Cloud and every Apps|Admin pair are drawn. Non-facet siblings (Tools' c3, quant, ...) are ordinary content pages. The bottom nav hosts exactly these 5 aggregators today: Communication - Infos - HOME - Suite - Tools.",
+    "_doc_aggregator_sections": "Aggregator sections are pure NAV — their tiles deep-link into real content sections via target ids ('section:X' | 'page:X/Y' | 'action:X' | 'extapp:X' | a URI). Each declares tiles_shared (section-wide) and/or a tiles_<page-id> / stack_<page-id> pair per child. Children marked \"facet\": true render THIS section's lists (LauncherNavController.aggregatorPage, which prefers stack_<id>, then tiles_<id>, then the section-wide tile_groups); non-facet children are ordinary pages served by a SectionPages factory — or, when they declare a `url`, by WebPageFragment. The bottom nav hosts exactly these 5 aggregators: Inboxes · Projects · HOME · Cloud · Phone.",
     "sections": [
       {
         "id": "communication",
@@ -1452,18 +1452,19 @@
         "is_aggregator": true,
         "pages": [
           {
-            "id": "cloud",
-            "label": "Cloud",
+            "id": "apps",
+            "label": "Apps",
             "icon": "ic_suite",
-            "facet": true
+            "facet": true,
+            "_doc": "The cloud apps page — Quickmarks (tile_groups), the star's Actions ring, then Smart Folders. GroupedTilesFragment keys its extras off sectionId=='cloud', not this page id."
           },
           {
-            "id": "labs",
-            "label": "Labs",
+            "id": "linktree",
+            "label": "Linktree",
             "icon": "ic_p_sol_tools",
-            "facet": true,
             "mode": "apps",
-            "_doc": "The Labs facet. Page id renamed apps->labs so the id matches the label; the Apps/Admin MODE it selects is now declared explicitly in `mode` instead of being inferred from the page id (see sibling c3)."
+            "_doc": "Renders the live linktree site in a WebView (WebPageFragment) instead of a Kotlin port of it — one maintained list, not two copies to keep in step. `mode` still selects Apps mode on open; that is declared, not inferred from the id.",
+            "url": "https://linktree.diegonmarcos.com"
           },
           {
             "id": "c3",
@@ -1510,44 +1511,6 @@
             "hidden": true
           }
         ],
-        "tiles_apps": [
-          {
-            "id": "linktree",
-            "label": "Linktree",
-            "icon": "ic_solutions",
-            "target": "page:solutions/personal"
-          },
-          {
-            "id": "mymovies",
-            "label": "Movies",
-            "icon": "ic_p_sol_personal",
-            "target": "page:solutions/personal"
-          },
-          {
-            "id": "mymusic",
-            "label": "Music",
-            "icon": "ic_p_sol_personal",
-            "target": "page:solutions/personal"
-          },
-          {
-            "id": "mymaps",
-            "label": "Maps",
-            "icon": "ic_p_sol_personal",
-            "target": "page:solutions/personal"
-          },
-          {
-            "id": "myphotos",
-            "label": "Photos",
-            "icon": "ic_p_sol_personal",
-            "target": "page:solutions/personal"
-          },
-          {
-            "id": "myanalytics",
-            "label": "Analytics",
-            "icon": "ic_p_sol_cloud",
-            "target": "page:solutions/cloud"
-          }
-        ],
         "_doc_stack_apps": "Labs/Apps tab — themed placeholder panels (Data & ML, Engineering, Quant & Markets, Aero & Space, Circus). kind=link_grid with empty links renders the title as a collapsable header until per-section content lands. Suite was removed (the Suite slide now lives only on the bottom-nav Suite section, not here).",
         "tiles_labs": [
           {
@@ -1585,33 +1548,6 @@
             "label": "Circus",
             "icon": "ic_solutions",
             "target": "page:cloud/circus"
-          }
-        ],
-        "stack_labs": [
-          {
-            "kind": "link_grid",
-            "title": "Data & ML",
-            "subtitle": "Datasets · ML pipelines · model registry"
-          },
-          {
-            "kind": "link_grid",
-            "title": "Engineering",
-            "subtitle": "Build systems · ops tooling · infra notes"
-          },
-          {
-            "kind": "link_grid",
-            "title": "Quant & Markets",
-            "subtitle": "Market data · strategies · backtests"
-          },
-          {
-            "kind": "link_grid",
-            "title": "Aero & Space",
-            "subtitle": "Mission tracking · orbital data · launches"
-          },
-          {
-            "kind": "link_grid",
-            "title": "Circus",
-            "subtitle": "Misc experiments and side quests"
           }
         ],
         "tiles_c3": [
@@ -1919,9 +1855,8 @@
             ]
           }
         ],
-        "_doc_tiles_labs": "Master Lab index - 6 icon tiles, one per Lab. Read by home_groups[title=Labs] via tiles_from_section='cloud/labs' (the section/page form, because this section's plain tiles_shared is the Cloud index). The Labs PAGE itself renders stack_labs - stack wins over tiles in aggregatorPage - so this list is the Home face only.",
-        "_doc_tiles_apps": "Legacy flat roster (Linktree/Movies/Music/Maps/Photos/Analytics). No page `apps` exists any more, so tilesByPage['apps'] is never rendered - kept because SuperappSearchIndex still indexes tiles_apps and these are the only entries for those targets.",
-        "_doc_pages": "Cloud = the cloud-side surface. Cloud (the 18 grouped Cloud apps), Labs (the 6 subject Labs), C3 (Cloud Control Center).",
+        "_doc_tiles_labs": "Master Lab index — 6 icon tiles, one per subject Lab. Read by home_groups[title=Labs] via tiles_from_section='cloud/labs'. The key keeps the name `labs` on purpose: it is the SUBJECT labs, which is not what the Linktree tab became. No page `labs` exists, so this list is the Home face only — each icon opens page:cloud/<lab-id>.",
+        "_doc_pages": "Cloud: Apps (the cloud apps) | Linktree (the site, embedded) | C3 (Cloud Control Center) | Configs.",
         "tiles_configs": [
           {
             "id": "profile",
@@ -2008,7 +1943,34 @@
             "target": "page:config/about"
           }
         ],
-        "_doc_tiles_configs": "Cloud ▸ Configs. Generated from sections[config].pages — one tile per page, using its `action` when it declares one (wg → section:wg, keyboard → extapp:…) and page:config/<id> otherwise. Add a config page there and mirror it here; guard 19 in shared-modules.test.sh fails if a target here stops resolving."
+        "_doc_tiles_configs": "Cloud ▸ Configs. Generated from sections[config].pages — one tile per page, using its `action` when it declares one (wg → section:wg, keyboard → extapp:…) and page:config/<id> otherwise. Add a config page there and mirror it here; guard 19 in shared-modules.test.sh fails if a target here stops resolving.",
+        "stack_linktree": [
+          {
+            "kind": "link_grid",
+            "title": "Data & ML",
+            "subtitle": "Datasets · ML pipelines · model registry"
+          },
+          {
+            "kind": "link_grid",
+            "title": "Engineering",
+            "subtitle": "Build systems · ops tooling · infra notes"
+          },
+          {
+            "kind": "link_grid",
+            "title": "Quant & Markets",
+            "subtitle": "Market data · strategies · backtests"
+          },
+          {
+            "kind": "link_grid",
+            "title": "Aero & Space",
+            "subtitle": "Mission tracking · orbital data · launches"
+          },
+          {
+            "kind": "link_grid",
+            "title": "Circus",
+            "subtitle": "Misc experiments and side quests"
+          }
+        ]
       },
       {
         "id": "phone",
@@ -3481,10 +3443,10 @@
         "label": "Home Apps · Phone"
       },
       {
-        "id": "cloud",
+        "id": "cloud-apps",
         "section": "cloud",
-        "page": "cloud",
-        "label": "Cloud"
+        "page": "apps",
+        "label": "Cloud · Apps"
       },
       {
         "id": "phone",
@@ -3493,10 +3455,10 @@
         "label": "Phone"
       },
       {
-        "id": "labs",
+        "id": "linktree",
         "section": "cloud",
-        "page": "labs",
-        "label": "Labs"
+        "page": "linktree",
+        "label": "Linktree"
       },
       {
         "id": "c3",
@@ -5131,7 +5093,7 @@
             "icon": "ic_suite"
           },
           {
-            "id": "page:cloud/labs",
+            "id": "page:cloud/linktree",
             "label": "Labs",
             "icon": "ic_p_sol_tools"
           },
@@ -6285,7 +6247,7 @@
             },
             {
               "label": "Labs",
-              "target": "page:cloud/labs"
+              "target": "page:cloud/linktree"
             },
             {
               "label": "Configs",
@@ -6711,7 +6673,7 @@
         "id": "suite-cloud-quickmarks",
         "label": "Cloud",
         "icon": "ic_suite",
-        "target": "page:cloud/cloud"
+        "target": "page:cloud/apps"
       },
       {
         "id": "suite-phone-quickmarks",

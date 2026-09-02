@@ -82,24 +82,23 @@ class GroupedTilesFragment : Fragment() {
             // ── Below the fold: built AFTER the first frame ──────────────
             //
             // Everything above is the Quickmarks + Actions the user opens this
-            // page for, and it is ~30 tiles. What follows is the whole All Apps
-            // grid plus the Smart Folders block, each tile a separate
-            // inflate(R.layout.item_tile) — inline, that work sat between the
-            // tap and the first frame, so the tab stayed on the previous page
-            // until all of it existed.
+            // page for, and it is ~30 tiles. Smart Folders follows, each tile a
+            // separate inflate(R.layout.item_tile) — inline, that work sat
+            // between the tap and the first frame, so the tab stayed on the
+            // previous page until all of it existed.
             //
             // Deferring it costs nothing visually: it is appended below the
             // fold, so it lands off-screen while the user is still reading
             // Quickmarks.
+            //
+            // The whole-of-Home "All Apps" grid used to sit here too, via
+            // HomeGroupedFragment.buildInto. It was the Home tab rendered a
+            // second time inside a Cloud tab — the same ~30 groups the user
+            // had just navigated away from — so this page is Quickmarks,
+            // Actions and Smart Folders now. Home still renders it; the
+            // buildInto entry point stays for Home's own use.
             col.post {
                 if (!isAdded) return@post
-                // ── All Apps — the same grouped-by-purpose rendering the real
-                //    Home tab (HomeGroupedFragment) uses, embedded inline
-                //    instead of navigating to a separate "more" screen.
-                col.addView(sectionDivider(ctx))
-                col.addView(groupHeader(ctx, "All Apps"))
-                HomeGroupedFragment.buildInto(ctx, inflater, col)
-
                 // ── Smart Folders → Recently Used. Cloud tiles have no
                 //    existing pin/favorite/most-used signal the way Phone
                 //    apps do — this is the one real per-tile signal

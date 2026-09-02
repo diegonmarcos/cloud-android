@@ -91,7 +91,7 @@ object Sections {
         /** Per-mode stack panels — vertical scroll of collapsable cards.
          *  When a stack_* list is non-empty for the active mode, the
          *  aggregator renders [AggregatorStackFragment] instead of the
-         *  default tile grid. Both can coexist (tiles_apps + stack_admin). */
+         *  default tile grid. Both can coexist (tiles_<id> + stack_<id>). */
         val stackShared: List<StackPanel> = emptyList(),
         val stackApps:   List<StackPanel> = emptyList(),
         val stackAdmin:  List<StackPanel> = emptyList(),
@@ -237,6 +237,12 @@ object Sections {
          *  long after its label moved. Declaring it frees the id to say what
          *  the page IS. Blank ⇒ opening the page leaves the mode alone. */
         val mode: String = "",
+
+        /** When set, this page IS the web page at this URL — rendered by
+         *  [WebPageFragment], no Kotlin screen needed. Cloud ▸ Linktree is
+         *  the case: the linktree is a maintained site, and porting it to
+         *  tiles meant keeping two copies of one link list in step forever. */
+        val url: String = "",
 
         /** true = routable but NOT listed as a child of its section. Cloud's
          *  five subject Labs (quant, circus, …) already render inside the Labs
@@ -465,6 +471,7 @@ object Sections {
                         action   = po.optString("action", ""),
                         facet    = po.optBoolean("facet", false),
                         mode     = po.optString("mode", ""),
+                        url      = po.optString("url", ""),
                         hidden   = po.optBoolean("hidden", false),
                         isAction = po.optBoolean("is_action", false),
                     ))
