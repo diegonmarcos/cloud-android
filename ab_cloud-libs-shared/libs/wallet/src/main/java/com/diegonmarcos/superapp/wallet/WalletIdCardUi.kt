@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import com.google.android.filament.Engine
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -123,34 +124,20 @@ internal fun IdCard3DReactView(card: WalletStore.Card, modifier: Modifier = Modi
 }
 
 /**
- * 3D-f: Google Filament via SceneView (Vulkan/OpenGL native).
- * Load models/blank_passport.glb; swap cover texture per card.kind at runtime.
- * See docs/3d-view-design.md for full material + shader mapping.
+ * 3D-f: Google Filament via SceneView — real native geometry.
+ *
+ * No longer a stub, and no longer a .glb: [FilamentCard] builds the card as a
+ * CubeNode at ID-1 proportions and textures it from the card's own data. See
+ * docs/3d-view-design.md for the path this fills in.
  */
 @Composable
-internal fun IdCard3DFilamentView(card: WalletStore.Card, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .shadow(8.dp, RoundedCornerShape(16.dp))
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFF0A0D14)),
-        contentAlignment = Alignment.Center,
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("3D-f", color = Color(0x88FFFFFF), fontSize = 10.sp, fontFamily = FontFamily.Monospace)
-            Text(card.kind, color = Color(0x44FFFFFF), fontSize = 12.sp, fontFamily = FontFamily.Monospace)
-            Text("Filament native stub", color = Color(0x33FFFFFF), fontSize = 9.sp)
-        }
-    }
-}
-
-@Composable
-internal fun DocCardView(card: WalletStore.Card, modifier: Modifier = Modifier) {
-    when (card.kind) {
-        "doc_birth_es" -> BirthCertEsCard(card, modifier)
-        "doc_birth_br" -> BirthCertBrCard(card, modifier)
-        else           -> GenericDocCard(card, modifier)
-    }
+internal fun IdCard3DFilamentView(
+    card: WalletStore.Card,
+    modifier: Modifier = Modifier,
+    engine: Engine? = null,
+) {
+    if (engine != null) FilamentCard(card = card, modifier = modifier, engine = engine)
+    else FilamentCard(card = card, modifier = modifier)
 }
 
 // ─── Colors ──────────────────────────────────────────────────────────────────
