@@ -140,6 +140,16 @@ internal fun IdCard3DFilamentView(
     else FilamentCard(card = card, modifier = modifier)
 }
 
+/** Documents — birth certificates and the like, which are paper, not cards. */
+@Composable
+internal fun DocCardView(card: WalletStore.Card, modifier: Modifier = Modifier) {
+    when (card.kind) {
+        "doc_birth_es" -> BirthCertEsCard(card, modifier)
+        "doc_birth_br" -> BirthCertBrCard(card, modifier)
+        else           -> GenericDocCard(card, modifier)
+    }
+}
+
 // ─── Colors ──────────────────────────────────────────────────────────────────
 
 private val PaperCream   = Color(0xFFF5F0E8)
