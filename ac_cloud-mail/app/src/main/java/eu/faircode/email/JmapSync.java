@@ -77,7 +77,7 @@ public class JmapSync {
     // for 24 House (server=473 stored=200 across two passes an hour apart).
     // The pass is cancelled before small folders get a turn. Cap so every
     // folder progresses each pass; the big views backfill over several.
-    private static final int INSERT_CAP_PER_PASS = 300;
+    private static final int INSERT_CAP_PER_PASS = 100;
 
     // Folders that must never sync to a phone. Cloud-Infra/Health/* holds the
     // ntfy->mail mirror of VM health PROBES (health_resources, health_dns,
@@ -354,7 +354,19 @@ public class JmapSync {
             }
         }
 
-        for (Map.Entry<Long, String> e : folderToMailbox.entrySet()) {
+        // Phase 1b (inserts) walks SMALLEST folder first. Measured 2026-09-02
+        // on-device: HashMap order put the giant filter views (Ac 3482 rows,
+        // Dd, Inbox) ahead, each insert costs ~2s (buildMessage + tx + BODY
+        // op), so 24 House (200 rows, 273 missing) sat 30+ min behind them.
+        // Ascending stored-count: small folders complete in the first minutes,
+        // the giants backfill INSERT_CAP_PER_PASS per pass.
+        List<Map.Entry<Long, String>> insertOrder = new ArrayList<>(folderToMailbox.entrySet());
+        Map<Long, Integer> storedByFolder = new HashMap<>();
+        for (Map.Entry<Long, String> e : insertOrder)
+            storedByFolder.put(e.getKey(), db.message().countTotal(e.getKey()));
+        Collections.sort(insertOrder, (a, b) -> Integer.compare(
+                storedByFolder.getOrDefault(a.getKey(), 0), storedByFolder.getOrDefault(b.getKey(), 0)));
+        for (Map.Entry<Long, String> e : insertOrder) {
             EntityFolder folder = db.folder().getFolder(e.getKey());
             if (folder == null || !folder.synchronize)
                 continue;
