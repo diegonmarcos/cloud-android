@@ -263,16 +263,37 @@ class LauncherNavController(private val host: NavHost) {
                 iconRes = p.iconName?.let { Sections.iconResFor(ctx, it) } ?: 0,
                 group = if (p.isAction) GROUP_ACTIONS else GROUP_PAGES)
         }
-        val extra = com.diegonmarcos.superapp.onehand.CircularMenu.config().nodes
-            .firstOrNull { it.childKey == section.id }?.actions.orEmpty()
-            .map { TileGridFragment.Tile(it.target, it.label, Sections.iconResFor(ctx, it.iconName), GROUP_ACTIONS) }
-        val actions = own.filter { it.group == GROUP_ACTIONS } + extra
+        val actions = own.filter { it.group == GROUP_ACTIONS } + starActionsOf(section)
         return TileGridFragment.newInstance(
             title = title,
             // No actions in this section? Drop the headings entirely — a lone
             // "PAGES" banner over every other grid is noise.
             tiles = if (actions.isEmpty()) own.map { it.copy(group = "") }
                     else own.filter { it.group == GROUP_PAGES } + actions)
+    }
+
+    /** The extras declared on a section's radial node (KDE Connect,
+     *  Animations, Copy Info), so the grid and the star list the same actions
+     *  from one declaration in build.json. */
+    private fun starActionsOf(section: Sections.Section): List<TileGridFragment.Tile> {
+        val ctx = host.navContext()
+        return com.diegonmarcos.superapp.onehand.CircularMenu.config().nodes
+            .firstOrNull { it.childKey == section.id }?.actions.orEmpty()
+            .map { TileGridFragment.Tile(it.target, it.label, Sections.iconResFor(ctx, it.iconName), GROUP_ACTIONS) }
+    }
+
+    /** A section's Actions as tiles — its `is_action` pages plus its star
+     *  extras. Borrowed by a facet that declares `actions_from_section`, so
+     *  the actions are declared once and rendered wherever they are wanted. */
+    private fun actionTilesOf(section: Sections.Section): List<TileGridFragment.Tile> {
+        val ctx = host.navContext()
+        return section.pages.filter { it.isAction }.map { p ->
+            TileGridFragment.Tile(
+                id = if (p.action.isNotBlank()) p.action else "page:${section.id}/${p.id}",
+                label = p.label,
+                iconRes = p.iconName?.let { Sections.iconResFor(ctx, it) } ?: 0,
+                group = GROUP_ACTIONS)
+        } + starActionsOf(section)
     }
 
     /**
@@ -300,11 +321,18 @@ class LauncherNavController(private val host: NavHost) {
                 AggregatorStackFragment.newInstance(section.id, section.label, page.id)
             ownTiles.isNotEmpty() -> {
                 val ctx = host.navContext()
-                TileGridFragment.newInstance(title, ownTiles.map { t ->
+                val actions = page.actionsFromSection.takeIf { it.isNotBlank() }
+                    ?.let { Sections.byId(it) }?.let { actionTilesOf(it) }.orEmpty()
+                val pages = ownTiles.map { t ->
                     TileGridFragment.Tile(
                         id = t.target, label = t.label,
-                        iconRes = Sections.iconResFor(ctx, t.iconName))
-                })
+                        iconRes = Sections.iconResFor(ctx, t.iconName),
+                        // Headed only when there is a second group to tell it
+                        // apart from — same rule as sectionGrid, where a lone
+                        // "PAGES" banner over every other grid is noise.
+                        group = if (actions.isEmpty()) "" else GROUP_PAGES)
+                }
+                TileGridFragment.newInstance(title, pages + actions)
             }
             section.tileGroups.isNotEmpty() -> GroupedTilesFragment.newInstance(section.id)
             else -> {

@@ -250,6 +250,12 @@ object Sections {
          *  Configs is the case. */
         val mirrorSection: String = "",
 
+        /** When set, this facet appends THAT section's Actions (its
+         *  `is_action` pages plus its star extras) under an Actions heading,
+         *  below its own tiles. Phone ▸ Configs is the case: Android's
+         *  settings screens are its own content, the actions are not. */
+        val actionsFromSection: String = "",
+
         /** true = routable but NOT listed as a child of its section. Cloud's
          *  five subject Labs (quant, circus, …) already render inside the Labs
          *  facet via tiles_labs; listing them again made Cloud eight
@@ -479,6 +485,7 @@ object Sections {
                         mode     = po.optString("mode", ""),
                         url      = po.optString("url", ""),
                         mirrorSection = po.optString("mirror_section", ""),
+                        actionsFromSection = po.optString("actions_from_section", ""),
                         hidden   = po.optBoolean("hidden", false),
                         isAction = po.optBoolean("is_action", false),
                     ))
