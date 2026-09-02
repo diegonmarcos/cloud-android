@@ -83,6 +83,7 @@ class SectionTabsFragment : Fragment(), Collapsible {
             // Liquid-glass pill chrome — the same helper the strip used before,
             // so Suite / Infos / Labs still read as one consistent surface.
             AppTabsStyle.apply(this)
+            equaliseTabs(this)
         }
 
         val panes = LinearLayout(ctx).apply {
@@ -154,7 +155,109 @@ class SectionTabsFragment : Fragment(), Collapsible {
             .commitAllowingStateLoss()
     }
 
+    /**
+     * One width for every tab, sized to seven characters — then shrink the text
+     * rather than the tab if that will not fit.
+     *
+     * MODE_FIXED alone was not enough. It divides the strip evenly only while
+     * the content fits; past that the tabs go back to sizing themselves, so a
+     * strip reading MSGS / MY-RSS / CLOUD-RSS came out ragged, and Cloud's nine
+     * pages made it worse. Ragged tabs also MOVE as you change section, which is
+     * the part that actually reads as broken.
+     *
+     * So the slot is measured, not negotiated: the width of [WIDEST] at the tab
+     * font. Seven characters because LNKTREE and CONFIGS are the longest labels
+     * in build.json, so every existing tab fits its slot exactly once and the
+     * strip is stable across every section.
+     *
+     * When N slots exceed the strip the FONT gives way, a step at a time down to
+     * [MIN_SP], because a smaller word is still readable while a clipped one is
+     * not. Only if even the floor overflows does the strip become scrollable —
+     * the honest last resort: nothing is hidden, it just no longer fits at once.
+     *
+     * Runs in post(): the measurement needs the strip's real width, which
+     * TabLayout does not have until it has laid its children out.
+     */
+    private fun equaliseTabs(tabs: TabLayout) {
+        // A one-shot LAYOUT listener, not post(): post() on a not-yet-attached
+        // view runs on attach, which can still be before the first layout pass —
+        // width would be 0 and the whole thing would silently do nothing. This
+        // fires only once there is a real width to measure against.
+        tabs.addOnLayoutChangeListener(object : View.OnLayoutChangeListener {
+            override fun onLayoutChange(
+                v: View, l: Int, t: Int, r: Int, b: Int,
+                ol: Int, ot: Int, or_: Int, ob: Int,
+            ) {
+                if (v.width <= 0) return
+                v.removeOnLayoutChangeListener(this)
+                applyEqualTabs(tabs)
+            }
+        })
+    }
+
+    private fun applyEqualTabs(tabs: TabLayout) {
+        run {
+            val strip = tabs.getChildAt(0) as? ViewGroup ?: return@run
+            val n = strip.childCount
+            if (n == 0) return@run
+            val avail = tabs.width - tabs.paddingStart - tabs.paddingEnd
+            if (avail <= 0) return@run
+
+            val labels = (0 until n).mapNotNull { findLabel(strip.getChildAt(it)) }
+            if (labels.isEmpty()) return@run
+
+            val dm = tabs.resources.displayMetrics
+            val padPx = (TAB_PAD_DP * dm.density).toInt()
+            val minPx = MIN_SP * dm.scaledDensity
+            val paint = android.text.TextPaint().apply { typeface = labels[0].typeface }
+
+            var sizePx = labels[0].textSize
+            var slot: Int
+            while (true) {
+                paint.textSize = sizePx
+                slot = (paint.measureText(WIDEST) + padPx).toInt()
+                if (slot.toLong() * n <= avail || sizePx <= minPx) break
+                sizePx -= dm.density   // ~1dp a step: fine enough to look smooth
+            }
+
+            // Never narrower than an even share, or a two-tab strip would sit as
+            // two small pills in a wide empty bar.
+            val finalSlot = maxOf(slot, avail / n)
+            val overflows = finalSlot.toLong() * n > avail
+            tabs.tabMode = if (overflows) TabLayout.MODE_SCROLLABLE else TabLayout.MODE_FIXED
+
+            labels.forEach {
+                it.setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, sizePx)
+                it.isSingleLine = true
+                it.maxLines = 1
+                it.ellipsize = android.text.TextUtils.TruncateAt.END
+            }
+            for (i in 0 until n) {
+                val tab = strip.getChildAt(i)
+                tab.minimumWidth = finalSlot
+                tab.layoutParams = tab.layoutParams.apply { width = finalSlot }
+            }
+            strip.requestLayout()
+        }
+    }
+
+    /** First TextView inside a tab view. TabLayout wraps the label in a
+     *  container whose shape it does not promise, so this walks rather than
+     *  assuming a position. */
+    private fun findLabel(v: View?): android.widget.TextView? = when (v) {
+        null -> null
+        is android.widget.TextView -> v
+        is ViewGroup -> (0 until v.childCount).firstNotNullOfOrNull { findLabel(v.getChildAt(it)) }
+        else -> null
+    }
+
     companion object {
+        /** Seven characters: LNKTREE and CONFIGS are the longest tab labels in
+         *  build.json, so this is the real ceiling rather than a guess. */
+        private const val WIDEST = "CONFIGS"
+        private const val TAB_PAD_DP = 18f
+        private const val MIN_SP = 9f
+
         /** Panes we have stable host ids for — see `values/ids.xml`. */
         const val MAX_PANES = 4
 
