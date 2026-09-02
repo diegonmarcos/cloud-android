@@ -248,8 +248,10 @@ public class JmapService {
         try {
             MethodResponses r = client.call(
                     GetMailboxMethodCall.builder().accountId(accountId).build()).get();
-            Mailbox[] list = r.getMain(GetMailboxMethodResponse.class).getList();
+            Mailbox[] list = requireMain(r, GetMailboxMethodResponse.class, "Mailbox/get").getList();
             return (list == null ? new Mailbox[0] : list);
+        } catch (MessagingException ex) {
+            throw ex;              // already named — do not re-wrap
         } catch (Exception ex) {
             throw wrap("Mailbox/get", ex);
         }
@@ -293,56 +295,83 @@ public class JmapService {
 
     // ── Messages ─────────────────────────────────────────────────────────────
 
-    // Query a mailbox and fetch matching message headers in ONE round-trip via
-    // a JMAP back-reference (Query/Email → Get/Email #/ids), the idiomatic
-    // batched pattern. Returns up to [limit] messages.
+    // JMAP page size for Email/query paging loops below. Stalwart's
+    // maxObjectsInGet is 500; 200 keeps a decent margin.
+    private static final int JMAP_PAGE_SIZE = 200;
+
+    // ponytail: a fixed inter-page delay instead of a real token bucket — the
+    // server edge allows 600 req/min for this vhost, so a small fixed gap
+    // between the (at most 2-call) pages is plenty of headroom without any
+    // extra rate-tracking state.
+    private static final long JMAP_PAGE_DELAY_MS = 50;
+
+    // Query a mailbox and fetch matching message headers, paging through
+    // Email/query with `position` offsets so callers see the COMPLETE
+    // membership up to [limit], not just the server's first page. Each page
+    // is still one round-trip via a JMAP back-reference (Query/Email →
+    // Get/Email #/ids).
     @NonNull
     List<Email> getFolderMessages(String mailboxId, int limit) throws MessagingException {
         requireAccount();
+        List<Email> result = new ArrayList<>();
         try {
-            JmapClient.MultiCall multiCall = client.newMultiCall();
-            JmapRequest.Call queryCall = multiCall.call(
-                    QueryEmailMethodCall.builder()
-                            .accountId(accountId)
-                            .filter(EmailFilterCondition.builder().inMailbox(mailboxId).build())
-                            // Explicit newest-first sort. RFC 8621 leaves unsorted
-                            // query order server-defined — Stalwart returns oldest
-                            // first, so limit N without a sort pins the window to
-                            // the N oldest messages and new mail never appears.
-                            .sort(new Comparator[]{new Comparator("receivedAt", false)})
-                            .limit((long) limit)
-                            .build());
-            JmapRequest.Call getCall = multiCall.call(
-                    GetEmailMethodCall.builder()
-                            .accountId(accountId)
-                            // result-reference to the Query/Email response "/ids"
-                            .idsReference(queryCall.createResultReference("/ids"))
-                            .properties(EMAIL_HEADER_PROPERTIES)
-                            .build());
-            multiCall.execute();
-            // Say WHICH link of the chain came back empty. When the host is
-            // unreachable (2026-08-31: imap/jmap.diegonmarcos.com resolve to
-            // fd0c:1d00::1 and the phone's mesh IPv6 was a black hole), the
-            // response object is null and the old code dereferenced it — the
-            // user saw a bare NullPointerException on getClass(), which names
-            // neither the server nor the network. A dead connection must read
-            // as a dead connection.
-            GetEmailMethodResponse got = getCall.getMethodResponses().get()
-                    .getMain(GetEmailMethodResponse.class);
-            if (got == null)
-                throw new MessagingException(
-                        "Email/query+get: no response from the JMAP server " +
-                        "(is the host reachable? both A and AAAA are published)");
-            Email[] list = got.getList();
-            List<Email> result = new ArrayList<>();
-            if (list != null)
-                for (Email e : list)
-                    result.add(e);
+            long position = 0;
+            while (result.size() < limit) {
+                long pageLimit = Math.min(JMAP_PAGE_SIZE, limit - result.size());
+                JmapClient.MultiCall multiCall = client.newMultiCall();
+                JmapRequest.Call queryCall = multiCall.call(
+                        QueryEmailMethodCall.builder()
+                                .accountId(accountId)
+                                .filter(EmailFilterCondition.builder().inMailbox(mailboxId).build())
+                                // Explicit newest-first sort. RFC 8621 leaves unsorted
+                                // query order server-defined — Stalwart returns oldest
+                                // first, so limit N without a sort pins the window to
+                                // the N oldest messages and new mail never appears.
+                                .sort(new Comparator[]{new Comparator("receivedAt", false)})
+                                .position(position)
+                                .limit(pageLimit)
+                                .build());
+                JmapRequest.Call getCall = multiCall.call(
+                        GetEmailMethodCall.builder()
+                                .accountId(accountId)
+                                // result-reference to the Query/Email response "/ids"
+                                .idsReference(queryCall.createResultReference("/ids"))
+                                .properties(EMAIL_HEADER_PROPERTIES)
+                                .build());
+                multiCall.execute();
+                // Say WHICH link of the chain came back empty. When the host is
+                // unreachable (2026-08-31: imap/jmap.diegonmarcos.com resolve to
+                // fd0c:1d00::1 and the phone's mesh IPv6 was a black hole), the
+                // response object is null and the old code dereferenced it — the
+                // user saw a bare NullPointerException on getClass(), which names
+                // neither the server nor the network. A dead connection must read
+                // as a dead connection.
+                GetEmailMethodResponse got = requireMain(
+                        getCall.getMethodResponses().get(), GetEmailMethodResponse.class, "Email/query+get");
+                Email[] list = got.getList();
+                int received = (list == null ? 0 : list.length);
+                if (list != null)
+                    for (Email e : list)
+                        result.add(e);
+                if (received < pageLimit)
+                    break; // short page — this was the last one
+                position += received;
+                sleepBetweenPages();
+            }
             return result;
         } catch (MessagingException ex) {
             throw ex;              // already named — do not re-wrap
         } catch (Exception ex) {
             throw wrap("Email/query+get", ex);
+        }
+    }
+
+    // ponytail: shared by both paging loops below.
+    private static void sleepBetweenPages() {
+        try {
+            Thread.sleep(JMAP_PAGE_DELAY_MS);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
         }
     }
 
@@ -358,28 +387,41 @@ public class JmapService {
     @NonNull
     List<String> getFolderUnreadIds(String mailboxId, int limit) throws MessagingException {
         requireAccount();
+        List<String> result = new ArrayList<>();
         try {
-            JmapClient.MultiCall multiCall = client.newMultiCall();
-            JmapRequest.Call queryCall = multiCall.call(
-                    QueryEmailMethodCall.builder()
-                            .accountId(accountId)
-                            .filter(EmailFilterCondition.builder()
-                                    .inMailbox(mailboxId)
-                                    .notKeyword(Keyword.SEEN)
-                                    .build())
-                            // Same explicit newest-first sort as getFolderMessages:
-                            // RFC 8621 leaves unsorted query order server-defined.
-                            .sort(new Comparator[]{new Comparator("receivedAt", false)})
-                            .limit((long) limit)
-                            .build());
-            multiCall.execute();
-            String[] ids = queryCall.getMethodResponses().get()
-                    .getMain(QueryEmailMethodResponse.class).getIds();
-            List<String> result = new ArrayList<>();
-            if (ids != null)
-                for (String id : ids)
-                    result.add(id);
+            long position = 0;
+            while (result.size() < limit) {
+                long pageLimit = Math.min(JMAP_PAGE_SIZE, limit - result.size());
+                JmapClient.MultiCall multiCall = client.newMultiCall();
+                JmapRequest.Call queryCall = multiCall.call(
+                        QueryEmailMethodCall.builder()
+                                .accountId(accountId)
+                                .filter(EmailFilterCondition.builder()
+                                        .inMailbox(mailboxId)
+                                        .notKeyword(Keyword.SEEN)
+                                        .build())
+                                // Same explicit newest-first sort as getFolderMessages:
+                                // RFC 8621 leaves unsorted query order server-defined.
+                                .sort(new Comparator[]{new Comparator("receivedAt", false)})
+                                .position(position)
+                                .limit(pageLimit)
+                                .build());
+                multiCall.execute();
+                String[] ids = requireMain(
+                        queryCall.getMethodResponses().get(), QueryEmailMethodResponse.class, "Email/query unseen")
+                        .getIds();
+                int received = (ids == null ? 0 : ids.length);
+                if (ids != null)
+                    for (String id : ids)
+                        result.add(id);
+                if (received < pageLimit)
+                    break; // short page — this was the last one
+                position += received;
+                sleepBetweenPages();
+            }
             return result;
+        } catch (MessagingException ex) {
+            throw ex;              // already named — do not re-wrap
         } catch (Exception ex) {
             throw wrap("Email/query unseen", ex);
         }
@@ -397,8 +439,10 @@ public class JmapService {
                             .fetchHTMLBodyValues(true)
                             .fetchTextBodyValues(true)
                             .build()).get();
-            Email[] list = r.getMain(GetEmailMethodResponse.class).getList();
+            Email[] list = requireMain(r, GetEmailMethodResponse.class, "Email/get body").getList();
             return (list == null || list.length == 0 ? null : list[0]);
+        } catch (MessagingException ex) {
+            throw ex;              // already named — do not re-wrap
         } catch (Exception ex) {
             throw wrap("Email/get body", ex);
         }
@@ -514,7 +558,7 @@ public class JmapService {
             imports.put("i0", ei);
             MethodResponses ir = client.call(ImportEmailMethodCall.builder()
                     .accountId(accountId).emails(imports).build()).get();
-            Map<String, Email> created = ir.getMain(ImportEmailMethodResponse.class).getCreated();
+            Map<String, Email> created = requireMain(ir, ImportEmailMethodResponse.class, "Email/import").getCreated();
             if (created == null || created.get("i0") == null)
                 throw new MessagingException("JMAP import produced no email");
             String emailId = created.get("i0").getId();
@@ -533,7 +577,7 @@ public class JmapService {
     private String resolveIdentityId(String email) throws Exception {
         MethodResponses r = client.call(
                 GetIdentityMethodCall.builder().accountId(accountId).build()).get();
-        Identity[] ids = r.getMain(GetIdentityMethodResponse.class).getList();
+        Identity[] ids = requireMain(r, GetIdentityMethodResponse.class, "Identity/get").getList();
         if (ids == null)
             return null;
         String first = null;
@@ -694,10 +738,31 @@ public class JmapService {
             throw new MessagingException("JMAP not connected");
     }
 
+    // Every read call below does response.getMain(SomeMethodResponse.class)
+    // and dereferences the result. On a dead connection (2026-08-31:
+    // imap/jmap.diegonmarcos.com resolved to a mesh IPv6 black hole) that
+    // comes back null and the bare dereference NPEs with a message like
+    // "Attempt to invoke virtual method ...getClass()" — useless: it names
+    // neither the JMAP method nor the actual failure (unreachable host vs.
+    // the method simply erroring server-side). Route every getMain call site
+    // through here so the exception always names both.
+    private static <T extends rs.ltt.jmap.common.method.MethodResponse> T requireMain(
+            MethodResponses response, Class<T> clazz, String what) throws MessagingException {
+        T main = (response == null ? null : response.getMain(clazz));
+        if (main == null)
+            throw new MessagingException(
+                    "JMAP " + what + ": no response from the JMAP server " +
+                    "(is the host reachable? both A and AAAA are published)");
+        return main;
+    }
+
     private static MessagingException wrap(String op, Exception ex) {
         if (ex instanceof MessagingException)
             return (MessagingException) ex;
         Throwable cause = unwrap(ex);
+        // describe() already renders "ExceptionClass: message" (or just the
+        // class name when the cause has no message, e.g. a bare NPE) — keep
+        // using it here so callers get the real failure, not just a class name.
         return new MessagingException("JMAP " + op + " failed: " + describe(cause), asException(cause));
     }
 

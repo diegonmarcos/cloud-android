@@ -93,13 +93,15 @@ public class UnreadSync {
 
     // ── Reconciliation ───────────────────────────────────────────────────────
 
-    // Apply the server's read state to local rows of one folder.
+    // Apply the server's read state to local rows of one folder, in both
+    // directions.
     //
     // THE RULE, and why:
     //
-    //   A message the server calls unseen, that the device has as seen, is
-    //   normally the device being stale -- read state changed in another client.
-    //   Server wins, and the row goes back to unread.
+    //   Direction 1 (seen -> unread): a message the server calls unseen, that
+    //   the device has as seen, is normally the device being stale -- read
+    //   state changed in another client. Server wins, and the row goes back
+    //   to unread.
     //
     //   EXCEPT when a SEEN operation for that message is still queued. That
     //   means the user read it HERE and the flag has not been pushed yet. The
@@ -108,13 +110,29 @@ public class UnreadSync {
     //   operation would push it read again, so the message would flicker back
     //   and forth. Local wins, and the pending operation settles it.
     //
-    // This is the conservative direction on purpose: it only ever moves rows
-    // seen -> unread. It never marks anything read, because "the server did not
-    // list it as unread" is not proof the user read it -- it can equally mean
-    // the id was past MAX_UNREAD, or that the query never ran.
+    //   Direction 2 (unread -> seen), the opposite case: a message the device
+    //   still shows unread that the server no longer lists as unseen was read
+    //   in another client. Same pending-SEEN guard applies (local wins over a
+    //   queued-but-not-yet-pushed change either way).
+    //
+    //   Direction 2 additionally requires [complete] -- the caller's promise
+    //   that the server query returned every unseen id, not a result capped at
+    //   MAX_UNREAD (see fetchUnreadUids/fetchUnreadIds). "This id was not in
+    //   the list" is only proof of "read" when the list was exhaustive; against
+    //   a capped result it is equally consistent with "past the cap", and
+    //   direction 2 would then wrongly mark still-unread mail read. Direction 1
+    //   needs no such guard: every id it acts on was positively returned by the
+    //   server, cap or not.
     //
     // Returns the number of rows changed.
     static int reconcile(Context context, EntityFolder folder, @NonNull Set<Long> serverUnreadIds) {
+        // ponytail: back-compat overload for the IMAP caller (Core.java), which
+        // this task does not touch -- keeps direction 2 off there, same as
+        // before this change.
+        return reconcile(context, folder, serverUnreadIds, false);
+    }
+
+    static int reconcile(Context context, EntityFolder folder, @NonNull Set<Long> serverUnreadIds, boolean complete) {
         DB db = DB.getInstance(context);
 
         Set<Long> pendingSeen = getPendingSeen(db, folder.id);
@@ -143,6 +161,25 @@ public class UnreadSync {
                 changed++;
             }
 
+            if (complete)
+                for (TupleUidl u : db.message().getUidls(folder.id)) {
+                    if (serverUnreadIds.contains(u.id))
+                        continue; // server still calls it unread
+
+                    if (pendingSeen.contains(u.id)) {
+                        skipped++;
+                        continue;
+                    }
+
+                    EntityMessage message = db.message().getMessage(u.id);
+                    if (message == null || message.ui_seen)
+                        continue; // already seen locally: nothing to do
+
+                    db.message().setMessageSeen(message.id, true);
+                    db.message().setMessageUiSeen(message.id, true);
+                    changed++;
+                }
+
             db.setTransactionSuccessful();
         } finally {
             db.endTransaction();
@@ -150,7 +187,8 @@ public class UnreadSync {
 
         if (changed > 0 || skipped > 0)
             EntityLog.log(context, EntityLog.Type.General, folder.name +
-                    " unread reconcile changed=" + changed + " kept_local=" + skipped);
+                    " unread reconcile changed=" + changed + " kept_local=" + skipped +
+                    " complete=" + complete);
 
         return changed;
     }

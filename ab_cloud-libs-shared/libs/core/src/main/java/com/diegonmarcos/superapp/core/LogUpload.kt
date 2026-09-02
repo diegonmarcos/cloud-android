@@ -48,6 +48,25 @@ object LogUpload {
     fun redact(raw: String): String =
         SECRET.replace(raw) { m -> m.groupValues[1] + m.groupValues[2] + "<redacted>" }
 
+    /**
+     * Capture this process's own logcat (own-process only — that is all an
+     * unprivileged uid may read), redact it, and cap it to [maxBytes] newest
+     * bytes so a chatty app never blows the server's 2 MB body limit.
+     *
+     * Shared by [Telemetry.postLogcat] so the dump+redact+cap logic exists in
+     * exactly one place instead of being copy-pasted per caller.
+     */
+    internal fun captureAndRedactLogcat(maxBytes: Int = MAX_BYTES): String {
+        val raw = runCatching {
+            val proc = ProcessBuilder("logcat", "-d", "-v", "time")
+                .redirectErrorStream(true)
+                .start()
+            proc.inputStream.bufferedReader().use(BufferedReader::readText).also { proc.destroy() }
+        }.getOrElse { "logcat capture failed: ${it.javaClass.simpleName}: ${it.message}" }
+        val redacted = redact(raw)
+        return if (redacted.length > maxBytes) redacted.takeLast(maxBytes) else redacted
+    }
+
     /** Result of an upload attempt — named, never a bare boolean, so the UI can
      *  tell the user WHICH step failed rather than "upload failed". */
     sealed class Result {

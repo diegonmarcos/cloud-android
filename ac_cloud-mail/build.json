@@ -16,6 +16,16 @@
       "type": "library",
       "dir": "../ab_cloud-libs-shared/libs/analytics",
       "comment": "Shared BY REFERENCE - one copy for the whole constellation, no per-app drift."
+    },
+    "libs:core": {
+      "type": "library",
+      "dir": "../ab_cloud-libs-shared/libs/core",
+      "comment": "Shared BY REFERENCE, same as libs:analytics. Brings in the constellation-wide Telemetry default (see libs/core/README.md) plus DataBackendService. `api project(':libs:devtools')` in its own build.gradle, so libs:devtools must ALSO be included below."
+    },
+    "libs:devtools": {
+      "type": "library",
+      "dir": "../ab_cloud-libs-shared/libs/devtools",
+      "comment": "Transitive dependency of libs:core (see above) — not consumed directly by this app, but Gradle needs it declared in the module graph to resolve libs:core's `api` dependency."
     }
   },
   "forks": {

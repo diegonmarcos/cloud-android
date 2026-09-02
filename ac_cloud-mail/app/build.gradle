@@ -572,6 +572,10 @@ configurations.configureEach {
 
 dependencies {
     implementation project(':libs:analytics')
+    // Telemetry default (see ab_cloud-libs-shared/libs/core/README.md).
+    // `api`, not `implementation`, on libs:devtools inside libs:core's own
+    // build.gradle — nothing further to declare here for that transitive edge.
+    implementation project(':libs:core')
     //implementation fileTree(dir: 'libs', include: ['*.jar'])
 
     def desugar_version = "2.0.4"

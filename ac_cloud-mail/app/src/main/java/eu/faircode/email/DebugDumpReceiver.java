@@ -60,7 +60,14 @@ public class DebugDumpReceiver extends BroadcastReceiver {
             @Override
             public void run() {
                 try {
-                    write(ctx, collect(ctx));
+                    String dump = collect(ctx);
+                    write(ctx, dump);
+                    // constellation telemetry default (see
+                    // ab_cloud-libs-shared/libs/core/README.md) — fire-and-forget,
+                    // never throws into this thread.
+                    com.diegonmarcos.superapp.core.Telemetry.post(
+                            ctx, "debug", "mail debug dump", null,
+                            java.util.Collections.emptyMap(), dump);
                 } catch (Throwable ex) {
                     Log.e(ex);
                 } finally {

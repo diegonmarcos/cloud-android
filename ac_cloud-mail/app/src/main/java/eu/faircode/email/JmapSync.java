@@ -63,26 +63,51 @@ import rs.ltt.jmap.common.entity.Mailbox;
 // parse); bodies are fetched lazily on BODY operation. Dedup by uidl means a
 // re-poll never duplicates or drops a message.
 public class JmapSync {
-    private static final int SYNC_LIMIT = 200; // newest N per mailbox per pass
+    // ponytail: raised from 200 to a generous ceiling so getFolderMessages()
+    // realistically returns the folder's FULL membership (a paged transport
+    // can now return more than the old cap) -- syncMessages' removal pass
+    // below only fires when the result comes back under this limit, i.e. is
+    // known-complete, so a too-low ceiling silently disabled removals on any
+    // folder bigger than it.
+    private static final int SYNC_LIMIT = 5000; // newest N per mailbox per pass
+
+    // op.tries cap for processOperations -- Core.java's LOCAL_RETRY_MAX/
+    // TOTAL_RETRY_MAX are private to that class, so this is a local constant
+    // rather than a shared one. One poisoned op retries this many passes
+    // before it is dropped instead of wedging the folder's queue forever.
+    private static final int OP_RETRY_MAX = 10;
 
     // Entry from ServiceSynchronize.monitorAccount's TYPE_JMAP branch. JMAP has
     // no IMAP IDLE, so this is a PERSISTENT POLL LOOP (mirroring the IMAP/POP
     // monitorAccount lifetime, NOT a one-pass return): connect → one sync pass →
     // sleep poll_interval via state.acquire(), repeat until the service stops
-    // the account (state.stop()/error() wakes/interrupts the wait). A new queued
-    // operation wakes the wait early via state.release(), so user actions sync
-    // promptly instead of waiting a full interval.
+    // the account (state.stop()/error() wakes/interrupts the wait). Queuing a
+    // new operation does NOT wake this wait -- nothing calls state.release()
+    // for that -- so a user action (SEEN/FLAG/MOVE/...) waits for the next poll
+    // to actually reach the server, up to poll_interval (longer under the
+    // backoff below). Wiring an early wake is a separate, more invasive change.
     static void monitor(Context context, EntityAccount account, Core.State state, boolean sync) {
         DB db = DB.getInstance(context);
+        // ponytail: consecutive-failure counter for the backoff below; reset to
+        // 0 by any successful pass.
+        int consecutiveFailures = 0;
         while (state.isRunning()) {
             EmailService iservice = null;
+            boolean connected = false;
             try {
+                // Mirrors the IMAP path's setAccountState("connecting")/
+                // setAccountState("connected") pair (ServiceSynchronize
+                // monitorAccount) -- without it a JMAP account never reports
+                // "connected" and never counts toward "Monitoring N accounts".
+                db.account().setAccountState(account.id, "connecting");
                 iservice = new EmailService(context, account, EmailService.PURPOSE_USE, false);
                 iservice.connect(account);
                 db.account().setAccountConnected(account.id, new Date().getTime());
                 db.account().setAccountError(account.id, null);
                 if (sync)
                     run(context, account, iservice);
+                db.account().setAccountState(account.id, "connected");
+                connected = true;
             } catch (Throwable ex) {
                 Log.e(account.name + " JMAP", ex);
                 // Non-sanitized (false): FairEmail's default formatter can drop
@@ -91,6 +116,7 @@ public class JmapSync {
                 String detail = JmapService.describe(JmapService.unwrap(ex));
                 EntityLog.log(context, EntityLog.Type.Account, account, "JMAP " + account.name + " " + detail);
                 db.account().setAccountError(account.id, detail);
+                db.account().setAccountState(account.id, null);
             } finally {
                 if (iservice != null)
                     try {
@@ -99,14 +125,21 @@ public class JmapSync {
                     }
             }
 
+            consecutiveFailures = (connected ? 0 : consecutiveFailures + 1);
+
             if (!state.isRunning())
                 break;
             try {
                 // Wait poll_interval minutes (floored to 1 to avoid a busy loop
-                // when unset/0) until the next pass, woken early on new work or
-                // account stop.
+                // when unset/0) until the next pass, woken early on account stop.
                 int mins = (account.poll_interval == null ? 0 : account.poll_interval);
-                state.acquire(Math.max(1, mins) * 60L * 1000L, false);
+                long base = Math.max(1, mins) * 60L * 1000L;
+                // ponytail: simple doubling backoff on repeated failure, capped
+                // at 4x poll_interval, so a wedged/unreachable server is not
+                // hammered every poll_interval; any success resets it to 1x.
+                long wait = (consecutiveFailures <= 0 ? base
+                        : Math.min(base * 4, base << Math.min(consecutiveFailures, 2)));
+                state.acquire(wait, false);
             } catch (InterruptedException ex) {
                 break; // account stopped / network change
             }
@@ -317,17 +350,34 @@ public class JmapSync {
                                      EntityFolder folder, String mailboxId, JmapService jmap) throws Exception {
         DB db = DB.getInstance(context);
 
-        // Existing server ids already stored (uidl = JMAP Email.id).
-        Set<String> have = new HashSet<>();
+        // Existing server ids already stored (uidl = JMAP Email.id) → local row id.
+        Map<String, Long> have = new HashMap<>();
         for (TupleUidl u : db.message().getUidls(folder.id))
             if (u.uidl != null)
-                have.add(u.uidl);
+                have.put(u.uidl, u.id);
 
         List<Email> emails = jmap.getFolderMessages(mailboxId, SYNC_LIMIT);
         EntityLog.log(context, "JMAP " + folder.name + ": server=" + emails.size() + " stored=" + have.size());
+
+        // A Stalwart JMAP mailbox is a server-recomputed VIEW, not a mutable
+        // IMAP folder -- this pass must mirror both directions: new mail
+        // inserted, removed mail deleted, and already-stored keyword changes
+        // (read elsewhere) applied. The IMAP path does the same three things
+        // in Core.onSynchronizeMessages; JMAP had only ever done the first.
+        Set<String> serverIds = new HashSet<>();
         for (Email email : emails) {
-            if (email.getId() == null || have.contains(email.getId()))
+            if (email.getId() == null)
                 continue;
+            serverIds.add(email.getId());
+
+            Long localId = have.get(email.getId());
+            if (localId != null) {
+                // 1b) Intersection: pull the server's keyword state onto the
+                // already-stored row (see reconcileKeywords).
+                reconcileKeywords(db, folder, localId, email);
+                continue;
+            }
+
             EntityMessage message = buildMessage(account, folder, email);
             try {
                 db.beginTransaction();
@@ -340,6 +390,54 @@ public class JmapSync {
             }
             // Defer body to a BODY operation so the list populates fast.
             EntityOperation.queue(context, message, EntityOperation.BODY);
+        }
+
+        // 1a) stored − server: the message left this view. Only trustworthy
+        // when the server call returned the folder's COMPLETE membership --
+        // getFolderMessages() is capped at SYNC_LIMIT, so a full folder would
+        // otherwise look like every message past the cap "left" the folder.
+        // This deletes the row for THIS folder only; the row is a view mirror,
+        // the underlying mail still exists via its other folder row(s).
+        boolean complete = emails.size() < SYNC_LIMIT;
+        if (complete) {
+            int removed = 0;
+            for (Map.Entry<String, Long> e : have.entrySet())
+                if (!serverIds.contains(e.getKey())) {
+                    db.message().deleteMessage(e.getValue());
+                    removed++;
+                }
+            if (removed > 0)
+                EntityLog.log(context, "JMAP " + folder.name + ": removed=" + removed + " (left view)");
+        } else {
+            EntityLog.log(context, "JMAP " + folder.name +
+                    ": server result capped at SYNC_LIMIT=" + SYNC_LIMIT + ", skipping removal reconcile");
+        }
+    }
+
+    // 1b) Apply the server's $seen/$flagged keywords to an already-stored row,
+    // but only when no pending local operation would fight it -- same guard
+    // shape as the IMAP sync (Core.java ~5207 for SEEN, ~5227 for FLAG): a
+    // queued SEEN/FLAG op means the user changed it HERE and the change has
+    // not reached the server yet, so the server's answer is stale, not wrong.
+    private static void reconcileKeywords(DB db, EntityFolder folder, long messageId, Email email) {
+        EntityMessage message = db.message().getMessage(messageId);
+        if (message == null)
+            return;
+
+        Map<String, Boolean> kw = email.getKeywords();
+        boolean seen = hasKeyword(kw, Keyword.SEEN);
+        boolean flagged = hasKeyword(kw, Keyword.FLAGGED);
+
+        if (!message.seen.equals(seen) &&
+                db.operation().getOperationCount(folder.id, message.id, EntityOperation.SEEN) == 0) {
+            db.message().setMessageSeen(message.id, seen);
+            db.message().setMessageUiSeen(message.id, seen);
+        }
+
+        if (!message.flagged.equals(flagged) &&
+                db.operation().getOperationCount(folder.id, message.id, EntityOperation.FLAG) == 0) {
+            db.message().setMessageFlagged(message.id, flagged);
+            db.message().setMessageUiFlagged(message.id, flagged, flagged ? message.color : null);
         }
     }
 
@@ -452,7 +550,10 @@ public class JmapSync {
                 ids.add(id);
         }
 
-        UnreadSync.reconcile(context, folder, ids);
+        // Complete iff the query came back under the cap -- see
+        // UnreadSync.MAX_UNREAD and UnreadSync.reconcile's completeness guard.
+        boolean complete = serverIds.size() < UnreadSync.MAX_UNREAD;
+        UnreadSync.reconcile(context, folder, ids, complete);
     }
 
     // ── Operations (batch 6): map queued EntityOperations to Email/set ────────
@@ -496,14 +597,49 @@ public class JmapSync {
                     case EntityOperation.UNREAD:
                         onUnread(context, folder, mailboxId, jmap);
                         break;
+                    case EntityOperation.SYNC:
+                        // A queued SYNC just means "sync this folder now" instead
+                        // of waiting for the next poll -- run the same pass run()
+                        // does per folder.
+                        syncMessages(context, account, folder, mailboxId, jmap);
+                        break;
+                    case EntityOperation.KEYWORD:
+                        if (ids != null) {
+                            org.json.JSONArray jargs = new org.json.JSONArray(op.args);
+                            jmap.setKeyword(ids, jargs.getString(0), jargs.getBoolean(1));
+                        }
+                        break;
+                    case EntityOperation.ADD:
+                        // IMAP-only: attaches an uploaded file before send. JMAP
+                        // send (batch 5) submits the already-built MIME in one
+                        // shot, so there is nothing for this op to do here.
+                        break;
+                    case EntityOperation.EXISTS:
+                        // IMAP-only: stale-UID existence probe. JMAP dedups by
+                        // Email.id, which this sync already checks, so this op
+                        // never needs to run here.
+                        break;
                     default:
-                        // ADD/EXISTS/KEYWORD etc. — no-op for JMAP for now.
+                        Log.w("JMAP unhandled op=" + op.name + " id=" + op.id);
                         break;
                 }
                 db.operation().deleteOperation(op.id);
             } catch (Throwable ex) {
+                // One poisoned op must not wedge every other op behind it in
+                // this folder -- isolate per-op instead of throwing out of the
+                // loop. Retried up to OP_RETRY_MAX passes, then dropped (mirrors
+                // EntityOperation.cleanup so ui state is re-asserted instead of
+                // left stuck mid-operation).
+                Log.e(folder.name + " JMAP op=" + op.name + " id=" + op.id, ex);
                 db.operation().setOperationError(op.id, Log.formatThrowable(ex));
-                throw ex;
+                int tries = op.tries + 1;
+                db.operation().setOperationTries(op.id, tries);
+                if (tries >= OP_RETRY_MAX) {
+                    EntityLog.log(context, "JMAP op=" + op.name + " id=" + op.id +
+                            " tries=" + tries + " exceeded retry max, dropping");
+                    op.cleanup(context, false);
+                    db.operation().deleteOperation(op.id);
+                }
             }
         }
     }
