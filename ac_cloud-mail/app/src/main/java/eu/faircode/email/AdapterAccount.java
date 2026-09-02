@@ -500,13 +500,16 @@ public class AdapterAccount extends RecyclerView.Adapter<AdapterAccount.ViewHold
             }
 
             if (view.getId() == R.id.btnFolders) {
-                // Works from BOTH modes: ActivityView handles the "folders:<id>"
-                // intent action (checkIntents ~2221) by navigating to that
-                // account's folder list; from settings this simply re-enters
-                // the main activity there.
-                context.startActivity(new Intent(context, ActivityView.class)
-                        .setAction("folders:" + account.id)
-                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+                int pos = getAdapterPosition();
+                TupleAccountFolder account = (pos == RecyclerView.NO_POSITION ? null : items.get(pos));
+                if (account != null && account.tbd == null)
+                    // Works from BOTH modes: ActivityView handles the "folders:<id>"
+                    // intent action (checkIntents ~2221) by navigating to that
+                    // account's folder list; from settings this simply re-enters
+                    // the main activity there.
+                    context.startActivity(new Intent(context, ActivityView.class)
+                            .setAction("folders:" + account.id)
+                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
                 return;
             }
 
