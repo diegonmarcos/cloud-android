@@ -79,6 +79,16 @@ public class JmapSync {
     // folder progresses each pass; the big views backfill over several.
     private static final int INSERT_CAP_PER_PASS = 300;
 
+    // Folders that must never sync to a phone. Cloud-Infra/Health/* holds the
+    // ntfy->mail mirror of VM health PROBES (health_resources, health_dns,
+    // health_containers, ...): 2699 rows of "memPSI=42%" in one folder on
+    // 2026-09-02, every one unread, all paid for on every unread-count query
+    // and re-inserted as view mirrors each pass. Probes belong in ntfy; the
+    // app stays fast. Existing rows are purged once when the folder is seen.
+    static boolean noPhoneSync(String name) {
+        return name != null && name.startsWith("Cloud-Infra/Health/");
+    }
+
     // op.tries cap for processOperations -- Core.java's LOCAL_RETRY_MAX/
     // TOTAL_RETRY_MAX are private to that class, so this is a local constant
     // rather than a shared one. One poisoned op retries this many passes
@@ -233,7 +243,7 @@ public class JmapSync {
             if (folder == null) {
                 folder = new EntityFolder(name, type);
                 folder.account = account.id;
-                folder.synchronize = true; // JMAP folders are the user's own taxonomy — sync all
+                folder.synchronize = !noPhoneSync(name); // user taxonomy syncs; health probes never
                 folder.subscribed = true;
                 folder.poll = true; // JMAP is polled, never IDLE
                 folder.download = true;
@@ -242,8 +252,15 @@ public class JmapSync {
                 folder.selectable = true;
                 folder.id = db.folder().insertFolder(folder);
                 EntityLog.log(context, "JMAP created folder=" + name + " type=" + type);
+            } else if (noPhoneSync(name) && Boolean.TRUE.equals(folder.synchronize)) {
+                // Existing probe folder still syncing (it was created before the
+                // rule): turn it off and drop its local mirror rows in one go.
+                db.folder().setFolderSynchronize(folder.id, false);
+                folder.synchronize = false;
+                int purged = db.message().deleteMessagesKeep(folder.id, 0);
+                EntityLog.log(context, "JMAP no-phone-sync folder=" + name + " purged=" + purged);
             } else {
-                if (!repaired && !Boolean.TRUE.equals(folder.synchronize)) {
+                if (!repaired && !Boolean.TRUE.equals(folder.synchronize) && !noPhoneSync(name)) {
                     db.folder().setFolderSynchronize(folder.id, true);
                     folder.synchronize = true;
                     EntityLog.log(context, "JMAP repaired sync folder=" + name);
