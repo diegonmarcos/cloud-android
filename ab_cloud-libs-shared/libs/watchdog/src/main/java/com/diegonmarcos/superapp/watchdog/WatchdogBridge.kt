@@ -141,7 +141,25 @@ class WatchdogBridge(
      * the second one failing is a stale dashboard rather than no dashboard.
      */
     @JavascriptInterface
-    fun refresh() {
+    fun refresh() = refresh("")
+
+    /**
+     * Measure a chosen machine.
+     *
+     * `alias` is the ssh-config Host of a mesh peer, or "" for this env itself.
+     * The page's machine picker passes one; without this overload it was
+     * DROPPED — a `@JavascriptInterface` is matched by arity, so `refresh(x)`
+     * from JS found no method and the tap did nothing, while the app only ever
+     * ran `snapshot` with no argument and so only ever measured the phone.
+     * That is why no VM ever returned data.
+     *
+     * The env does the hop, because the phone reaches exactly one host and
+     * every other machine is behind an ssh it makes. `snapshot <alias>` is how
+     * the panel's own mesh already asks, with no terminal around it.
+     */
+    @JavascriptInterface
+    fun refresh(alias: String) {
+        val peer = alias.trim().takeIf { it.isNotEmpty() }
         pool.execute {
             // The terminal first. Binding to our own Termux has ONE thing that
             // can be wrong — whether it is installed — where ssh to loopback
@@ -155,7 +173,10 @@ class WatchdogBridge(
                 // sampler did not publish" on a phone where everything else
                 // is right.
                 terminal.toolPath(BIN_DAEMON)?.let { terminal.ensureDaemon(it) }
-                terminal.exec(panelBin, arrayOf("snapshot"), timeoutMs = 20_000)
+                // `snapshot <alias>` when a peer was picked: the env runs the
+                // ssh hop to it, exactly as the ssh path below does.
+                val args = if (peer != null) arrayOf("snapshot", peer) else arrayOf("snapshot")
+                terminal.exec(panelBin, args, timeoutMs = 20_000)
                     .onFailure { Log.w(WatchdogTerminal.TAG, "terminal snapshot: ${it.message}") }
                     .getOrNull()
             } else {
@@ -170,7 +191,7 @@ class WatchdogBridge(
                 return@execute
             }
 
-            ssh.snapshot(backend()).fold(
+            ssh.snapshot(backend(), peer).fold(
                 onSuccess = { json ->
                     val js = "window.__wdRender(${JSONObject.quote(json)})"
                     webView.post { webView.evaluateJavascript(js, null) }
@@ -181,7 +202,7 @@ class WatchdogBridge(
                     // shell defines __wdRender and nothing else, so an event
                     // pushed at it lands on an undefined function and the
                     // only symptom left is a dashboard that never fills in.
-                    Log.w(WatchdogTerminal.TAG, "ssh snapshot (${backend()}): ${it.message}")
+                    Log.w(WatchdogTerminal.TAG, "ssh snapshot (${backend()}${peer?.let { "→$it" } ?: ""}): ${it.message}")
                     push("stale", it.message ?: "unreachable")
                 },
             )

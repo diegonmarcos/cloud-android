@@ -321,10 +321,16 @@ class WatchdogSsh(private val ctx: Context) {
      * the last one there with a stale marker rather than an error where the UI
      * should be.
      */
-    fun snapshot(backend: String): Result<String> = runCatching {
+    fun snapshot(backend: String, alias: String? = null): Result<String> = runCatching {
         ensureTools(backend).getOrThrow()
         ensureDaemon(backend)
-        exec(backend, "'$REMOTE_DIR/$BIN_PANEL' snapshot").getOrThrow()
+        // `snapshot <alias>` asks THIS env to measure a mesh peer for us, over
+        // the ssh hop only it can make: the phone reaches exactly one machine,
+        // and every VM is behind the bound host. With no alias it measures the
+        // env itself. The alias is a single ssh-config Host token, but it is
+        // still quoted — the far side is a shell.
+        val arg = alias?.trim()?.takeIf { it.isNotEmpty() }?.let { " '$it'" } ?: ""
+        exec(backend, "'$REMOTE_DIR/$BIN_PANEL' snapshot$arg").getOrThrow()
     }
 
     /** Start the panel and hand back the channel to drive it. */
