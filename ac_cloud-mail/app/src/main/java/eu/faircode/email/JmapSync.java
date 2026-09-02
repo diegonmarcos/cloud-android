@@ -88,6 +88,32 @@ public class JmapSync {
     // backoff below). Wiring an early wake is a separate, more invasive change.
     static void monitor(Context context, EntityAccount account, Core.State state, boolean sync) {
         DB db = DB.getInstance(context);
+
+        // A queued operation (user marked read, flagged, moved...) releases the
+        // poll wait below, mirroring what the IMAP monitor's liveOperations
+        // observer does -- without this, a tap waits up to poll_interval before
+        // reaching the server (the "huge delay to mark read" complaint), and a
+        // backoff wait cannot be interrupted by user action at all.
+        final android.os.Handler mainHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+        final TwoStateOwner cowner = new TwoStateOwner(account.name + "/jmap-ops");
+        mainHandler.post(new Runnable() {
+            @Override
+            public void run() {
+                cowner.start();
+                db.operation().liveOperations(account.id).observe(cowner, new androidx.lifecycle.Observer<java.util.List<TupleOperationEx>>() {
+                    private int last = -1;
+                    @Override
+                    public void onChanged(java.util.List<TupleOperationEx> ops) {
+                        int now = (ops == null ? 0 : ops.size());
+                        if (last >= 0 && now > last)
+                            state.release();
+                        last = now;
+                    }
+                });
+            }
+        });
+        try {
+
         // ponytail: consecutive-failure counter for the backoff below; reset to
         // 0 by any successful pass.
         int consecutiveFailures = 0;
@@ -134,15 +160,27 @@ public class JmapSync {
                 // when unset/0) until the next pass, woken early on account stop.
                 int mins = (account.poll_interval == null ? 0 : account.poll_interval);
                 long base = Math.max(1, mins) * 60L * 1000L;
-                // ponytail: simple doubling backoff on repeated failure, capped
-                // at 4x poll_interval, so a wedged/unreachable server is not
-                // hammered every poll_interval; any success resets it to 1x.
+                // ponytail: failure backoff GROWS FROM ONE MINUTE (60s, 2m, 4m,
+                // ...) capped at 2x poll_interval. The first cut grew from
+                // poll_interval itself, which turned a 90-second edge restart
+                // into a 60-minute dead account (measured 2026-09-02: caddy
+                // bounce at 13:05, next retry would have been 14:06). A blip
+                // must retry in a minute; only a sustained outage backs off.
                 long wait = (consecutiveFailures <= 0 ? base
-                        : Math.min(base * 4, base << Math.min(consecutiveFailures, 2)));
+                        : Math.min(base * 2, 60_000L << Math.min(consecutiveFailures - 1, 6)));
                 state.acquire(wait, false);
             } catch (InterruptedException ex) {
                 break; // account stopped / network change
             }
+        }
+
+        } finally {
+            mainHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    cowner.destroy();
+                }
+            });
         }
     }
 
