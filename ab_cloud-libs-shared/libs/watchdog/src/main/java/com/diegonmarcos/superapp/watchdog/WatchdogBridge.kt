@@ -161,26 +161,33 @@ class WatchdogBridge(
     fun refresh(alias: String) {
         val peer = alias.trim().takeIf { it.isNotEmpty() }
         pool.execute {
-            // The terminal first. Binding to our own Termux has ONE thing that
-            // can be wrong — whether it is installed — where ssh to loopback
-            // had four, and reported all of them as the same ECONNREFUSED.
-            // ssh stays behind it because it is the only way to another
-            // machine, which is what it was always for.
-            val panelBin = if (terminal.available()) terminal.toolPath(BIN_PANEL) else null
+            // THE TERMINAL CANNOT DO THE FLEET, and a bound terminal is not
+            // proof it can answer the question asked.
+            //
+            // The terminal backend binds to cld.termux — the cloud-terminal
+            // fork — which is a bare env: it has neither ~/git/cloud-infra/
+            // config.json (so `fleet_machines()` finds nothing and the drawer
+            // says "no fleet in this envelope") nor the ssh mesh keys (so it
+            // cannot hop to a VM at all). nix-on-droid, reached over ssh, is
+            // the PROVISIONED env that has both. So the terminal is preferred
+            // only for a LOCAL snapshot, and only when it actually comes back
+            // carrying a fleet; a peer hop skips it outright, and a fleetless
+            // local answer falls through to ssh rather than being shown.
+            val panelBin =
+                if (peer == null && terminal.available()) terminal.toolPath(BIN_PANEL) else null
             val viaTerminal = if (panelBin != null) {
                 // The sampler first. The panel only RENDERS a snapshot, so
                 // asking for one before anything is publishing gets "the
                 // sampler did not publish" on a phone where everything else
                 // is right.
                 terminal.toolPath(BIN_DAEMON)?.let { terminal.ensureDaemon(it) }
-                // `snapshot <alias>` when a peer was picked: the env runs the
-                // ssh hop to it, exactly as the ssh path below does.
-                val args = if (peer != null) arrayOf("snapshot", peer) else arrayOf("snapshot")
-                terminal.exec(panelBin, args, timeoutMs = 20_000)
+                terminal.exec(panelBin, arrayOf("snapshot"), timeoutMs = 20_000)
                     .onFailure { Log.w(WatchdogTerminal.TAG, "terminal snapshot: ${it.message}") }
                     .getOrNull()
+                    ?.takeIf { hasFleet(it) }
             } else {
-                Log.w(WatchdogTerminal.TAG, "terminal: ${WatchdogTerminal.TERMUX_PKG} did not answer")
+                if (peer != null) Log.i(WatchdogTerminal.TAG, "peer hop → ssh (terminal cannot reach $peer)")
+                else Log.w(WatchdogTerminal.TAG, "terminal: ${WatchdogTerminal.TERMUX_PKG} did not answer")
                 null
             }
 
@@ -247,6 +254,18 @@ class WatchdogBridge(
         /** The sampler beside it — the panel draws what THIS publishes. */
         const val BIN_DAEMON = "libmywatchdog.so"
     }
+
+    /**
+     * Does this envelope carry a fleet?
+     *
+     * The one signal that separates the provisioned env from the bare one: a
+     * snapshot from nix-on-droid lists every mesh machine, one from an
+     * unprovisioned cld.termux lists none. Malformed or fleetless ⇒ false, so
+     * the caller falls through to ssh rather than showing "no fleet".
+     */
+    private fun hasFleet(json: String): Boolean =
+        runCatching { JSONObject(json).optJSONArray("machines")?.length() ?: 0 }
+            .getOrDefault(0) > 0
 
     private fun push(kind: String, payload: String) {
         val js = "window.__wdEvent(${JSONObject.quote(kind)}, ${JSONObject.quote(payload)})"
