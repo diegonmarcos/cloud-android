@@ -23,6 +23,12 @@ import com.diegonmarcos.superapp.health.HealthMetrics
 import com.diegonmarcos.superapp.system.PermAskTracker
 import com.diegonmarcos.superapp.system.ScreenLocker
 import kotlinx.coroutines.launch
+import com.diegonmarcos.superapp.adbdebug.EmbeddedAdbChannel
+import com.diegonmarcos.superapp.adbdebug.ShizukuShellChannel
+import com.diegonmarcos.superapp.adbdebug.ShellChannel
+import android.util.Base64
+import org.json.JSONArray
+import android.content.pm.PackageManager
 
 /** Permissions page — runtime perms, special access, Health Connect,
  *  auto-granted, and all grant/set action buttons. Extracted from
@@ -72,49 +78,54 @@ class PermissionsFragment : Fragment() {
 
         var hcGrantBtn: TextView? = null
         val perms = parseRuntimePermissions()
+        val priv = parsePrivilegedPermissions()
+        val plane: ShellChannel? = listOf<ShellChannel>(EmbeddedAdbChannel, ShizukuShellChannel).firstOrNull { it.isReady(ctxAny()) }
 
-        col.addView(small(ctx, "Runtime perms — States: ✓ Granted · ⏳ Ask each time · ✗ Denied (don't ask) · ◯ Not requested. Restricted-by-policy perms (SMS, Phone, Call Log) often stay at ✗ Denied (don't ask) on non-default handlers — toggle via system settings."))
-        for ((label, perm) in perms) row(ctx, col, label, permissionState(perm))
+        // ── Tally ─────────────────────────────────────────────────────────
+        val runtimeMissing = perms.filter { (_, perm) -> ctxAny().checkSelfPermission(perm) != PackageManager.PERMISSION_GRANTED }
+        val privMissing = priv.filter { !it.granted(ctxAny()) }
+        val pages = buildPageItems(ctxAny())
+        val pagesMissing = pages.count { it.granted == false }
+        col.addView(small(ctx, "${perms.size - runtimeMissing.size + priv.size - privMissing.size} granted here · " +
+            "${runtimeMissing.size + privMissing.size} missing here · $pagesMissing need a system page"))
 
-        col.addView(small(ctx, "Special access — system-toggles outside the runtime perms flow:"))
-        row(ctx, col, "Battery Optimization",      specialAccessBattery(ctxAny()))
-        row(ctx, col, "Default launcher",           specialAccessLauncher(ctxAny()))
-        for (r in parsePermissionRoles()) row(ctx, col, r.label, specialAccessRole(ctxAny(), r.role, r.expectedHolders))
-        row(ctx, col, "Usage stats",                specialAccessUsageStats(ctxAny()))
-        row(ctx, col, "Notif. listener",            specialAccessNotifListener(ctxAny()))
-        row(ctx, col, "Manage all files",           specialAccessManageStorage())
-        row(ctx, col, "Display over apps",          specialAccessOverlay(ctxAny()))
-        row(ctx, col, "Modify system settings",     specialAccessWriteSettings(ctxAny()))
-        row(ctx, col, "Dumpsys (DUMP)",             specialAccessDump(ctxAny()))
+        // ── A. GRANT HERE ─────────────────────────────────────────────────
+        col.addView(sectionHead(ctx, "GRANT HERE — one tap each, or all at once"))
+        col.addView(permButtonRow(ctx,
+            permButton(ctx, "GRANT ALL reachable (${runtimeMissing.size + (if (plane != null) privMissing.size else 0)})", null) {
+                if (runtimeMissing.isNotEmpty()) requestAllPermissions(runtimeMissing.map { it.second }.toTypedArray())
+                if (plane != null) for (pp in privMissing) pp.grant(plane, ctxAny())
+                if (runtimeMissing.isEmpty()) rebuildFragment()
+            },
+        ))
+        col.addView(small(ctx, "Runtime perms — ✓ Granted · ⏳ Ask each time · ✗ Denied (don't ask) · ◯ Not requested. Policy-restricted ones (SMS/Phone/Call Log) may stay ✗ on non-default handlers."))
+        for ((label, perm) in perms) {
+            val g = ctxAny().checkSelfPermission(perm) == PackageManager.PERMISSION_GRANTED
+            permRow(ctx, col, label, g, permissionState(perm), if (g) "OK" else "Request") { requestAllPermissions(arrayOf(perm)) }
+        }
+        permRow(ctx, col, "Notifications (post)", grantedNotifWrite(ctxAny()), "", "Request") { requestNotificationsPermission() }
+        col.addView(small(ctx, "Privileged perms — signature perms Android never asks for. Granted by the privileged plane (embedded adb / Shizuku) via pm grant; persist across reboots + updates." +
+            (if (plane == null) " ⚠ No shell channel ready — pair the embedded adb under Dev tools (once, ever) to enable these buttons." else " Channel: ${plane.name()}")))
+        for (pp in priv) {
+            val g = pp.granted(ctxAny())
+            permRow(ctx, col, "${pp.label} → ${pp.pkg.substringAfterLast('.')}", g, "", if (g) "OK" else if (plane != null) "Grant" else "needs plane") {
+                if (plane != null) pp.grant(plane, ctxAny()) else Toast.makeText(ctxAny(), "Pair the embedded adb first (Dev tools)", Toast.LENGTH_LONG).show()
+            }
+        }
+
+        // ── B. OPEN A SYSTEM PAGE ─────────────────────────────────────────
+        col.addView(sectionHead(ctx, "OPEN A SYSTEM PAGE — Grant-All can NOT reach these"))
+        col.addView(small(ctx, "Nothing can grant these for you: each button opens the exact system page, you flip it, come back. Missing ones listed first."))
+        for (it in pages.sortedBy { if (it.granted == false) 0 else if (it.granted == null) 1 else 2 })
+            permRow(ctx, col, it.label, it.granted, it.state, "Open", it.open)
+        if (!ScreenLocker.isAccessibilityEnabled(ctxAny())) col.addView(small(ctx,
+            "Accessibility on Samsung: 'Open App Info' → ⋮ → 'Allow restricted settings', then reopen Accessibility and enable Cloud SuperApp."))
         if (!specialAccessDumpGranted(ctxAny())) {
             col.addView(actionButton(ctx, "Copy DUMP grant command for adb") {
-                val cmd = "adb shell pm grant ${ctxAny().packageName} android.permission.DUMP"
-                copy(ctxAny(), cmd)
+                copy(ctxAny(), "adb shell pm grant ${ctxAny().packageName} android.permission.DUMP")
                 Toast.makeText(ctxAny(), "Copied — paste into a shell with adb access", Toast.LENGTH_LONG).show()
             })
         }
-
-        col.addView(small(ctx, "Home double-tap → lock screen. PREFERRED path is Accessibility — it preserves Smart Lock (Garmin watch unlock, Trusted Place) and fingerprint / face. Device Admin is a fallback that disables those until you PIN-unlock once."))
-        row(ctx, col, "Lock-screen accessibility (preferred)", ScreenLocker.statusStringAccessibility(ctxAny()))
-        if (!ScreenLocker.isAccessibilityEnabled(ctxAny())) {
-            col.addView(small(ctx,
-                "Samsung blocks Accessibility for sideloaded apps via 'Restricted settings'.\n" +
-                    "  1) Tap 'Open App Info' below.\n" +
-                    "  2) Tap the ⋮ menu (top-right) → 'Allow restricted settings'.\n" +
-                    "  3) Then come back + tap 'Open Accessibility settings' below to enable Cloud SuperApp."))
-            col.addView(actionButton(ctx, "1) Set App Info (allow restricted settings)") { ScreenLocker.openAppInfo(ctxAny()) })
-            col.addView(actionButton(ctx, "2) Set Accessibility — enable Cloud SuperApp") { ScreenLocker.openSystemAccessibilitySettings(ctxAny()) })
-        } else {
-            col.addView(actionButton(ctx, "Set Accessibility (revoke)") { ScreenLocker.openSystemAccessibilitySettings(ctxAny()) })
-        }
-        row(ctx, col, "Device admin (lock — fallback)", ScreenLocker.statusString(ctxAny()))
-        if (!ScreenLocker.isActive(ctxAny())) {
-            col.addView(actionButton(ctx, "Enable Device Admin (fallback — disables Smart Lock)") { ScreenLocker.requestActivation(requireActivity()) })
-        } else {
-            col.addView(actionButton(ctx, "Set Device Admin (revoke)") { ScreenLocker.openSystemDeviceAdminSettings(ctxAny()) })
-        }
-
-        col.addView(small(ctx, "Health Connect perms — granted in the Health Connect app, NOT here. checkSelfPermission can't see them; we query HC's PermissionController directly."))
         val hcTotal = HealthMetrics.allPermissions.size
         val hcRow = row(ctx, col, "HC perms granted", "checking… / $hcTotal")
         viewLifecycleOwner.lifecycleScope.launch {
@@ -122,31 +133,11 @@ class PermissionsFragment : Fragment() {
             hcRow.text = if (n > 0) "✓ $n / $hcTotal granted" else "◯ 0 / $hcTotal — none granted"
             hcGrantBtn?.let { b -> stylePermButton(b, "Grant Health Perms", n >= hcTotal && hcTotal > 0) }
         }
+        col.addView(permButtonRow(ctx, permButton(ctx, "Grant Health Perms", null) { openHealthConnectPerms() }.also { b -> hcGrantBtn = b }))
 
-        col.addView(small(ctx, "System auto-granted — protection-NORMAL perms granted at install, no user prompt. This is what the app can already do without ever asking."))
+        // ── C. Already yours ─────────────────────────────────────────────
+        col.addView(sectionHead(ctx, "SYSTEM AUTO-GRANTED — protection-NORMAL, granted at install"))
         for ((label, status) in collectAutoGrantedPerms(ctxAny())) row(ctx, col, label, status)
-
-        col.addView(small(ctx, "Grant — one-tap system dialog:"))
-        col.addView(permButtonRow(ctx,
-            permButton(ctx, "Grant Health Perms", null) { openHealthConnectPerms() }.also { b -> hcGrantBtn = b },
-            permButton(ctx, "Grant Notif. (write)", grantedNotifWrite(ctxAny())) { requestNotificationsPermission() },
-            permButton(ctx, "Request All Perms", null) { requestAllPermissions(perms.map { p -> p.second }.toTypedArray()) },
-        ))
-        col.addView(small(ctx, "Set — open the menu and toggle manually:"))
-        col.addView(permButtonRow(ctx,
-            permButton(ctx, "Set Notif. (read)", grantedNotifRead(ctxAny())) { openNotificationListenerSettings() },
-            permButton(ctx, "Set Usage Access", EnergyWatchdog.hasUsageAccess(ctxAny())) { openUsageAccessSettings() },
-            permButton(ctx, "Set Files Access", grantedFiles()) { openManageAllFilesSettings() },
-        ))
-        col.addView(permButtonRow(ctx,
-            permButton(ctx, "Set Battery No-Optim", grantedBatteryOptim(ctxAny())) { openBatteryOptimizationSettings() },
-            permButton(ctx, "Set Samsung Never-Sleep", null) { openSamsungNeverSleepingSettings() },
-            permButton(ctx, "Set App Settings", null) { openAppSettings() },
-        ))
-        col.addView(small(ctx, "Set defaults — pick the Cloud-Comms phone fork as Phone app + Caller ID & spam app:"))
-        col.addView(permButtonRow(ctx,
-            permButton(ctx, "Set Default Apps (Phone · Spam)", null) { openDefaultAppsSettings() },
-        ))
 
         col.addView(small(ctx, "Floating nav — grant 'Display over other apps', then toggle the overlay:"))
         lateinit var navToggle: TextView
@@ -198,6 +189,65 @@ class PermissionsFragment : Fragment() {
 
         return scroll
     }
+
+    // ── Reorg helpers (state + button on ONE row; grant-here vs open-a-page) ──
+    /** One row: "✓/◯ label  state" on the left, its own button on the right. */
+    private fun permRow(ctx: Context, host: LinearLayout, label: String, granted: Boolean?, state: String, btn: String, onClick: () -> Unit) {
+        val r = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = android.view.Gravity.CENTER_VERTICAL; setPadding(0, dp(4), 0, dp(4)) }
+        val icon = when (granted) { true -> "✓ "; false -> "◯ "; null -> "? " }
+        r.addView(TextView(ctx).apply {
+            text = icon + label + (if (state.isNotBlank()) "  ·  $state" else "")
+            textSize = 13f
+            setTextColor(if (granted == true) 0xFF16A34A.toInt() else if (granted == false) 0xFFDC2626.toInt() else 0xFF6B7280.toInt())
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        })
+        r.addView(permButton(ctx, btn, granted, onClick))
+        host.addView(r)
+    }
+    private fun sectionHead(ctx: Context, text: String) = TextView(ctx).apply {
+        this.text = text; textSize = 12f; setTypeface(null, android.graphics.Typeface.BOLD)
+        setTextColor(0xFF7C3AED.toInt()); setPadding(0, dp(14), 0, dp(4))
+    }
+
+    /** build.json::ui.permissions.privileged[] — one entry per (perm, app). */
+    private class PrivPerm(val label: String, val perm: String, val pkg: String) {
+        fun granted(ctx: Context) = ctx.packageManager.checkPermission(perm, pkg) == PackageManager.PERMISSION_GRANTED
+        fun grant(plane: ShellChannel, ctx: Context) {
+            val out = plane.exec(ctx, "pm grant $pkg $perm 2>&1 && echo OK")
+            Toast.makeText(ctx, "pm grant ${pkg.substringAfterLast('.')} ${perm.substringAfterLast('.')}: ${out?.trim()?.take(60) ?: "no output"}", Toast.LENGTH_SHORT).show()
+        }
+    }
+    private fun parsePrivilegedPermissions(): List<PrivPerm> = runCatching {
+        val arr = JSONArray(String(Base64.decode(BuildConfig.UI_PERMISSIONS_PRIVILEGED_B64, Base64.DEFAULT)))
+        (0 until arr.length()).flatMap { i ->
+            val e = arr.getJSONObject(i); val apps = e.optJSONArray("apps")
+            (0 until (apps?.length() ?: 0)).map { j -> PrivPerm(e.optString("label"), e.optString("perm"), apps!!.getString(j)) }
+        }
+    }.getOrDefault(emptyList())
+
+    /** A thing only a system page can grant: state + the page that opens it. */
+    private class PageItem(val label: String, val granted: Boolean?, val state: String, val open: () -> Unit)
+    private fun buildPageItems(ctx: Context): List<PageItem> {
+        fun ok(s: String) = s.trimStart().startsWith("✓")
+        val roles = parsePermissionRoles().map { r -> specialAccessRole(ctx, r.role, r.expectedHolders).let { st -> PageItem(r.label, ok(st), st) { openDefaultAppsSettings() } } }
+        return listOf(
+            PageItem("Battery optimization (no-optim)", grantedBatteryOptim(ctx), specialAccessBattery(ctx)) { openBatteryOptimizationSettings() },
+            PageItem("Default launcher", specialAccessLauncher(ctx).let(::ok), specialAccessLauncher(ctx)) { openDefaultAppsSettings() },
+            PageItem("Usage stats", EnergyWatchdog.hasUsageAccess(ctx), specialAccessUsageStats(ctx)) { openUsageAccessSettings() },
+            PageItem("Notification listener (read)", grantedNotifRead(ctx), specialAccessNotifListener(ctx)) { openNotificationListenerSettings() },
+            PageItem("Manage all files", grantedFiles(), specialAccessManageStorage()) { openManageAllFilesSettings() },
+            PageItem("Display over other apps", android.provider.Settings.canDrawOverlays(ctx), specialAccessOverlay(ctx)) { openOverlaySettings() },
+            PageItem("Modify system settings", android.provider.Settings.System.canWrite(ctx), specialAccessWriteSettings(ctx)) { openWriteSettings() },
+            PageItem("Install unknown apps", com.diegonmarcos.superapp.updater.AutoUpdatePrefs.canInstallSilently(ctx), "") { openUnknownAppSourcesSettings() },
+            PageItem("Accessibility (lock screen, preferred)", ScreenLocker.isAccessibilityEnabled(ctx), ScreenLocker.statusStringAccessibility(ctx)) { ScreenLocker.openSystemAccessibilitySettings(ctx) },
+            PageItem("Device admin (lock fallback)", ScreenLocker.isActive(ctx), ScreenLocker.statusString(ctx)) { if (ScreenLocker.isActive(ctx)) ScreenLocker.openSystemDeviceAdminSettings(ctx) else ScreenLocker.requestActivation(requireActivity()) },
+            PageItem("Samsung never-sleeping", null, "unknown until opened") { openSamsungNeverSleepingSettings() },
+            PageItem("Dumpsys (DUMP, adb only)", specialAccessDumpGranted(ctx), specialAccessDump(ctx)) { openAppSettings() },
+            PageItem("App info / settings", null, "") { openAppSettings() },
+        ) + roles
+    }
+
+    override fun onResume() { super.onResume(); if (view != null) rebuildFragment() }
 
     // ── UI helpers ────────────────────────────────────────────────────
 
