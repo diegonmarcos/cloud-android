@@ -88,6 +88,10 @@ def uiPermissionsRuntimeB64  = uiPermissionsRuntimeJson.bytes.encodeBase64().toS
 // UI_PERMISSIONS_ROLES_B64 to render holder state + the deep-link button.
 // Source of truth: build.json::ui.permissions.roles[].
 def uiPermissionsRolesJson = groovy.json.JsonOutput.toJson(buildJson.ui.permissions?.roles ?: [])
+// build.json::ui.permissions.privileged[] — signature/privileged perms the
+// privileged plane self-grants (pm grant over embedded adb) once it is up.
+def uiPermissionsPrivilegedJson = groovy.json.JsonOutput.toJson(buildJson.ui.permissions?.privileged ?: [])
+def uiPermissionsPrivilegedB64  = uiPermissionsPrivilegedJson.bytes.encodeBase64().toString()
 def uiPermissionsRolesB64  = uiPermissionsRolesJson.bytes.encodeBase64().toString()
 def defaultSection  = buildJson.ui.default_section ?: 'home'
 def defaultMode     = buildJson.ui.default_mode    ?: 'apps'
@@ -585,6 +589,7 @@ android {
         buildConfigField "String", "CONSTELLATION_FLEET_B64", "\"${constellationFleetB64}\""
         buildConfigField "String", "UI_PERMISSIONS_RUNTIME_B64", "\"${uiPermissionsRuntimeB64}\""
         buildConfigField "String", "UI_PERMISSIONS_ROLES_B64", "\"${uiPermissionsRolesB64}\""
+        buildConfigField "String", "UI_PERMISSIONS_PRIVILEGED_B64", "\"${uiPermissionsPrivilegedB64}\""
         buildConfigField "String", "UI_DEFAULT_SECTION",    "\"${defaultSection}\""
         buildConfigField "String", "UI_DEFAULT_MODE",       "\"${defaultMode}\""
         buildConfigField "int",    "UI_TILE_COLUMNS",       "${tileColumns}"

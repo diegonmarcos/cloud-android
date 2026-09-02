@@ -1030,7 +1030,9 @@
       "_doc_privileged": "Signature/privileged perms Android will NEVER show a runtime dialog for. They are grantable only by the shell user (uid 2000) via `pm grant <pkg> <perm>` over the privileged plane (embedded adb / Shizuku / cloud-superapp-mcp superapp_grant). A `pm grant` persists across reboots AND across in-place updates of the same package (silent installs are updates, not reinstalls), so one grant is for all time until an uninstall. READ_LOGS is what lets an app read the FULL system logcat into its own log view instead of only its own uid — the Registros/Logs screen needs it to be useful. Every constellation app in `apps` gets each entry granted.",
     "privileged": [
       {"label": "Read system logs (full logcat)", "perm": "android.permission.READ_LOGS",
-       "apps": ["com.diegonmarcos.comms.mail", "com.diegonmarcos.superapp"]}
+       "apps": ["com.diegonmarcos.comms.mail", "com.diegonmarcos.superapp"]},
+      {"label": "Write secure settings (re-enable Wireless Debugging on boot)", "perm": "android.permission.WRITE_SECURE_SETTINGS",
+       "apps": ["com.diegonmarcos.superapp"]}
     ],
     "roles": [
         {

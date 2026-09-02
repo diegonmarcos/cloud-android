@@ -3,6 +3,11 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Network for JMAP / CloudData fetch / GHCR in-app updater. -->
+    <!-- Privileged plane (Shizuku-independent): re-enable Wireless Debugging on boot
+         and autoconnect the embedded adb client. WRITE_SECURE_SETTINGS is a signature
+         perm: never a dialog, granted once by the plane itself via pm grant. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Haptics.tap / Vibrator.vibrate() in ui/Haptics.kt — without this,
@@ -169,6 +174,13 @@
         </provider>
 
         <!-- Quick-action handler for the persistent "Cloud SA - KDE" notification. -->
+        <receiver
+            android:name=".system.PrivilegedPlaneBootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
         <receiver
             android:name=".notificationcenter.KdeQuickActionReceiver"
             android:exported="false" />
