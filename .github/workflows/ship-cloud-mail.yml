@@ -19,6 +19,8 @@ on:
       - "1_cicd/src/cicd/ship-cloud-mail.yml"
       - "1_cicd/src/scripts/cloud-mail-engine.sh"
       - "ab_cloud-libs-shared/libs/analytics/**"
+      - "ab_cloud-libs-shared/libs/core/**"
+      - "ab_cloud-libs-shared/libs/devtools/**"
       - "ac_cloud-mail/**"
 permissions:
   contents: write   # gh release create (RSS feed entries)
