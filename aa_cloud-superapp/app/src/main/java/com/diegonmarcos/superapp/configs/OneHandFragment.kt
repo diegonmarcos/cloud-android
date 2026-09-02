@@ -23,6 +23,8 @@ import com.diegonmarcos.superapp.onehand.OneHandAction
 import com.diegonmarcos.superapp.onehand.OneHandConfig
 import com.diegonmarcos.superapp.onehand.OneHandController
 import com.diegonmarcos.superapp.onehand.OneHandPrefs
+import com.diegonmarcos.superapp.floatingnav.FloatingNavPrefs
+import com.diegonmarcos.superapp.floatingnav.FloatingNavService
 import com.diegonmarcos.superapp.settings.HomeSwipePrefs
 
 /**
@@ -42,6 +44,7 @@ class OneHandFragment : Fragment() {
 
     private lateinit var status: TextView
     private lateinit var toggle: Switch
+    private lateinit var floatingToggle: Switch
 
     private data class Option(
         val label: String, val action: GestureAction?,
@@ -181,6 +184,40 @@ class OneHandFragment : Fragment() {
             }
         }
         root.addView(toggle)
+
+        // ── Floating button ──────────────────────────────────────────────
+        // A separate service from the edge handles: different permission
+        // (overlay only, no accessibility) and a different lifetime. It is a
+        // START_STICKY foreground service, so once on it OUTLIVES the SuperApp
+        // — closing the app does not take the button with it, which is the
+        // whole point of it and the reason it needs an off switch that sticks
+        // just as hard.
+        root.addView(subhead(ctx, "Floating button"))
+        root.addView(caption(ctx,
+            "A round button that floats over every app and opens the same nav " +
+            "menu. Runs as a foreground service, so it stays after Cloud " +
+            "SuperApp is closed and returns after a reboot. Needs only " +
+            "'Display over apps' — no accessibility grant."))
+        floatingToggle = Switch(ctx).apply {
+            text = "Floating button (persists when the app is closed)"
+            setPadding(0, pad, 0, pad)
+            // Set the state BEFORE wiring the listener, so opening this screen
+            // cannot start or stop the service by itself.
+            isChecked = FloatingNavPrefs.enabled(ctx)
+            setOnCheckedChangeListener { _, on ->
+                if (on && !android.provider.Settings.canDrawOverlays(ctx)) {
+                    isChecked = false
+                    Toast.makeText(ctx,
+                        "Grant 'Display over apps' in Configs › Permissions",
+                        Toast.LENGTH_LONG).show()
+                    return@setOnCheckedChangeListener
+                }
+                FloatingNavPrefs.setEnabled(ctx, on)
+                if (on) FloatingNavService.startIfPermitted(ctx)
+                else    FloatingNavService.stop(ctx)
+            }
+        }
+        root.addView(floatingToggle)
 
         // How the menu is summoned. Swipe (Samsung edge-panel style) is the default:
         // touch the edge handle + drag inward. A plain tap passes through to the app.
@@ -483,6 +520,11 @@ class OneHandFragment : Fragment() {
         status.text = "Requires (grant in Configs › Permissions):\n" +
             "Display over apps: $overlay\nAccessibility service: $a11y"
         toggle.isChecked = OneHandController.isOn(ctx)
+        // Only assign when it differs: Switch fires its listener on a real
+        // change, and re-applying the same value would pointlessly restart the
+        // service every time this screen is resumed.
+        val fOn = FloatingNavPrefs.enabled(ctx)
+        if (floatingToggle.isChecked != fOn) floatingToggle.isChecked = fOn
     }
 
     companion object { fun newInstance() = OneHandFragment() }

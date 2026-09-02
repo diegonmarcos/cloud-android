@@ -586,10 +586,16 @@ class FloatingNavService : Service() {
         @Volatile
         var hostForeground: Boolean = false
 
-        /** Start the overlay iff enabled in build.json AND the user has
-         *  granted "display over other apps". Returns whether it started
-         *  (false = feature disabled or overlay permission missing). */
+        /** Start the overlay iff the user has it ON, the build allows it, and
+         *  "display over other apps" is granted. Returns whether it started
+         *  (false = switched off, feature disabled, or permission missing).
+         *
+         *  The [FloatingNavPrefs] check is first and is what makes the switch
+         *  in Configs → One-Hand stick: MainActivity calls this on every open,
+         *  so without it the overlay simply came back the next time the app was
+         *  launched. */
         fun startIfPermitted(ctx: Context): Boolean {
+            if (!FloatingNavPrefs.enabled(ctx)) return false
             if (!FloatingNavConfig.get().enabled) return false
             if (!Settings.canDrawOverlays(ctx)) return false
             val i = Intent(ctx, FloatingNavService::class.java)
