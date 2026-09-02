@@ -179,6 +179,10 @@ class WatchdogBridge(
                 onSuccess = { it },
                 onFailure = { err ->
                     Log.w(WatchdogTerminal.TAG, "ssh snapshot (${backend()}${peer?.let { "→$it" } ?: ""}): ${err.message}")
+                    // Said on screen, not only in a logcat nobody can read off
+                    // this uid: the reason ssh failed is the reason the drawer
+                    // has no fleet, and the terminal fallback below hides it.
+                    push("ssh", "${backend()}${peer?.let { "→$it" } ?: ""}: ${err.message ?: "unreachable"}")
                     // A peer hop has no terminal fallback — only the mesh env
                     // can reach it. A local snapshot may still come off the
                     // terminal on a phone that has no nix-on-droid.

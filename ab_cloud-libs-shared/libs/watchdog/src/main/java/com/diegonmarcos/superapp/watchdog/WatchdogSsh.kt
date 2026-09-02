@@ -78,7 +78,6 @@ class WatchdogSsh(private val ctx: Context) {
      * key. Written to filesDir because JSch wants a path, not bytes.
      */
     private fun ensureKey() {
-        if (keyFile.isFile()) return
         val pem = runCatching {
             String(Base64.decode(BuildConfig.CLOUD_SSH_KEY_B64, Base64.DEFAULT))
         }.getOrDefault("")
@@ -89,9 +88,16 @@ class WatchdogSsh(private val ctx: Context) {
             "no declared ssh key in this build — built without the vault " +
                 "(build.sh::_resolve_ssh_key). This app does not generate one."
         }
+        // COMPARED, not merely present. filesDir survives an upgrade, so the
+        // key an earlier build minted in-app stayed here and shadowed the
+        // declared one: every connect was refused with a key the env had never
+        // heard of, the app fell to the fleetless terminal, and the drawer said
+        // "no fleet" on a phone whose env lists twelve machines.
+        if (keyFile.isFile && keyFile.readText() == pem) return
         keyFile.writeText(pem)
         keyFile.setReadable(false, false)
         keyFile.setReadable(true, true)
+        jsch.removeAllIdentity()
     }
 
     /**
@@ -109,7 +115,9 @@ class WatchdogSsh(private val ctx: Context) {
     private fun dial(key: String): Session {
         ensureKey()
         val t = targets.getJSONObject(key)
-        jsch.addIdentity(keyFile.absolutePath)
+        // Once. Every dial used to add it again, and sshd counts each identity
+        // offered against MaxAuthTries — a reconnecting app ran out of tries.
+        if (jsch.identityNames.isEmpty()) jsch.addIdentity(keyFile.absolutePath)
         val s = jsch.getSession(t.getString("user"), t.getString("host"), t.getInt("port"))
         // The host is this device. There is no man in the middle on loopback to
         // be protected from, and a known_hosts prompt no one can answer would
