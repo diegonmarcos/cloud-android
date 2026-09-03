@@ -25,6 +25,15 @@
          Wireless Debugging. ACCESS_FINE_LOCATION (declared below) is also
          required by the platform for hotspot creation. -->
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <!-- Wi-Fi Direct fallback for pairing (WifiDirect.kt / Permissions "⓪b
+         Create WiFi Direct"): WifiP2pManager.createGroup() on API 33+ needs
+         this in place of location to discover/create a P2P group. Declared
+         neverForLocation since this app never derives physical location from
+         it — harmless below API 33 where the fine-location perm gates it
+         instead. -->
+    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES"
+        android:usesPermissionFlags="neverForLocation" />
+
 
     <!-- Surface area for Config → About → Permissions. Each row shows
          GRANTED / DENIED state at runtime; the user grants/revokes via

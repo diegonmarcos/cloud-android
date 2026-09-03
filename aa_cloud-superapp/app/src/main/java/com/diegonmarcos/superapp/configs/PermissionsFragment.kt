@@ -27,6 +27,7 @@ import com.diegonmarcos.superapp.adbdebug.EmbeddedAdbChannel
 import com.diegonmarcos.superapp.adbdebug.ShizukuShellChannel
 import com.diegonmarcos.superapp.adbdebug.ShellChannel
 import com.diegonmarcos.superapp.adbdebug.LocalHotspot
+import com.diegonmarcos.superapp.adbdebug.WifiDirect
 import android.util.Base64
 import org.json.JSONArray
 import android.content.pm.PackageManager
@@ -57,6 +58,12 @@ class PermissionsFragment : Fragment() {
         registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { granted ->
             if (granted) startLocalHotspot() else Toast.makeText(requireContext(),
                 "Location is required by Android to create a local WiFi hotspot", Toast.LENGTH_LONG).show()
+        }
+
+    private val wifiDirectPermLauncher =
+        registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) startWifiDirect() else Toast.makeText(requireContext(),
+                "That permission is required by Android to create a WiFi Direct group", Toast.LENGTH_LONG).show()
         }
 
     private fun rebuildFragment() {
@@ -142,6 +149,18 @@ class PermissionsFragment : Fragment() {
         ))
         if (hotspotStatus is LocalHotspot.Status.Active) col.addView(small(ctx,
             "Local WiFi up — SSID: ${hotspotStatus.ssid}  ·  password: ${hotspotStatus.passphrase}"))
+        // Step ⓪b (fallback): some devices (certain Samsung builds) refuse
+        // LocalOnlyHotspot while Wireless Debugging is being enabled. WiFi
+        // Direct (WifiP2pManager) is a second self-created-WiFi path — this
+        // device becomes the P2P group owner, which behaves like a local AP
+        // (SSID always starts with "DIRECT-"), still no external network.
+        val wifiDirectStatus = WifiDirect.status()
+        col.addView(permButtonRow(ctx,
+            permButton(ctx, "⓪b Create WiFi Direct (for pairing)", wifiDirectStatus is WifiDirect.Status.Active) { requestWifiDirect() },
+        ))
+        if (wifiDirectStatus is WifiDirect.Status.Active) col.addView(small(ctx,
+            "WiFi Direct up — SSID: ${wifiDirectStatus.ssid}  ·  password: ${wifiDirectStatus.passphrase}" +
+            (wifiDirectStatus.ownerIp?.let { "  ·  owner IP: $it" } ?: "")))
         // Step 0: open the OS page where Wireless Debugging is turned on and the
         // pairing dialog (IP:port + code) lives — the app cannot toggle it, only
         // deep-link to it. Without this the "Pair" fields have no source.
@@ -295,6 +314,54 @@ class PermissionsFragment : Fragment() {
         }
     }.getOrElse {
         Toast.makeText(ctxAny(), "Local WiFi failed: ${it.message}", Toast.LENGTH_LONG).show()
+    }
+
+    /** Same three platform preconditions as [requestLocalHotspot] (WiFi radio,
+     *  location services, then a permission) — Wi-Fi Direct's permission
+     *  changed on API 33+: NEARBY_WIFI_DEVICES replaced fine location as the
+     *  gate for discovering/creating P2P groups; below 33 it's still location. */
+    private fun requestWifiDirect() {
+        val ctx = ctxAny()
+        // 1. WiFi radio ON.
+        val wifi = ctx.applicationContext.getSystemService(Context.WIFI_SERVICE) as? android.net.wifi.WifiManager
+        if (wifi?.isWifiEnabled != true) {
+            Toast.makeText(ctx, "Turn WiFi ON first, then tap again (WiFi Direct needs the WiFi radio up).", Toast.LENGTH_LONG).show()
+            runCatching { startActivity(android.content.Intent(android.provider.Settings.Panel.ACTION_WIFI)) }
+                .onFailure { runCatching { startActivity(android.content.Intent(android.provider.Settings.ACTION_WIFI_SETTINGS)) } }
+            return
+        }
+        // 2. Device location SERVICES ON (separate from the permission).
+        val lm = ctx.getSystemService(Context.LOCATION_SERVICE) as? android.location.LocationManager
+        val locOff = lm != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P && !lm.isLocationEnabled
+        if (locOff) {
+            Toast.makeText(ctx, "Turn Location ON, then tap again (the platform requires it for WiFi Direct).", Toast.LENGTH_LONG).show()
+            runCatching { startActivity(android.content.Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS)) }
+            return
+        }
+        // 3. NEARBY_WIFI_DEVICES (33+) or ACCESS_FINE_LOCATION (below 33).
+        val perm = if (android.os.Build.VERSION.SDK_INT >= 33) "android.permission.NEARBY_WIFI_DEVICES"
+                   else android.Manifest.permission.ACCESS_FINE_LOCATION
+        val granted = ctx.checkSelfPermission(perm) == PackageManager.PERMISSION_GRANTED
+        if (granted) startWifiDirect() else wifiDirectPermLauncher.launch(perm)
+    }
+
+    private fun startWifiDirect() = runCatching {
+        WifiDirect.start(ctxAny()) { status ->
+            val activity = activity ?: return@start
+            activity.runOnUiThread {
+                when (status) {
+                    is WifiDirect.Status.Active -> Toast.makeText(ctxAny(),
+                        "WiFi Direct up — SSID: ${status.ssid}  ·  password: ${status.passphrase}" +
+                        (status.ownerIp?.let { "  ·  owner IP: $it" } ?: ""), Toast.LENGTH_LONG).show()
+                    is WifiDirect.Status.Failed -> Toast.makeText(ctxAny(),
+                        "Couldn't create WiFi Direct group (${status.reason}).", Toast.LENGTH_LONG).show()
+                    WifiDirect.Status.Idle -> {}
+                }
+                rebuildFragment()
+            }
+        }
+    }.getOrElse {
+        Toast.makeText(ctxAny(), "WiFi Direct failed: ${it.message}", Toast.LENGTH_LONG).show()
     }
 
     /** Deep-link to Developer options (where Wireless Debugging + its pairing
