@@ -26,6 +26,7 @@ import kotlinx.coroutines.launch
 import com.diegonmarcos.superapp.adbdebug.EmbeddedAdbChannel
 import com.diegonmarcos.superapp.adbdebug.ShizukuShellChannel
 import com.diegonmarcos.superapp.adbdebug.ShellChannel
+import com.diegonmarcos.superapp.adbdebug.LocalHotspot
 import android.util.Base64
 import org.json.JSONArray
 import android.content.pm.PackageManager
@@ -50,6 +51,12 @@ class PermissionsFragment : Fragment() {
             Toast.makeText(requireContext(),
                 "Permissions: $granted granted, $denied denied", Toast.LENGTH_SHORT).show()
             rebuildFragment()
+        }
+
+    private val hotspotLocationLauncher =
+        registerForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) startLocalHotspot() else Toast.makeText(requireContext(),
+                "Location is required by Android to create a local WiFi hotspot", Toast.LENGTH_LONG).show()
         }
 
     private fun rebuildFragment() {
@@ -125,6 +132,16 @@ class PermissionsFragment : Fragment() {
             addView(portIn, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             addView(codeIn, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         })
+        // Step ⓪ (optional): no external WiFi to join? Spin up a device-local
+        // hotspot so the radio is ON + attached to a network, which Wireless
+        // Debugging (adb over WiFi, API 30+) needs. Local-only, not internet-
+        // routed — any throwaway network works just as well if this fails.
+        val hotspotStatus = LocalHotspot.status()
+        col.addView(permButtonRow(ctx,
+            permButton(ctx, "⓪ Create local WiFi (for pairing)", hotspotStatus is LocalHotspot.Status.Active) { requestLocalHotspot() },
+        ))
+        if (hotspotStatus is LocalHotspot.Status.Active) col.addView(small(ctx,
+            "Local WiFi up — SSID: ${hotspotStatus.ssid}  ·  password: ${hotspotStatus.passphrase}"))
         // Step 0: open the OS page where Wireless Debugging is turned on and the
         // pairing dialog (IP:port + code) lives — the app cannot toggle it, only
         // deep-link to it. Without this the "Pair" fields have no source.
@@ -230,6 +247,35 @@ class PermissionsFragment : Fragment() {
             "privileged-plane", androidx.work.ExistingWorkPolicy.REPLACE,
             androidx.work.OneTimeWorkRequestBuilder<com.diegonmarcos.superapp.system.PrivilegedPlaneWorker>().build())
     }.let { }
+    /** Ensure ACCESS_FINE_LOCATION (required by the platform for
+     *  startLocalOnlyHotspot) then start the local-only hotspot. */
+    private fun requestLocalHotspot() {
+        val granted = ctxAny().checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) ==
+            PackageManager.PERMISSION_GRANTED
+        if (granted) startLocalHotspot()
+        else hotspotLocationLauncher.launch(android.Manifest.permission.ACCESS_FINE_LOCATION)
+    }
+
+    private fun startLocalHotspot() = runCatching {
+        LocalHotspot.start(ctxAny()) { status ->
+            val activity = activity ?: return@start
+            activity.runOnUiThread {
+                when (status) {
+                    is LocalHotspot.Status.Active -> Toast.makeText(ctxAny(),
+                        "Local WiFi up — SSID: ${status.ssid}  ·  password: ${status.passphrase}", Toast.LENGTH_LONG).show()
+                    is LocalHotspot.Status.Failed -> Toast.makeText(ctxAny(),
+                        "Couldn't create local WiFi (${status.reason}). Some devices (e.g. certain " +
+                        "Samsung builds) refuse Wireless Debugging while a local hotspot is active — " +
+                        "any throwaway WiFi network works too.", Toast.LENGTH_LONG).show()
+                    LocalHotspot.Status.Idle -> {}
+                }
+                rebuildFragment()
+            }
+        }
+    }.getOrElse {
+        Toast.makeText(ctxAny(), "Local WiFi failed: ${it.message}", Toast.LENGTH_LONG).show()
+    }
+
     /** Deep-link to Developer options (where Wireless Debugging + its pairing
      *  dialog live). The OS toggle has no app API — this is the closest jump. */
     private fun openWirelessDebuggingSettings() {
