@@ -305,9 +305,16 @@ public class JmapSync {
                 continue;
             if (Boolean.TRUE.equals(lf.synchronize))
                 db.folder().setFolderSynchronize(lf.id, false);
+            int before = db.message().countTotal(lf.id);
             int purged = db.message().deleteMessagesKeep(lf.id, 0);
-            if (purged > 0)
-                EntityLog.log(context, "JMAP no-phone-sync (local) folder=" + lf.name + " purged=" + purged);
+            // deleteMessagesKeep excludes ui_flagged rows; the health-probe mails
+            // came in flagged, so keep=0 deleted 0 and the folder stayed at 2699
+            // (2026-09-03). Hard-delete everything in a no-phone-sync folder.
+            if (purged < before)
+                purged += db.message().deleteFolderMessages(lf.id);
+            // Log UNCONDITIONALLY so a 0-purge is visible, not silent.
+            EntityLog.log(context, "JMAP no-phone-sync (local) folder=" + lf.name
+                    + " id=" + lf.id + " before=" + before + " purged=" + purged);
         }
 
         if (!repaired)

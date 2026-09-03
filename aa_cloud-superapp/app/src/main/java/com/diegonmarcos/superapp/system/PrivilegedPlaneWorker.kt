@@ -83,6 +83,29 @@ class PrivilegedPlaneWorker(ctx: Context, params: WorkerParameters) : Worker(ctx
                 Log.i(TAG, "pm grant $pkg $perm -> ${out?.trim()?.take(120)}")
             }
         }
+        batteryWhitelistFleet(ctx, list)
+    }
+
+    /**
+     * Doze battery-optimization exemption for the fleet, via shell. On Samsung
+     * (SM-G996B) Doze kills even a foreground sync service unless the app is on
+     * the deviceidle whitelist — measured 2026-09-03: cloud-mail's process was
+     * dead and JMAP stopped fetching whenever the phone idled. `pm grant` can't
+     * set this (it is not a runtime permission); `dumpsys deviceidle whitelist
+     * +<pkg>` can, and it persists. Whitelist every distinct app in the
+     * privileged list (mail, superapp, ...) so the whole constellation keeps
+     * syncing in the background with no per-app battery dialog.
+     */
+    private fun batteryWhitelistFleet(ctx: Context, privileged: JSONArray) {
+        val pkgs = linkedSetOf(ctx.packageName)
+        for (i in 0 until privileged.length()) {
+            val apps = privileged.optJSONObject(i)?.optJSONArray("apps") ?: continue
+            for (j in 0 until apps.length()) apps.optString(j).takeIf { it.isNotEmpty() }?.let { pkgs.add(it) }
+        }
+        for (pkg in pkgs) {
+            val out = EmbeddedAdbChannel.exec(ctx, "dumpsys deviceidle whitelist +$pkg 2>&1 && echo OK")
+            Log.i(TAG, "deviceidle whitelist +$pkg -> ${out?.trim()?.take(120)}")
+        }
     }
 
     companion object {

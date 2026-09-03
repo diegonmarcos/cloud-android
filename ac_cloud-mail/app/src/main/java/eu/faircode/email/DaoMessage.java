@@ -1081,6 +1081,9 @@ public interface DaoMessage {
             " AND NOT uid IS NULL")
     int deleteLocalMessages(long folder);
 
+    @Query("DELETE FROM message WHERE folder = :folder")
+    int deleteFolderMessages(long folder);
+
     @Query("DELETE FROM message" +
             " WHERE folder = :folder" +
             " AND (ui_browsed OR received < :before)" +
