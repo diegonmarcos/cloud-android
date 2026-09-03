@@ -125,8 +125,14 @@ class PermissionsFragment : Fragment() {
             addView(portIn, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             addView(codeIn, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         })
+        // Step 0: open the OS page where Wireless Debugging is turned on and the
+        // pairing dialog (IP:port + code) lives — the app cannot toggle it, only
+        // deep-link to it. Without this the "Pair" fields have no source.
         col.addView(permButtonRow(ctx,
-            permButton(ctx, "Pair", plane != null) {
+            permButton(ctx, "① Open Wireless Debugging", null) { openWirelessDebuggingSettings() },
+        ))
+        col.addView(permButtonRow(ctx,
+            permButton(ctx, "② Pair", plane != null) {
                 val host = hostIn.text.toString().trim(); val port = portIn.text.toString().trim().toIntOrNull(); val code = codeIn.text.toString().trim()
                 if (host.isEmpty() || port == null || code.length < 6) { Toast.makeText(ctxAny(), "Need IP, pair port and 6-digit code", Toast.LENGTH_LONG).show(); return@permButton }
                 Thread {
@@ -137,7 +143,7 @@ class PermissionsFragment : Fragment() {
                     }
                 }.start()
             },
-            permButton(ctx, "Connect plane now", plane != null) { armPlane(); Toast.makeText(ctxAny(), "Connecting + self-granting in background…", Toast.LENGTH_SHORT).show() },
+            permButton(ctx, "③ Connect plane now", plane != null) { armPlane(); Toast.makeText(ctxAny(), "Connecting + self-granting in background…", Toast.LENGTH_SHORT).show() },
         ))
 
         // ── B. OPEN A SYSTEM PAGE ─────────────────────────────────────────
@@ -224,6 +230,13 @@ class PermissionsFragment : Fragment() {
             "privileged-plane", androidx.work.ExistingWorkPolicy.REPLACE,
             androidx.work.OneTimeWorkRequestBuilder<com.diegonmarcos.superapp.system.PrivilegedPlaneWorker>().build())
     }.let { }
+    /** Deep-link to Developer options (where Wireless Debugging + its pairing
+     *  dialog live). The OS toggle has no app API — this is the closest jump. */
+    private fun openWirelessDebuggingSettings() {
+        val dev = android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
+        if (dev.resolveActivity(ctxAny().packageManager) != null) runCatching { startActivity(dev) }
+        else runCatching { startActivity(android.content.Intent(android.provider.Settings.ACTION_SETTINGS)) }
+    }
     /** One row: "✓/◯ label  state" on the left, its own button on the right. */
     private fun permRow(ctx: Context, host: LinearLayout, label: String, granted: Boolean?, state: String, btn: String, onClick: () -> Unit) {
         val r = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = android.view.Gravity.CENTER_VERTICAL; setPadding(0, dp(4), 0, dp(4)) }
