@@ -243,7 +243,7 @@ open class ShellActivity : AppCompatActivity(),
             host = object : CircularMenu.Host {
                 override fun navigate(target: String) { onTileClicked(target) }
                 override fun iconBitmap(name: String, sizePx: Int) = iconBitmapFor(name, sizePx)
-                override fun childrenOf(key: String) = CircularMenuTree.childrenOf(this@MainActivity, key)
+                override fun childrenOf(key: String) = CircularMenuTree.childrenOf(this@ShellActivity, key)
             },
             twinkleEnabled = {
                 com.diegonmarcos.superapp.settings.LauncherSettingsPrefs(this).anim("star_twinkle")
@@ -627,7 +627,7 @@ open class ShellActivity : AppCompatActivity(),
                     // Infos·Apps → Infos·Admin → Home-Apps·Cloud → … → Labs·
                     // Admin → wrap). Left-swipe (dx<0) = next, right = prev.
                     fireGeminiPattern()
-                    val prefs = com.diegonmarcos.superapp.settings.HomeSwipePrefs(this@MainActivity)
+                    val prefs = com.diegonmarcos.superapp.settings.HomeSwipePrefs(this@ShellActivity)
                     val swipeAction = if (dx < 0) prefs.left else prefs.right
                     if (swipeAction == "walk_step_next" || swipeAction == "walk_step_prev") {
                         walkStep(direction = if (dx < 0) +1 else -1)
@@ -1994,7 +1994,7 @@ open class ShellActivity : AppCompatActivity(),
     private val energySamplerHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private val energySamplerRunnable = object : Runnable {
         override fun run() {
-            runCatching { EnergyWatchdog.sample(this@MainActivity) }
+            runCatching { EnergyWatchdog.sample(this@ShellActivity) }
             energySamplerHandler.postDelayed(this, 60_000L)
         }
     }
