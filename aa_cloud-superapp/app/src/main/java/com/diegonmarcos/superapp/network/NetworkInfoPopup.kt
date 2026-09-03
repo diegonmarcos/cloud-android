@@ -137,7 +137,7 @@ object NetworkInfoPopup {
             com.diegonmarcos.superapp.kdeconnect.KdeConnectConfig.get().devices.size
         }.getOrDefault(0)
         container.addView(lightRow(ctx, "KDE Connect", kdeConn > 0) {
-            dismiss(); (ctx as? com.diegonmarcos.superapp.MainActivity)?.openSection("kde")
+            dismiss(); (ctx as? com.diegonmarcos.superapp.ShellActivity)?.openSection("kde")
         })
         container.addView(valueSmall(ctx, "$kdeConn / $kdeTotal device(s) connected"))
         container.addView(spacer(ctx, (6 * d).toInt()))

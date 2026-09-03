@@ -2,7 +2,7 @@ package com.diegonmarcos.superapp.settings
 import com.diegonmarcos.superapp.BuildConfig
 import com.diegonmarcos.superapp.system.BackgroundOrchestrator
 import com.diegonmarcos.superapp.ui.Haptics
-import com.diegonmarcos.superapp.MainActivity
+import com.diegonmarcos.superapp.ShellActivity
 import com.diegonmarcos.superapp.apps.PhoneAppsFragment
 
 import android.content.Intent
@@ -111,7 +111,7 @@ class LauncherConfigFragment : Fragment() {
                 isSelected = themeRow.id == current.id,
             ) {
                 themePrefs.theme = LauncherTheme.fromId(themeRow.id)
-                (activity as? MainActivity)?.notifyLauncherThemeChanged()
+                (activity as? ShellActivity)?.notifyLauncherThemeChanged()
                 rerender()
             })
             root.addView(spacer(ctx, dp(ctx, 8)))
@@ -153,7 +153,7 @@ class LauncherConfigFragment : Fragment() {
             root.addView(toggleRow(ctx, "All battery-hungry effects",
                 "One switch to flip every effect below on or off.", allOn) { on ->
                 batteryOnes.forEach { settingsPrefs.setToggle(it.id, on) }
-                (activity as? MainActivity)?.notifyLauncherThemeChanged()
+                (activity as? ShellActivity)?.notifyLauncherThemeChanged()
                 com.diegonmarcos.superapp.appstore.ConstellationWorker.start(requireContext()) // re-apply fleet_check
                 rerender() // reflect the child switches
             })
@@ -161,7 +161,7 @@ class LauncherConfigFragment : Fragment() {
             for (t in batteryOnes) {
                 root.addView(toggleRow(ctx, t.label, t.subtitle, settingsPrefs.toggle(t.id)) { on ->
                     settingsPrefs.setToggle(t.id, on)
-                    (activity as? MainActivity)?.notifyLauncherThemeChanged()
+                    (activity as? ShellActivity)?.notifyLauncherThemeChanged()
                     com.diegonmarcos.superapp.appstore.ConstellationWorker.start(requireContext()) // re-apply fleet_check
                     rerender() // keep the master switch in sync
                 })
@@ -183,7 +183,7 @@ class LauncherConfigFragment : Fragment() {
                         .onFailure { runCatching { startActivity(Intent(Settings.ACTION_DISPLAY_SETTINGS)) } }
                 }
                 // Re-apply launcher chrome so stars/cube/pets pick up the change.
-                (activity as? MainActivity)?.notifyLauncherThemeChanged()
+                (activity as? ShellActivity)?.notifyLauncherThemeChanged()
             })
             root.addView(spacer(ctx, dp(ctx, 8)))
         }

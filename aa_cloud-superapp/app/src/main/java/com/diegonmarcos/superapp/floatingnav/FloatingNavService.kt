@@ -579,12 +579,30 @@ class FloatingNavService : Service() {
         var isRunning: Boolean = false
             private set
 
-        /** True while Cloud-SuperApp (MainActivity) is in the foreground. The
+        /** How many [com.diegonmarcos.superapp.ShellActivity] instances are
+         *  resumed right now. This is a COUNTER and not a boolean on purpose:
+         *  once the launcher (HomeActivity) and the app (MainActivity) became
+         *  two activities that can both be alive — the home screen behind, an
+         *  app instance in a split half — a flag was wrong, because Android
+         *  resumes the incoming activity BEFORE pausing the outgoing one. The
+         *  `true` from the new instance was immediately overwritten by the
+         *  `false` from the old one, leaving this false while the host was
+         *  still on screen, and the floating circle drew itself over us. */
+        private val hostVisible = java.util.concurrent.atomic.AtomicInteger(0)
+
+        /** True while any Cloud-SuperApp shell is in the foreground. The
          *  reliable signal for "we're home" — the floating circle must never
-         *  show here (the in-app trigger is the Sirius Star). Set from
-         *  MainActivity.onResume / onPause. */
-        @Volatile
-        var hostForeground: Boolean = false
+         *  show here (the in-app trigger is the Sirius Star). Maintained by
+         *  [hostEnter] / [hostExit] from ShellActivity.onResume / onPause. */
+        val hostForeground: Boolean get() = hostVisible.get() > 0
+
+        /** ShellActivity.onResume. */
+        fun hostEnter() { hostVisible.incrementAndGet() }
+
+        /** ShellActivity.onPause. Clamped at zero so a stray unbalanced pause
+         *  (process death mid-transition) cannot wedge the counter negative and
+         *  suppress the overlay forever. */
+        fun hostExit() { if (hostVisible.decrementAndGet() < 0) hostVisible.set(0) }
 
         /** Start the overlay iff the user has it ON, the build allows it, and
          *  "display over other apps" is granted. Returns whether it started

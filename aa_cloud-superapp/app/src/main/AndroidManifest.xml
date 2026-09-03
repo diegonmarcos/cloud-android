@@ -199,28 +199,57 @@
         <receiver
             android:name=".notificationcenter.KdeQuickActionReceiver"
             android:exported="false" />
+        <!-- HOME — the launcher door. Flips the SuperApp into the Android
+             Home Screen replacement candidate list; once the user picks it as
+             default, all Home button / home gesture presses route here.
+             launchMode=singleTask + empty taskAffinity match the AOSP
+             Launcher3 task semantics so back / recents behave as expected.
+
+             This USED to be the same activity as the LAUNCHER entry below,
+             and that is precisely why the SuperApp could never be put in
+             split-screen: singleTask + an empty affinity means exactly one
+             instance in exactly one task, the HOME intent puts that task in
+             the home root task, and the home task gets no Overview card and
+             is not a legal split half on handhelds. Tapping the drawer icon
+             did not create an app task, it just brought the home-task
+             instance forward. Two activities, two affinities, two tasks —
+             same code (both are empty subclasses of ShellActivity), same
+             process, same SharedPreferences, so Configs → Launcher and
+             Configs → One-Hand keep driving the home screen from inside the
+             app with no cross-process plumbing. -->
         <activity
-            android:name=".MainActivity"
+            android:name=".HomeActivity"
             android:exported="true"
             android:launchMode="singleTask"
             android:taskAffinity=""
             android:excludeFromRecents="false"
             android:stateNotNeeded="true">
-            <!-- Standard app-drawer entry. -->
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-            <!-- HOME intent-filter — flips the SuperApp into the
-                 Android Home Screen replacement candidate list. Once
-                 the user picks it as default, all Home button / home
-                 gesture presses route here. launchMode=singleTask +
-                 empty taskAffinity match the AOSP Launcher3 task
-                 semantics so back / recents behave as expected. -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.HOME" />
                 <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- LAUNCHER — the app door. Its OWN taskAffinity is the whole point:
+             a distinct affinity puts this instance in its own task, which is
+             what earns it an Overview card, and Overview is where the user
+             picks the second half of a split. singleTop (not singleTask) so
+             re-launching reuses the instance without tearing down the task.
+             resizeableActivity is explicit rather than relying on the
+             targetSdk-24 default, since this attribute is the one a reader
+             will look for when asking why the app does or does not split. -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:taskAffinity="${applicationId}.app"
+            android:excludeFromRecents="false"
+            android:resizeableActivity="true">
+            <!-- Standard app-drawer entry. -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
             <!-- Launcher icon long-press shortcuts -->
             <meta-data

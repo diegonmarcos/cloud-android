@@ -7,7 +7,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import androidx.fragment.app.Fragment
-import com.diegonmarcos.superapp.MainActivity
+import com.diegonmarcos.superapp.ShellActivity
 import com.diegonmarcos.superapp.R
 import com.diegonmarcos.superapp.core.Collapsible
 import com.diegonmarcos.superapp.system.ModePrefs
@@ -64,7 +64,7 @@ class SectionTabsFragment : Fragment(), Collapsible {
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, s: Bundle?): View {
         val ctx = inflater.context
         val pages = Sections.byId(sectionId)?.pages.orEmpty()
-        val twoPane = (activity as? MainActivity)?.isTwoPane() == true
+        val twoPane = (activity as? ShellActivity)?.isTwoPane() == true
         // One pane per page on a tablet; phones keep the single swapping pane.
         val paneCount = if (twoPane) pages.size.coerceIn(1, MAX_PANES) else 1
 
@@ -116,7 +116,7 @@ class SectionTabsFragment : Fragment(), Collapsible {
         // Sync the mode for the landing tab explicitly. The listener below is
         // attached AFTER this, and selecting tab 0 is a no-op anyway, so
         // neither would fire onTabSelected for the page we start on.
-        pages.getOrNull(start)?.let { (activity as? MainActivity)?.nav?.syncModeForPage(it.id) }
+        pages.getOrNull(start)?.let { (activity as? ShellActivity)?.nav?.syncModeForPage(it.id) }
 
         tabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab) {
@@ -126,7 +126,7 @@ class SectionTabsFragment : Fragment(), Collapsible {
                 // grid, drawer and bottom-nav icon variants follow it. Fired
                 // on SELECTION, not at render time: with every pane on screen
                 // rendering both would call it twice and the last would win.
-                (activity as? MainActivity)?.nav?.syncModeForPage(page.id)
+                (activity as? ShellActivity)?.nav?.syncModeForPage(page.id)
                 if (paneCount == 1) render(0, page.id)
             }
             override fun onTabUnselected(tab: TabLayout.Tab) = Unit
@@ -149,7 +149,7 @@ class SectionTabsFragment : Fragment(), Collapsible {
      *  page→Fragment routing so a pane shows exactly what opening that page
      *  on a phone would. */
     private fun render(index: Int, pageId: String) {
-        val frag = (activity as? MainActivity)?.nav?.pageFragment(sectionId, pageId) ?: return
+        val frag = (activity as? ShellActivity)?.nav?.pageFragment(sectionId, pageId) ?: return
         childFragmentManager.beginTransaction()
             .replace(paneIds[index], frag)
             .commitAllowingStateLoss()
@@ -165,10 +165,13 @@ class SectionTabsFragment : Fragment(), Collapsible {
      * pages made it worse. Ragged tabs also MOVE as you change section, which is
      * the part that actually reads as broken.
      *
-     * So the slot is measured, not negotiated: the width of [WIDEST] at the tab
-     * font. Seven characters because LNKTREE and CONFIGS are the longest labels
-     * in build.json, so every existing tab fits its slot exactly once and the
-     * strip is stable across every section.
+     * So the slot is measured, not negotiated. The pills are MONOSPACE, so one
+     * character width describes any string: the target is the LONGEST label
+     * actually present in the strip, and the fallback floor is [MIN_CHARS]
+     * characters. Sizing to a fixed seven was the first attempt and it was
+     * wrong — the real labels run far longer (QUANT & MARKETS is fifteen,
+     * AERO & SPACE twelve), so a seven-character slot ellipsized them, and the
+     * ellipsis ate one of the seven, leaving six readable letters.
      *
      * When N slots exceed the strip the FONT gives way, a step at a time down to
      * [MIN_SP], because a smaller word is still readable while a clipped one is
@@ -201,37 +204,52 @@ class SectionTabsFragment : Fragment(), Collapsible {
         val avail = tabs.width - tabs.paddingStart - tabs.paddingEnd
         if (avail <= 0) return
 
-        // AppTabsStyle replaced every tab's content with a PILL custom view, and
-        // that pill is what the eye sees. Sizing TabLayout's own TabView does
-        // nothing visible: MODE_FIXED already makes those equal, while the pill
-        // inside stays WRAP_CONTENT and centred, so the strip still reads ragged.
-        // The width has to go on the pill.
+        // The pill custom view is what the eye sees; TabLayout's own TabView is
+        // invisible and MODE_FIXED already makes those equal.
         val pills = (0 until n).mapNotNull { tabs.getTabAt(it)?.customView }
         if (pills.size != n) return
         val labels = pills.mapNotNull { findLabel(it) }
         if (labels.size != n) return
 
         val dm = tabs.resources.displayMetrics
-        val padPx = PILL_PAD_DP * dm.density * 2      // makePill's 14dp each side
-        val marginPx = PILL_MARGIN_DP * dm.density * 2 // and its 3dp each side
+        val padPx = PILL_PAD_DP * dm.density * 2       // makePill's 14dp per side
+        val marginPx = PILL_MARGIN_DP * dm.density * 2 // and its 3dp per side
         val minPx = MIN_SP * dm.scaledDensity
-        // MODE_FIXED hands every TabView an equal share; the pill must fit in one.
-        val perTab = avail.toFloat() / n
+        val perTab = avail.toFloat() / n               // MODE_FIXED's share
 
+        // The labels are MONOSPACE (AppTabsStyle.makePill), so one character
+        // width describes every string and the arithmetic below is exact rather
+        // than a guess about the widest glyph.
         val paint = android.text.TextPaint().apply {
             typeface = labels[0].typeface
-            letterSpacing = labels[0].letterSpacing   // 0.08 — real width, not nominal
+            letterSpacing = labels[0].letterSpacing
         }
-        var sizePx = labels[0].textSize
-        var pillPx: Float
-        while (true) {
+        fun charWidth(sizePx: Float): Float {
             paint.textSize = sizePx
-            pillPx = paint.measureText(WIDEST) + padPx
-            if (pillPx + marginPx <= perTab || sizePx <= minPx) break
-            sizePx -= dm.density        // ~1dp a step
+            return paint.measureText("M")
         }
 
-        // Past the floor there is genuinely no room: scroll rather than clip.
+        // Show the WHOLE longest label when it fits; never show fewer than
+        // MIN_CHARS. "CONFIGS" is not the ceiling — Cloud carries QUANT &
+        // MARKETS (15), AERO & SPACE (12), ENGINEERING (11) — so sizing to a
+        // fixed 7 truncated most of them, and the ellipsis then ate one more
+        // character, leaving six.
+        val longest = labels.maxOf { it.text.length }
+        var sizePx = labels[0].textSize
+        var chars = longest
+        while (true) {
+            val w = chars * charWidth(sizePx) + padPx + marginPx
+            if (w <= perTab) break
+            if (sizePx > minPx) { sizePx -= dm.density; continue }   // font first
+            // At the floor: keep the box and drop characters, but never below
+            // the guarantee. +1 pays for the ellipsis so MIN_CHARS stay READABLE
+            // rather than MIN_CHARS-1 plus a dot.
+            val fits = ((perTab - padPx - marginPx) / charWidth(sizePx)).toInt()
+            chars = maxOf(MIN_CHARS + 1, fits)
+            break
+        }
+
+        val pillPx = chars * charWidth(sizePx) + padPx
         val overflows = pillPx + marginPx > perTab
         tabs.tabMode = if (overflows) TabLayout.MODE_SCROLLABLE else TabLayout.MODE_FIXED
 
@@ -259,11 +277,14 @@ class SectionTabsFragment : Fragment(), Collapsible {
     companion object {
         /** Seven characters: LNKTREE and CONFIGS are the longest tab labels in
          *  build.json, so this is the real ceiling rather than a guess. */
-        private const val WIDEST = "CONFIGS"
+        /** Never show fewer than this many letters of a label. The ask was
+         *  "at least 7", and the box is sized for one more so the ellipsis
+         *  does not eat the seventh. */
+        private const val MIN_CHARS = 7
         /** makePill's horizontal padding and margin, per side. */
         private const val PILL_PAD_DP = 14f
         private const val PILL_MARGIN_DP = 3f
-        private const val MIN_SP = 9f
+        private const val MIN_SP = 8f
 
         /** Panes we have stable host ids for — see `values/ids.xml`. */
         const val MAX_PANES = 4
