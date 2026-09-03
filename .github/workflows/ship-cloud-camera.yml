@@ -106,7 +106,12 @@ jobs:
 
       - name: Set up Gradle (cached)
         if: steps.gate.outputs.skip != 'true'
-        uses: gradle/actions/setup-gradle@v3
+        # v6, not v3: v3 bundles the old @actions/cache client, which talks to the
+        # cache service GitHub retired. Every save AND restore 400s ("Our services
+        # aren't available right now"), so the Gradle distribution, the dependency
+        # cache and the build cache were all discarded every run — org.gradle.caching
+        # was on and had nowhere to persist, and every build ran fully cold.
+        uses: gradle/actions/setup-gradle@v6
         # No gradle-version pin: the engine invokes the fork's OWN ./gradlew
         # (9.6.1), which is the toolchain upstream tests against.
 
