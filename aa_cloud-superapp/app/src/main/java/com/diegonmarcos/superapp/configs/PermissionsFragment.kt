@@ -90,7 +90,7 @@ class PermissionsFragment : Fragment() {
         }
         val col = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(16), dp(16), dp(32))
+            setPadding(dp(10), dp(8), dp(10), dp(16))
         }
         scroll.addView(col)
 
@@ -134,10 +134,10 @@ class PermissionsFragment : Fragment() {
         // ── Privileged plane: pair once (ever), then it self-heals on every boot/launch ──
         col.addView(small(ctx, "Privileged plane — " + (plane?.let { "connected via ${it.name()}" } ?: "NOT connected") +
             ". Pair ONCE: phone Settings → Developer options → Wireless debugging → 'Pair device with pairing code', copy IP:port + code here. After that every boot/launch reconnects and self-grants the list above."))
-        val hostIn = android.widget.EditText(ctx).apply { hint = "IP (e.g. 10.0.0.9)"; textSize = 13f }
+        val hostIn = android.widget.EditText(ctx).apply { hint = "IP (e.g. 10.0.0.9)"; textSize = 11.5f; setPadding(dp(4), dp(2), dp(4), dp(2)) }
         hostField = hostIn
-        val portIn = android.widget.EditText(ctx).apply { hint = "pair port"; inputType = android.text.InputType.TYPE_CLASS_NUMBER; textSize = 13f }
-        val codeIn = android.widget.EditText(ctx).apply { hint = "6-digit code"; inputType = android.text.InputType.TYPE_CLASS_NUMBER; textSize = 13f }
+        val portIn = android.widget.EditText(ctx).apply { hint = "pair port"; inputType = android.text.InputType.TYPE_CLASS_NUMBER; textSize = 11.5f; setPadding(dp(4), dp(2), dp(4), dp(2)) }
+        val codeIn = android.widget.EditText(ctx).apply { hint = "6-digit code"; inputType = android.text.InputType.TYPE_CLASS_NUMBER; textSize = 11.5f; setPadding(dp(4), dp(2), dp(4), dp(2)) }
         col.addView(LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             addView(hostIn, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 2f))
@@ -404,20 +404,22 @@ class PermissionsFragment : Fragment() {
     }
     /** One row: "✓/◯ label  state" on the left, its own button on the right. */
     private fun permRow(ctx: Context, host: LinearLayout, label: String, granted: Boolean?, state: String, btn: String, onClick: () -> Unit) {
-        val r = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = android.view.Gravity.CENTER_VERTICAL; setPadding(0, dp(4), 0, dp(4)) }
+        val r = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL; gravity = android.view.Gravity.CENTER_VERTICAL; setPadding(0, dp(1), 0, dp(1)) }
         val icon = when (granted) { true -> "✓ "; false -> "◯ "; null -> "? " }
         r.addView(TextView(ctx).apply {
             text = icon + label + (if (state.isNotBlank()) "  ·  $state" else "")
-            textSize = 13f
+            textSize = 11.5f
             setTextColor(if (granted == true) 0xFF16A34A.toInt() else if (granted == false) 0xFFDC2626.toInt() else 0xFF6B7280.toInt())
             layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
         })
-        r.addView(permButton(ctx, btn, granted, onClick))
+        r.addView(permButton(ctx, btn, granted, onClick).apply {
+            layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+        })
         host.addView(r)
     }
     private fun sectionHead(ctx: Context, text: String) = TextView(ctx).apply {
-        this.text = text; textSize = 12f; setTypeface(null, android.graphics.Typeface.BOLD)
-        setTextColor(0xFF7C3AED.toInt()); setPadding(0, dp(14), 0, dp(4))
+        this.text = text; textSize = 11f; setTypeface(null, android.graphics.Typeface.BOLD)
+        setTextColor(0xFF7C3AED.toInt()); setPadding(0, dp(8), 0, dp(1))
     }
 
     /** build.json::ui.permissions.privileged[] — one entry per (perm, app). */
@@ -470,19 +472,21 @@ class PermissionsFragment : Fragment() {
     private fun row(ctx: Context, host: LinearLayout, key: String, value: String): TextView {
         val r = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
-            setPadding(0, dp(4), 0, dp(4))
+            setPadding(0, dp(1), 0, dp(1))
         }
         r.addView(TextView(ctx).apply {
             text = key
             setTextColor(0xCCFFFFFF.toInt())
             setTextAppearance(android.R.style.TextAppearance_Material_Caption)
-            layoutParams = LinearLayout.LayoutParams(dp(110), LinearLayout.LayoutParams.WRAP_CONTENT)
+            textSize = 11f
+            layoutParams = LinearLayout.LayoutParams(dp(100), LinearLayout.LayoutParams.WRAP_CONTENT)
         })
         val v = TextView(ctx).apply {
             text = value
             setTextColor(0xFFB794F4.toInt())
             typeface = Typeface.MONOSPACE
             setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+            textSize = 11f
             setTextIsSelectable(true)
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             setOnLongClickListener {
@@ -499,7 +503,8 @@ class PermissionsFragment : Fragment() {
         this.text = text
         setTextColor(0x99FFFFFF.toInt())
         setTextAppearance(android.R.style.TextAppearance_Material_Caption)
-        setPadding(0, dp(4), 0, dp(4))
+        textSize = 10.5f
+        setPadding(0, dp(1), 0, dp(1))
     }
 
     private fun actionButton(ctx: Context, label: String, bg: Int = 0xFF7C3AED.toInt(), onClick: () -> Unit) = TextView(ctx).apply {
@@ -507,10 +512,11 @@ class PermissionsFragment : Fragment() {
         setTextColor(0xFFFFFFFF.toInt())
         setBackgroundColor(bg)
         gravity = android.view.Gravity.CENTER
-        setPadding(dp(12), dp(10), dp(12), dp(10))
+        textSize = 11.5f
+        setPadding(dp(8), dp(5), dp(8), dp(5))
         layoutParams = LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT,
-        ).apply { topMargin = dp(8) }
+        ).apply { topMargin = dp(4) }
         isClickable = true; isFocusable = true
         setOnClickListener { onClick() }
     }
@@ -518,10 +524,10 @@ class PermissionsFragment : Fragment() {
     private fun permButton(ctx: Context, label: String, granted: Boolean?, onClick: () -> Unit) =
         TextView(ctx).apply {
             gravity = android.view.Gravity.CENTER
-            textSize = 12f
-            setPadding(dp(8), dp(10), dp(8), dp(10))
-            maxLines = 3
-            minHeight = dp(64)
+            textSize = 11f
+            setPadding(dp(6), dp(3), dp(6), dp(3))
+            maxLines = 2
+            minHeight = dp(30)
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             isClickable = true; isFocusable = true
             stylePermButton(this, label, granted)
@@ -545,10 +551,10 @@ class PermissionsFragment : Fragment() {
             orientation = LinearLayout.HORIZONTAL
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = dp(8) }
+            ).apply { topMargin = dp(3) }
         }
         for ((i, b) in btns.withIndex()) {
-            (b.layoutParams as? LinearLayout.LayoutParams)?.leftMargin = if (i > 0) dp(4) else 0
+            (b.layoutParams as? LinearLayout.LayoutParams)?.leftMargin = if (i > 0) dp(3) else 0
             row.addView(b)
         }
         return row
