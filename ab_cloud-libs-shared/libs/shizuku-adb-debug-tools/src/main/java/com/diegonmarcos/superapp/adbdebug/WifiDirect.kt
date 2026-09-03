@@ -53,16 +53,22 @@ object WifiDirect {
         }
         runCatching { registerReceiver(app, mgr, ch, onResult) }
 
+        // BUSY / "framework busy" almost always means a PRIOR group (ours, from an
+        // earlier tap, or a persistent one) is still up. createGroup then refuses.
+        // So always removeGroup() FIRST, then create; and on BUSY, remove + retry
+        // once. removeGroup is async, so chain create in its callback.
         val listener = object : WifiP2pManager.ActionListener {
             override fun onSuccess() {
                 // Actual SSID/passphrase/owner arrive via WIFI_P2P_CONNECTION_CHANGED_ACTION
                 // -> requestGroupInfo(); this just confirms the request was accepted.
             }
             override fun onFailure(reasonCode: Int) {
+                // We already removeGroup()'d before this create, so a BUSY here means
+                // the framework is genuinely occupied (another app / Wi-Fi P2P mid-op).
                 val why = when (reasonCode) {
                     WifiP2pManager.ERROR -> "generic error (often WiFi busy / another P2P group active)"
                     WifiP2pManager.P2P_UNSUPPORTED -> "Wi-Fi Direct unsupported on this device"
-                    WifiP2pManager.BUSY -> "P2P framework busy — try again in a moment"
+                    WifiP2pManager.BUSY -> "P2P framework busy — toggle WiFi off/on, or use the local-WiFi flow, then retry"
                     else -> "code=$reasonCode"
                 }
                 status = Status.Failed(why)
@@ -70,12 +76,23 @@ object WifiDirect {
             }
         }
 
+        // Remove any stale group first, THEN create (chained in the callback so it
+        // actually serializes). removeGroup failing just means there was none.
+        runCatching {
+            mgr.removeGroup(ch, object : WifiP2pManager.ActionListener {
+                override fun onSuccess() { doCreate(mgr, ch, listener) }
+                override fun onFailure(reasonCode: Int) { doCreate(mgr, ch, listener) }
+            })
+        }.onFailure { doCreate(mgr, ch, listener) }
+    }
+
+
+    private fun doCreate(mgr: WifiP2pManager, ch: WifiP2pManager.Channel, listener: WifiP2pManager.ActionListener) {
         runCatching {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                val passphrase = randomPassphrase()
                 val config = WifiP2pConfig.Builder()
                     .setNetworkName("DIRECT-cloudsa")
-                    .setPassphrase(passphrase)
+                    .setPassphrase(randomPassphrase())
                     .setGroupOperatingBand(WifiP2pConfig.GROUP_OWNER_BAND_AUTO)
                     .enablePersistentMode(false)
                     .build()
@@ -85,7 +102,6 @@ object WifiDirect {
             }
         }.onFailure { e ->
             status = Status.Failed(e.message ?: e.javaClass.simpleName)
-            onResult(status)
         }
     }
 
