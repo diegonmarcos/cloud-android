@@ -206,6 +206,8 @@ public class ActivityMain extends ActivityBase implements FragmentManager.OnBack
                 return;
             }
 
+            requestIgnoreBatteryOptimizationsOnce(prefs);
+
             long start = new Date().getTime();
             Log.i("Main boot");
 
@@ -442,6 +444,29 @@ public class ActivityMain extends ActivityBase implements FragmentManager.OnBack
             FragmentTransaction fragmentTransaction = getSupportFragmentManager().beginTransaction();
             fragmentTransaction.replace(R.id.content_frame, new FragmentEula()).addToBackStack("eula");
             fragmentTransaction.commit();
+        }
+    }
+
+    // Cloud-Comms: ask once to be exempted from Doze battery optimization so
+    // background JMAP/IMAP sync isn't killed while the device idles.
+    private void requestIgnoreBatteryOptimizationsOnce(SharedPreferences prefs) {
+        try {
+            if (prefs.getBoolean("comms_battery_optim_asked", false))
+                return;
+
+            prefs.edit().putBoolean("comms_battery_optim_asked", true).apply();
+
+            if (Boolean.FALSE.equals(Helper.isIgnoringOptimizations(this))) {
+                Intent intent = new Intent()
+                        .setAction(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+                        .setData(Uri.parse("package:" + getPackageName()));
+                if (intent.resolveActivity(getPackageManager()) != null)
+                    startActivity(intent);
+                else
+                    startActivity(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));
+            }
+        } catch (Throwable ex) {
+            Log.e(ex);
         }
     }
 
