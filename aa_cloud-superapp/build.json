@@ -1653,7 +1653,7 @@
         "tiles_shared": [
           {
             "id": "suite-ai",
-            "label": "AI",
+            "label": "AGI",
             "icon": "ic_ai_sparkle",
             "target": "section:cloud"
           },
@@ -1684,31 +1684,38 @@
         ],
         "tile_groups": [
           {
-            "title": "AI",
+            "title": "AGI",
             "tiles": [
               {
-                "id": "ai-tlg-hermes",
-                "label": "AI-Tlg-Hermes",
-                "icon": "ic_ai_chat",
-                "target": "intent://resolve?domain=Cloud_agent_hermes_bot#Intent;scheme=tg;package=org.telegram.messenger;S.browser_fallback_url=https%3A%2F%2Ft.me%2FCloud_agent_hermes_bot;end"
-              },
-              {
-                "id": "ai-tlg-goose",
-                "label": "AI-Tlg-Goose",
-                "icon": "ic_ai_chat",
-                "target": "intent://resolve?domain=Cloud_agent_goose_bot#Intent;scheme=tg;package=org.telegram.messenger;S.browser_fallback_url=https%3A%2F%2Ft.me%2FCloud_agent_goose_bot;end"
+                "_doc": "app:// resolves MAIN/LAUNCHER for the package and adds FLAG_ACTIVITY_NEW_TASK (see ShellActivity.handleTarget), which lands on .MainActivity — the app door, own taskAffinity, own Overview card. .HomeActivity (the launcher door) is a different task and is not reachable this way, which is the point.",
+                "id": "cloud-superapp",
+                "label": "Cloud SuperApp",
+                "icon": "ic_home_apps",
+                "target": "app://com.diegonmarcos.superapp"
               },
               {
                 "id": "ai-tmx",
-                "label": "AI-Tmx",
+                "label": "Cloud Terminal",
                 "icon": "ic_ai_sparkle",
                 "target": "app://com.termux.nix?fallback=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dcom.termux.nix"
               },
               {
                 "id": "drive",
-                "label": "IDE (Files Editor)",
+                "label": "MyIDE",
                 "icon": "ic_code",
                 "target": "extapp:cloud-ide/files"
+              },
+              {
+                "id": "ai-tlg-hermes",
+                "label": "AI Hermes",
+                "icon": "ic_ai_chat",
+                "target": "intent://resolve?domain=Cloud_agent_hermes_bot#Intent;scheme=tg;package=org.telegram.messenger;S.browser_fallback_url=https%3A%2F%2Ft.me%2FCloud_agent_hermes_bot;end"
+              },
+              {
+                "id": "ai-tlg-goose",
+                "label": "AI Goose",
+                "icon": "ic_ai_chat",
+                "target": "intent://resolve?domain=Cloud_agent_goose_bot#Intent;scheme=tg;package=org.telegram.messenger;S.browser_fallback_url=https%3A%2F%2Ft.me%2FCloud_agent_goose_bot;end"
               }
             ]
           },
