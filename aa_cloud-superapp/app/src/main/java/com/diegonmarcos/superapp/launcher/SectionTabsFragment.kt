@@ -178,6 +178,14 @@ class SectionTabsFragment : Fragment(), Collapsible {
      * not. Only if even the floor overflows does the strip become scrollable —
      * the honest last resort: nothing is hidden, it just no longer fits at once.
      *
+     * The slot is the pill's own padding and margin PLUS the padding of the
+     * TabView that TabLayout wraps every customView in. Forgetting that last
+     * term is what let the row run past the frame and get clipped: the pill was
+     * sized to fill its share exactly, then ~24dp of invisible chrome was added
+     * around it. It is zeroed and then measured, and in MODE_FIXED the final
+     * width is clamped to the slot — only MODE_SCROLLABLE may exceed one,
+     * because there the strip scrolls instead of cutting.
+     *
      * Runs in post(): the measurement needs the strip's real width, which
      * TabLayout does not have until it has laid its children out.
      */
@@ -217,6 +225,27 @@ class SectionTabsFragment : Fragment(), Collapsible {
         val minPx = MIN_SP * dm.scaledDensity
         val perTab = avail.toFloat() / n               // MODE_FIXED's share
 
+        // TabLayout wraps every customView in a TabView that carries its OWN
+        // horizontal padding — Material's default tabPaddingStart/End, 12dp a
+        // side. AppTabsStyle strips the background, the indicator and the ripple
+        // but never that, and the arithmetic below never budgeted for it: each
+        // pill was sized to fill its slot exactly, then the platform added ~24dp
+        // of invisible chrome around it, so the row overran the strip and the
+        // frame clipped the boxes.
+        //
+        // The pill supplies every bit of padding the eye can see, so the chrome
+        // is pure waste — zero it. Then read back what is actually left, because
+        // a re-applied style would otherwise put us straight back into overflow
+        // without changing a line of this file.
+        val tabViews = pills.map { it.parent as? View }
+        tabViews.forEach { tv -> tv?.setPadding(0, tv.paddingTop, 0, tv.paddingBottom) }
+        val chrome = (tabViews.maxOfOrNull { (it?.paddingStart ?: 0) + (it?.paddingEnd ?: 0) } ?: 0).toFloat()
+
+        // Width left for TEXT once the pill's own padding, its margin and any
+        // surviving chrome are paid for.
+        val budget = perTab - padPx - marginPx - chrome
+        if (budget <= 0f) return
+
         // The labels are MONOSPACE (AppTabsStyle.makePill), so one character
         // width describes every string and the arithmetic below is exact rather
         // than a guess about the widest glyph.
@@ -238,22 +267,25 @@ class SectionTabsFragment : Fragment(), Collapsible {
         var sizePx = labels[0].textSize
         var chars = longest
         while (true) {
-            val w = chars * charWidth(sizePx) + padPx + marginPx
-            if (w <= perTab) break
+            if (chars * charWidth(sizePx) <= budget) break
             if (sizePx > minPx) { sizePx -= dm.density; continue }   // font first
             // At the floor: keep the box and drop characters, but never below
             // the guarantee. +1 pays for the ellipsis so MIN_CHARS stay READABLE
             // rather than MIN_CHARS-1 plus a dot.
-            val fits = ((perTab - padPx - marginPx) / charWidth(sizePx)).toInt()
-            chars = maxOf(MIN_CHARS + 1, fits)
+            chars = maxOf(MIN_CHARS + 1, (budget / charWidth(sizePx)).toInt())
             break
         }
 
         val pillPx = chars * charWidth(sizePx) + padPx
-        val overflows = pillPx + marginPx > perTab
+        val overflows = pillPx + marginPx + chrome > perTab
         tabs.tabMode = if (overflows) TabLayout.MODE_SCROLLABLE else TabLayout.MODE_FIXED
 
-        val width = pillPx.toInt()
+        // In FIXED mode the slot is hard: a pill wider than its share is not
+        // "slightly too big", it is the row running past the frame and getting
+        // cut. Clamp. Only the SCROLLABLE branch is allowed to exceed a slot,
+        // because there the strip scrolls instead of clipping.
+        val width = if (overflows) pillPx.toInt()
+                    else minOf(pillPx, perTab - marginPx - chrome).toInt()
         for (i in 0 until n) {
             labels[i].setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, sizePx)
             labels[i].isSingleLine = true
