@@ -73,6 +73,10 @@ class PermissionsFragment : Fragment() {
 
     private fun ctxAny(): Context = requireContext()
 
+    /** Reference to the pairing "IP" field so the self-created WiFi engines can
+     *  auto-fill the phone's own address on that network (group-owner IP). */
+    private var hostField: android.widget.EditText? = null
+
     companion object {
         fun newInstance() = PermissionsFragment()
         private val DARK_VIOLET = 0xFF4C1D95.toInt()
@@ -131,6 +135,7 @@ class PermissionsFragment : Fragment() {
         col.addView(small(ctx, "Privileged plane — " + (plane?.let { "connected via ${it.name()}" } ?: "NOT connected") +
             ". Pair ONCE: phone Settings → Developer options → Wireless debugging → 'Pair device with pairing code', copy IP:port + code here. After that every boot/launch reconnects and self-grants the list above."))
         val hostIn = android.widget.EditText(ctx).apply { hint = "IP (e.g. 10.0.0.9)"; textSize = 13f }
+        hostField = hostIn
         val portIn = android.widget.EditText(ctx).apply { hint = "pair port"; inputType = android.text.InputType.TYPE_CLASS_NUMBER; textSize = 13f }
         val codeIn = android.widget.EditText(ctx).apply { hint = "6-digit code"; inputType = android.text.InputType.TYPE_CLASS_NUMBER; textSize = 13f }
         col.addView(LinearLayout(ctx).apply {
@@ -301,8 +306,14 @@ class PermissionsFragment : Fragment() {
             val activity = activity ?: return@start
             activity.runOnUiThread {
                 when (status) {
-                    is LocalHotspot.Status.Active -> Toast.makeText(ctxAny(),
-                        "Local WiFi up — SSID: ${status.ssid}  ·  password: ${status.passphrase}", Toast.LENGTH_LONG).show()
+                    is LocalHotspot.Status.Active -> {
+                        // Local-only hotspot: the phone's AP address is conventionally
+                        // 192.168.43.1 — auto-fill it so the pairing host is set.
+                        hostField?.setText("192.168.43.1")
+                        enableWirelessDebuggingIfPermitted()
+                        Toast.makeText(ctxAny(),
+                            "Local WiFi up — SSID: ${status.ssid} · pass: ${status.passphrase}. Now: Wireless debugging → Pair with code → type the code above → ③ Connect.", Toast.LENGTH_LONG).show()
+                    }
                     is LocalHotspot.Status.Failed -> Toast.makeText(ctxAny(),
                         "Couldn't create local WiFi (${status.reason}). Some devices (e.g. certain " +
                         "Samsung builds) refuse Wireless Debugging while a local hotspot is active — " +
@@ -350,9 +361,19 @@ class PermissionsFragment : Fragment() {
             val activity = activity ?: return@start
             activity.runOnUiThread {
                 when (status) {
-                    is WifiDirect.Status.Active -> Toast.makeText(ctxAny(),
-                        "WiFi Direct up — SSID: ${status.ssid}  ·  password: ${status.passphrase}" +
-                        (status.ownerIp?.let { "  ·  owner IP: $it" } ?: ""), Toast.LENGTH_LONG).show()
+                    is WifiDirect.Status.Active -> {
+                        // AUTO-COPY the group-owner IP into the pairing host field so
+                        // "Pair"/"Connect" work without retyping it — the Wireless
+                        // Debugging dialog shows this same IP (192.168.49.1). Then
+                        // enable Wireless Debugging (if we hold WRITE_SECURE_SETTINGS)
+                        // and open the pairing page: only the 6-digit code is left.
+                        status.ownerIp?.let { hostField?.setText(it) }
+                        enableWirelessDebuggingIfPermitted()
+                        Toast.makeText(ctxAny(),
+                            "WiFi Direct up (host ${status.ownerIp ?: "?"} auto-filled). Now: Wireless debugging → Pair with code → type the 6-digit code above → ③ Connect.",
+                            Toast.LENGTH_LONG).show()
+                        openWirelessDebuggingSettings()
+                    }
                     is WifiDirect.Status.Failed -> Toast.makeText(ctxAny(),
                         "Couldn't create WiFi Direct group (${status.reason}).", Toast.LENGTH_LONG).show()
                     WifiDirect.Status.Idle -> {}
@@ -366,6 +387,16 @@ class PermissionsFragment : Fragment() {
 
     /** Deep-link to Developer options (where Wireless Debugging + its pairing
      *  dialog live). The OS toggle has no app API — this is the closest jump. */
+    /** If we already hold WRITE_SECURE_SETTINGS (granted once by the plane),
+     *  flip adb_wifi_enabled=1 so Wireless Debugging comes up without the user
+     *  toggling it. No-op (silent) otherwise — the user enables it by hand. */
+    private fun enableWirelessDebuggingIfPermitted() = runCatching {
+        if (ctxAny().checkSelfPermission(android.Manifest.permission.WRITE_SECURE_SETTINGS)
+                == PackageManager.PERMISSION_GRANTED) {
+            android.provider.Settings.Global.putInt(ctxAny().contentResolver, "adb_wifi_enabled", 1)
+        }
+    }.let { }
+
     private fun openWirelessDebuggingSettings() {
         val dev = android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
         if (dev.resolveActivity(ctxAny().packageManager) != null) runCatching { startActivity(dev) }
