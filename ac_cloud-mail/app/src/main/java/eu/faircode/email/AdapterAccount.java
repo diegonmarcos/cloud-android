@@ -536,18 +536,29 @@ public class AdapterAccount extends RecyclerView.Adapter<AdapterAccount.ViewHold
                 int pos = getAdapterPosition();
                 TupleAccountFolder account = (pos == RecyclerView.NO_POSITION ? null : items.get(pos));
                 if (account != null && account.tbd == null) {
-                    if (owner.getLifecycle().getCurrentState().isAtLeast(Lifecycle.State.STARTED))
-                        parentFragment.getParentFragmentManager().popBackStack("logs", FragmentManager.POP_BACK_STACK_INCLUSIVE);
+                    // Only ActivitySetup hosts R.id.content_frame. When the card is shown
+                    // in ActivityView (settings==false, e.g. the nav drawer) that container
+                    // does not exist, so a direct transaction crashes with
+                    // "No view found for id content_frame for fragment FragmentLogs".
+                    // Route through ActivitySetup (target=log) in that case instead.
+                    if (settings) {
+                        if (owner.getLifecycle().getCurrentState().isAtLeast(Lifecycle.State.STARTED))
+                            parentFragment.getParentFragmentManager().popBackStack("logs", FragmentManager.POP_BACK_STACK_INCLUSIVE);
 
-                    Bundle args = new Bundle();
-                    args.putLong("account", account.id);
+                        Bundle args = new Bundle();
+                        args.putLong("account", account.id);
 
-                    Fragment fragment = new FragmentLogs();
-                    fragment.setArguments(args);
+                        Fragment fragment = new FragmentLogs();
+                        fragment.setArguments(args);
 
-                    FragmentTransaction fragmentTransaction = parentFragment.getParentFragmentManager().beginTransaction();
-                    fragmentTransaction.replace(R.id.content_frame, fragment).addToBackStack("logs");
-                    fragmentTransaction.commit();
+                        FragmentTransaction fragmentTransaction = parentFragment.getParentFragmentManager().beginTransaction();
+                        fragmentTransaction.replace(R.id.content_frame, fragment).addToBackStack("logs");
+                        fragmentTransaction.commit();
+                    } else {
+                        parentFragment.startActivity(new Intent(context, ActivitySetup.class)
+                                .putExtra("target", "log")
+                                .putExtra("id", account.id));
+                    }
                 }
                 return;
             }
@@ -943,18 +954,27 @@ public class AdapterAccount extends RecyclerView.Adapter<AdapterAccount.ViewHold
                 }
 
                 private void onActionLog() {
-                    if (owner.getLifecycle().getCurrentState().isAtLeast(Lifecycle.State.STARTED))
-                        parentFragment.getParentFragmentManager().popBackStack("logs", FragmentManager.POP_BACK_STACK_INCLUSIVE);
+                    // See btnLog above: R.id.content_frame only exists in ActivitySetup.
+                    // From ActivityView (settings==false) route through ActivitySetup instead
+                    // of crashing with "No view found for id content_frame".
+                    if (settings) {
+                        if (owner.getLifecycle().getCurrentState().isAtLeast(Lifecycle.State.STARTED))
+                            parentFragment.getParentFragmentManager().popBackStack("logs", FragmentManager.POP_BACK_STACK_INCLUSIVE);
 
-                    Bundle args = new Bundle();
-                    args.putLong("account", account.id);
+                        Bundle args = new Bundle();
+                        args.putLong("account", account.id);
 
-                    Fragment fragment = new FragmentLogs();
-                    fragment.setArguments(args);
+                        Fragment fragment = new FragmentLogs();
+                        fragment.setArguments(args);
 
-                    FragmentTransaction fragmentTransaction = parentFragment.getParentFragmentManager().beginTransaction();
-                    fragmentTransaction.replace(R.id.content_frame, fragment).addToBackStack("logs");
-                    fragmentTransaction.commit();
+                        FragmentTransaction fragmentTransaction = parentFragment.getParentFragmentManager().beginTransaction();
+                        fragmentTransaction.replace(R.id.content_frame, fragment).addToBackStack("logs");
+                        fragmentTransaction.commit();
+                    } else {
+                        context.startActivity(new Intent(context, ActivitySetup.class)
+                                .putExtra("target", "log")
+                                .putExtra("id", account.id));
+                    }
                 }
 
                 private void onActionSettings() {

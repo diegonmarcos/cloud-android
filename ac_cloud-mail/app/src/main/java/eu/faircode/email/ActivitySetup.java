@@ -287,6 +287,18 @@ public class ActivitySetup extends ActivityBase implements FragmentManager.OnBac
                 onGmail(intent);
             else if ("oauth".equals(target))
                 onOAuth(intent);
+            else if ("log".equals(target)) {
+                // Per-account log opened from an account card shown outside Settings
+                // (ActivityView has no content_frame). ActivitySetup does, so show it here.
+                Bundle largs = new Bundle();
+                if (id > 0)
+                    largs.putLong("account", id);
+                FragmentLogs fragment = new FragmentLogs();
+                fragment.setArguments(largs);
+                getSupportFragmentManager().beginTransaction()
+                        .replace(R.id.content_frame, fragment).addToBackStack("logs")
+                        .commit();
+            }
             else {
                 FragmentTransaction fragmentTransaction = getSupportFragmentManager().beginTransaction();
                 if ("accounts".equals(target))
