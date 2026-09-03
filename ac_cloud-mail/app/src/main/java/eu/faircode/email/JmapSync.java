@@ -235,14 +235,15 @@ public class JmapSync {
         for (Mailbox mb : mailboxes)
             byId.put(mb.getId(), mb);
 
-        // Pre-0048 builds left setProperties()'s default synchronize=false on
-        // USER-type folders, so sieve/filter folders were provisioned but the
-        // message loop below skipped them forever (all empty in the app). New
-        // folders now sync; existing rows get a ONE-TIME repair (pref-gated per
-        // account so a user disabling a folder later is respected).
+        // "Labels, not duplicate folders": a JMAP Email is ONE object with a
+        // SET of mailboxIds. Only concrete ROLE folders (Inbox/Archive/Sent/
+        // Drafts/Trash/Junk) drive message rows now; every USER mailbox is a
+        // Sieve LABEL whose membership becomes EntityMessage.labels[] on the
+        // single primary-folder row (isSyncingType below). This is the flip of
+        // the old model, where every mailbox synced and one email filed into N
+        // mailboxes became N rows (the invalidation-storm slowness). Existing
+        // duplicate rows are collapsed once by collapseDuplicates().
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
-        String repairKey = "jmap_folder_sync_repaired." + account.id;
-        boolean repaired = prefs.getBoolean(repairKey, false);
 
         for (Mailbox mb : mailboxes) {
             String name = fullName(mb, byId);
@@ -251,7 +252,8 @@ public class JmapSync {
             if (folder == null) {
                 folder = new EntityFolder(name, type);
                 folder.account = account.id;
-                folder.synchronize = !noPhoneSync(name); // user taxonomy syncs; health probes never
+                // Only role folders sync; USER (label) + health mailboxes never.
+                folder.synchronize = isSyncingType(type) && !noPhoneSync(name);
                 folder.subscribed = true;
                 folder.poll = true; // JMAP is polled, never IDLE
                 folder.download = true;
@@ -273,10 +275,14 @@ public class JmapSync {
                 if (purged > 0)
                     EntityLog.log(context, "JMAP no-phone-sync folder=" + name + " purged=" + purged);
             } else {
-                if (!repaired && !Boolean.TRUE.equals(folder.synchronize) && !noPhoneSync(name)) {
+                // Never strand a role folder unsynced (a primary folder must
+                // always sync). USER/label folders are switched OFF once by
+                // collapseDuplicates() and then left to the user's choice.
+                if (isSyncingType(type) && !noPhoneSync(name)
+                        && !Boolean.TRUE.equals(folder.synchronize)) {
                     db.folder().setFolderSynchronize(folder.id, true);
                     folder.synchronize = true;
-                    EntityLog.log(context, "JMAP repaired sync folder=" + name);
+                    EntityLog.log(context, "JMAP enabled sync role folder=" + name);
                 }
                 // Repair the special-folder TYPE from the server role. Folders
                 // synced by pre-role builds were stored as generic USER folders,
@@ -317,9 +323,6 @@ public class JmapSync {
                     + " id=" + lf.id + " before=" + before + " purged=" + purged);
         }
 
-        if (!repaired)
-            prefs.edit().putBoolean(repairKey, true).apply();
-
         // 1b) Remove orphan placeholder folders. CommsAccounts.ensureJmapFolders
         //     bootstraps generic special folders (Sent/Trash/Junk) so the account
         //     monitor starts before the first sync, but the real server folders
@@ -343,7 +346,31 @@ public class JmapSync {
             }
         }
 
-        // 2) Messages — per synchronized folder, insert any not already stored.
+        // Folder cache (id → EntityFolder) for primary/label resolution below.
+        Map<Long, EntityFolder> folderById = buildFolderById(db, account.id);
+
+        // One-time collapse of pre-rework duplicate rows into the labels model.
+        // Idempotent + not fatal: on failure the pref stays unset so the next
+        // pass retries, and the label-aware sync still runs. Parent takes a DB
+        // volume backup before deploy regardless.
+        String reworkKey = "jmap_label_rework_0303." + account.id;
+        if (!prefs.getBoolean(reworkKey, false)) {
+            try {
+                collapseDuplicates(context, db, account, folderById);
+                prefs.edit().putBoolean(reworkKey, true).apply();
+            } catch (Throwable ex) {
+                Log.e(account.name + " JMAP label rework", ex);
+                EntityLog.log(context, "JMAP label rework failed: " + ex);
+            }
+        }
+
+        // Account-wide dedup map (uidl = JMAP Email.id → local row id), built
+        // AFTER the collapse so it reflects the single-row state. Shared and
+        // mutated across the folder passes below so an insert made while syncing
+        // one role folder is seen as "already stored" by the next.
+        Map<String, Long> accountHave = buildAccountHave(db, account.id);
+
+        // 2) Messages — per synchronized (role) folder, insert any not stored.
         String backfillKey = "comms_jmap_backfill_0064";
         boolean backfilled = prefs.getBoolean(backfillKey, false);
         // PHASE 1a: reconcile-only sweep over EVERY folder before anything
@@ -372,7 +399,8 @@ public class JmapSync {
             if (folder == null || !folder.synchronize)
                 continue;
             try {
-                syncMessages(context, account, folder, e.getValue(), jmap, false);
+                syncMessages(context, account, folder, e.getValue(), jmap,
+                        accountHave, mailboxToFolder, folderById, false);
             } catch (Throwable ex) {
                 // One folder's timeout must not abort the sweep: on a starved
                 // edge (rs.ltt.jmap's fixed ~10s call timeout, load-21 proxy)
@@ -402,7 +430,8 @@ public class JmapSync {
             if (folder == null || !folder.synchronize)
                 continue;
             try {
-                syncMessages(context, account, folder, e.getValue(), jmap);
+                syncMessages(context, account, folder, e.getValue(), jmap,
+                        accountHave, mailboxToFolder, folderById, true);
             } catch (Throwable ex) {
                 Log.w(folder.name + " sync", ex);
                 EntityLog.log(context, "JMAP " + folder.name + " sync skipped: "
@@ -434,7 +463,7 @@ public class JmapSync {
             EntityFolder folder = db.folder().getFolder(e.getKey());
             if (folder == null || !folder.synchronize)
                 continue;
-            processOperations(context, account, folder, e.getValue(), mailboxToFolder, jmap);
+            processOperations(context, account, folder, e.getValue(), mailboxToFolder, folderById, jmap);
         }
     }
 
@@ -525,37 +554,38 @@ public class JmapSync {
         }
     }
 
-    private static void syncMessages(Context context, EntityAccount account,
-                                     EntityFolder folder, String mailboxId, JmapService jmap) throws Exception {
-        syncMessages(context, account, folder, mailboxId, jmap, true);
-    }
-
-    // [insertNew]=false is the reconcile-only mode: keywords + removals on
-    // EXISTING rows, no inserts. Phase 1a below runs it across every folder
-    // first because that is the entirety of what the user SEES (stale unread
-    // mirrors dying, read state converging); inserting a state-axis view's
-    // thousands of new mirror rows (Cb Read after the 2026-09-02 view
-    // widening) is invisible bulk work that was starving it at ~30s/row under
-    // list-query contention.
+    // [insertNew]=false is the reconcile-only mode: keywords + labels + removals
+    // on EXISTING rows, no inserts. Phase 1a below runs it across every role
+    // folder first because that is the entirety of what the user SEES (read
+    // state converging, label chips updating); inserting new rows is invisible
+    // bulk work that was starving it under list-query contention.
+    //
+    // "Labels, not duplicate folders": [accountHave] is the ACCOUNT-WIDE
+    // uidl→row map (shared/mutated across folders this pass), so an email filed
+    // into several mailboxes is stored ONCE. Its row lives in the PRIMARY
+    // mailbox (highest role priority via primaryFolder); every other mailbox is
+    // a label. [folder]/[mailboxId] is only the mailbox being read this call.
     private static void syncMessages(Context context, EntityAccount account,
                                      EntityFolder folder, String mailboxId, JmapService jmap,
+                                     Map<String, Long> accountHave,
+                                     Map<String, Long> mailboxToFolder,
+                                     Map<Long, EntityFolder> folderById,
                                      boolean insertNew) throws Exception {
         DB db = DB.getInstance(context);
 
-        // Existing server ids already stored (uidl = JMAP Email.id) → local row id.
-        Map<String, Long> have = new HashMap<>();
+        // Rows whose HOME folder is this one -- used only by the removal pass.
+        Map<String, Long> haveFolder = new HashMap<>();
         for (TupleUidl u : db.message().getUidls(folder.id))
             if (u.uidl != null)
-                have.put(u.uidl, u.id);
+                haveFolder.put(u.uidl, u.id);
 
         List<Email> emails = jmap.getFolderMessages(mailboxId, SYNC_LIMIT);
-        EntityLog.log(context, "JMAP " + folder.name + ": server=" + emails.size() + " stored=" + have.size());
+        EntityLog.log(context, "JMAP " + folder.name + ": server=" + emails.size()
+                + " home=" + haveFolder.size() + " acct=" + accountHave.size());
 
         // A Stalwart JMAP mailbox is a server-recomputed VIEW, not a mutable
-        // IMAP folder -- this pass must mirror both directions: new mail
-        // inserted, removed mail deleted, and already-stored keyword changes
-        // (read elsewhere) applied. The IMAP path does the same three things
-        // in Core.onSynchronizeMessages; JMAP had only ever done the first.
+        // IMAP folder -- this pass mirrors both directions: new mail inserted,
+        // removed mail deleted, already-stored keyword/label changes applied.
         Set<String> serverIds = new HashSet<>();
         int inserted = 0;
         boolean capLogged = false;
@@ -570,11 +600,11 @@ public class JmapSync {
             if (!serverIds.add(email.getId()))
                 continue;
 
-            Long localId = have.get(email.getId());
+            Long localId = accountHave.get(email.getId());
             if (localId != null) {
-                // 1b) Intersection: pull the server's keyword state onto the
-                // already-stored row (see reconcileKeywords).
-                reconcileKeywords(db, folder, localId, email);
+                // Intersection: pull the server's keyword + mailbox (label)
+                // state onto the already-stored row (see reconcileKeywords).
+                reconcileKeywords(db, localId, email, mailboxToFolder, folderById);
                 continue;
             }
 
@@ -591,48 +621,69 @@ public class JmapSync {
             }
             inserted++;
 
-            EntityMessage message = buildMessage(account, folder, email);
+            // The row homes to the email's PRIMARY mailbox, not necessarily the
+            // folder being read (an email in Inbox+Archive discovered while
+            // syncing Archive still homes to Inbox); the rest become labels.
+            Long primaryId = primaryFolder(email, mailboxToFolder, folderById);
+            EntityFolder primary = (primaryId == null ? null : folderById.get(primaryId));
+            if (primary == null)
+                primary = folder; // fallback: this mailbox is the only home
+            String[] labels = labelsFor(email, primary.name, mailboxToFolder, folderById);
+
+            EntityMessage message = buildMessage(account, primary, email, labels);
             try {
                 db.beginTransaction();
                 message.notifying = EntityMessage.NOTIFYING_IGNORE;
                 message.id = db.message().insertMessage(message);
                 db.setTransactionSuccessful();
-                EntityLog.log(context, "JMAP added " + folder.name + " id=" + message.id + " uidl=" + message.uidl);
+                EntityLog.log(context, "JMAP added " + primary.name + " id=" + message.id
+                        + " uidl=" + message.uidl
+                        + (labels == null ? "" : " labels=" + TextUtils.join(",", labels)));
             } finally {
                 db.endTransaction();
             }
+            // Seen by the next role folder this pass so it dedups instead of
+            // inserting a second row.
+            accountHave.put(email.getId(), message.id);
             // Defer body to a BODY operation so the list populates fast.
             EntityOperation.queue(context, message, EntityOperation.BODY);
         }
 
-        // 1a) stored − server: the message left this view. Only trustworthy
-        // when the server call returned the folder's COMPLETE membership --
-        // getFolderMessages() is capped at SYNC_LIMIT, so a full folder would
-        // otherwise look like every message past the cap "left" the folder.
-        // This deletes the row for THIS folder only; the row is a view mirror,
-        // the underlying mail still exists via its other folder row(s).
+        // home − server: a row homed in THIS folder that left this mailbox. Only
+        // trustworthy on a COMPLETE result (< SYNC_LIMIT). Because dedup is
+        // account-wide we only ever hold rows homed here, so a message that
+        // merely dropped a LABEL (its home mailbox still lists it) is untouched;
+        // a message that truly left (moved to another role folder, or deleted)
+        // is removed here and, if it moved, re-inserted under its new home.
         boolean complete = emails.size() < SYNC_LIMIT;
         if (complete) {
             int removed = 0;
-            for (Map.Entry<String, Long> e : have.entrySet())
+            for (Map.Entry<String, Long> e : haveFolder.entrySet())
                 if (!serverIds.contains(e.getKey())) {
                     db.message().deleteMessage(e.getValue());
+                    accountHave.remove(e.getKey());
                     removed++;
                 }
             if (removed > 0)
-                EntityLog.log(context, "JMAP " + folder.name + ": removed=" + removed + " (left view)");
+                EntityLog.log(context, "JMAP " + folder.name + ": removed=" + removed + " (left mailbox)");
         } else {
             EntityLog.log(context, "JMAP " + folder.name +
                     ": server result capped at SYNC_LIMIT=" + SYNC_LIMIT + ", skipping removal reconcile");
         }
     }
 
-    // 1b) Apply the server's $seen/$flagged keywords to an already-stored row,
-    // but only when no pending local operation would fight it -- same guard
-    // shape as the IMAP sync (Core.java ~5207 for SEEN, ~5227 for FLAG): a
-    // queued SEEN/FLAG op means the user changed it HERE and the change has
-    // not reached the server yet, so the server's answer is stale, not wrong.
-    private static void reconcileKeywords(DB db, EntityFolder folder, long messageId, Email email) {
+    // Apply the server's $seen/$flagged keywords AND its mailbox membership
+    // (labels) to an already-stored row. Seen/flagged are guarded by any pending
+    // local operation that would fight them -- same guard shape as the IMAP sync
+    // (Core.java ~5207 for SEEN, ~5227 for FLAG): a queued SEEN/FLAG op means the
+    // user changed it HERE and the change has not reached the server yet, so the
+    // server's answer is stale, not wrong. The guard uses the row's HOME folder
+    // (message.folder), where such ops are queued. Labels are server-
+    // authoritative (a Sieve rule adds/removes a mailbox at any time; the app has
+    // no per-label pending op), so they are mirrored unconditionally.
+    private static void reconcileKeywords(DB db, long messageId, Email email,
+                                          Map<String, Long> mailboxToFolder,
+                                          Map<Long, EntityFolder> folderById) {
         EntityMessage message = db.message().getMessage(messageId);
         if (message == null)
             return;
@@ -642,21 +693,30 @@ public class JmapSync {
         boolean flagged = hasKeyword(kw, Keyword.FLAGGED);
 
         if (!message.seen.equals(seen) &&
-                db.operation().getOperationCount(folder.id, message.id, EntityOperation.SEEN) == 0) {
+                db.operation().getOperationCount(message.folder, message.id, EntityOperation.SEEN) == 0) {
             db.message().setMessageSeen(message.id, seen);
             db.message().setMessageUiSeen(message.id, seen);
         }
 
         if (!message.flagged.equals(flagged) &&
-                db.operation().getOperationCount(folder.id, message.id, EntityOperation.FLAG) == 0) {
+                db.operation().getOperationCount(message.folder, message.id, EntityOperation.FLAG) == 0) {
             db.message().setMessageFlagged(message.id, flagged);
             db.message().setMessageUiFlagged(message.id, flagged, flagged ? message.color : null);
         }
+
+        // Labels = the email's OTHER mailbox memberships (Gmail labels[] reuse).
+        EntityFolder home = folderById.get(message.folder);
+        String[] labels = labelsFor(email, (home == null ? null : home.name),
+                mailboxToFolder, folderById);
+        if (!Helper.equal(message.labels, labels))
+            db.message().setMessageLabels(message.id, DB.Converters.fromStringArray(labels));
     }
 
     // Build an EntityMessage from a JMAP Email header. Server-id → uidl (POP
     // analog); keywords → seen/flagged/answered; threadId is used verbatim.
-    private static EntityMessage buildMessage(EntityAccount account, EntityFolder folder, Email email) {
+    // [folder] is the email's PRIMARY mailbox; [labels] its other memberships.
+    private static EntityMessage buildMessage(EntityAccount account, EntityFolder folder,
+                                              Email email, String[] labels) {
         EntityMessage m = new EntityMessage();
         m.account = account.id;
         m.folder = folder.id;
@@ -664,15 +724,13 @@ public class JmapSync {
         m.uidl = email.getId();       // stable server id for dedup
         // A JMAP Email is ONE object with a set of mailboxIds -- a Sieve
         // `fileinto :copy` adds a mailbox to that set, it does not copy the
-        // mail. But this sync stores one row per (folder, email), so an email
-        // filed into 6 folders becomes 6 rows and the conversation view showed
-        // it 6 times.
-        //
-        // FragmentMessages.markDuplicates keys on message.hash (msgid only
-        // when the dup_msgids pref is on), and this path never set hash --
-        // null key means "skip", so nothing was ever collapsed. Email.id is
-        // identical across every mailbox holding the email and unique per
-        // email, which is exactly what that key wants.
+        // mail. This row lives in the PRIMARY mailbox; the other memberships
+        // ride along as labels[] (the Gmail label machinery), so an email filed
+        // into N mailboxes is ONE row with N-1 label chips, not N rows.
+        m.labels = labels;
+        // hash stays keyed on Email.id (identical across every mailbox holding
+        // the email) so any residual duplicate collapses in the conversation
+        // view via FragmentMessages.markDuplicates.
         m.hash = "jmap:" + email.getId();
         m.msgid = firstOrGen(email.getMessageId());
         m.references = join(email.getReferences());
@@ -772,6 +830,7 @@ public class JmapSync {
     // ── Operations (batch 6): map queued EntityOperations to Email/set ────────
     private static void processOperations(Context context, EntityAccount account, EntityFolder folder,
                                           String mailboxId, Map<String, Long> mailboxToFolder,
+                                          Map<Long, EntityFolder> folderById,
                                           JmapService jmap) throws Exception {
         DB db = DB.getInstance(context);
         List<EntityOperation> ops = db.operation().getOperationsByFolder(folder.id);
@@ -813,8 +872,10 @@ public class JmapSync {
                     case EntityOperation.SYNC:
                         // A queued SYNC just means "sync this folder now" instead
                         // of waiting for the next poll -- run the same pass run()
-                        // does per folder.
-                        syncMessages(context, account, folder, mailboxId, jmap);
+                        // does per folder. Account-wide dedup map rebuilt here
+                        // (an ad-hoc SYNC is rare, off the poll's shared map).
+                        syncMessages(context, account, folder, mailboxId, jmap,
+                                buildAccountHave(db, account.id), mailboxToFolder, folderById, true);
                         break;
                     case EntityOperation.KEYWORD:
                         if (ids != null) {
@@ -880,6 +941,206 @@ public class JmapSync {
             } catch (Throwable ignored) {
             }
         }
+    }
+
+    // ── labels model helpers ────────────────────────────────────────────────
+    // A mailbox drives message rows only when it is a concrete ROLE folder.
+    // Every USER (label) + SYSTEM mailbox becomes labels[] on the primary row.
+    private static boolean isSyncingType(String type) {
+        return EntityFolder.INBOX.equals(type)
+                || EntityFolder.ARCHIVE.equals(type)
+                || EntityFolder.SENT.equals(type)
+                || EntityFolder.DRAFTS.equals(type)
+                || EntityFolder.JUNK.equals(type)
+                || EntityFolder.TRASH.equals(type);
+    }
+
+    // Role priority for choosing an email's PRIMARY folder among the mailboxes
+    // it is filed into (lower = higher priority): INBOX > ARCHIVE(All) > SENT >
+    // DRAFTS > TRASH > JUNK > USER > other.
+    private static int folderPriority(String type) {
+        if (EntityFolder.INBOX.equals(type)) return 0;
+        if (EntityFolder.ARCHIVE.equals(type)) return 1;
+        if (EntityFolder.SENT.equals(type)) return 2;
+        if (EntityFolder.DRAFTS.equals(type)) return 3;
+        if (EntityFolder.TRASH.equals(type)) return 4;
+        if (EntityFolder.JUNK.equals(type)) return 5;
+        if (EntityFolder.USER.equals(type)) return 6;
+        return 7;
+    }
+
+    // The folder id of the email's primary mailbox (highest role priority among
+    // the mailboxes it is filed into that map to a local, non-health folder).
+    // null when none qualify (caller falls back to the mailbox being read).
+    private static Long primaryFolder(Email email, Map<String, Long> mailboxToFolder,
+                                      Map<Long, EntityFolder> folderById) {
+        Map<String, Boolean> mids = email.getMailboxIds();
+        if (mids == null)
+            return null;
+        Long best = null;
+        int bestP = Integer.MAX_VALUE;
+        for (Map.Entry<String, Boolean> e : mids.entrySet()) {
+            if (!Boolean.TRUE.equals(e.getValue()))
+                continue;
+            Long fid = mailboxToFolder.get(e.getKey());
+            if (fid == null)
+                continue;
+            EntityFolder f = folderById.get(fid);
+            if (f == null || noPhoneSync(f.name))
+                continue;
+            int p = folderPriority(f.type);
+            // Tie-break on folder id for a deterministic, stable choice.
+            if (p < bestP || (p == bestP && best != null && fid < best)) {
+                bestP = p;
+                best = fid;
+            }
+        }
+        return best;
+    }
+
+    // The email's OTHER mailbox memberships as label display-names (the Gmail
+    // labels[] reuse: AdapterMessage.getLabels renders these as chips,
+    // TupleMessageEx.resolveLabelColors colours them from label.color.<name>).
+    // The primary folder's own name is excluded (that is the row's home, not a
+    // label), as are health-probe mailboxes. Sorted so the order-sensitive
+    // Helper.equal reconcile is a no-op when membership is unchanged.
+    private static String[] labelsFor(Email email, String primaryName,
+                                      Map<String, Long> mailboxToFolder,
+                                      Map<Long, EntityFolder> folderById) {
+        Map<String, Boolean> mids = email.getMailboxIds();
+        if (mids == null)
+            return null;
+        List<String> out = new ArrayList<>();
+        for (Map.Entry<String, Boolean> e : mids.entrySet()) {
+            if (!Boolean.TRUE.equals(e.getValue()))
+                continue;
+            Long fid = mailboxToFolder.get(e.getKey());
+            if (fid == null)
+                continue;
+            EntityFolder f = folderById.get(fid);
+            if (f == null || f.name == null || noPhoneSync(f.name))
+                continue;
+            if (f.name.equals(primaryName))
+                continue;
+            if (!out.contains(f.name))
+                out.add(f.name);
+        }
+        if (out.isEmpty())
+            return null;
+        Collections.sort(out);
+        return out.toArray(new String[0]);
+    }
+
+    // id → EntityFolder for every folder of the account.
+    private static Map<Long, EntityFolder> buildFolderById(DB db, long account) {
+        Map<Long, EntityFolder> m = new HashMap<>();
+        for (EntityFolder f : db.folder().getFolders(account, false, false))
+            if (f != null)
+                m.put(f.id, f);
+        return m;
+    }
+
+    // Account-wide uidl (JMAP Email.id) → local row id. First writer wins so a
+    // (post-collapse) residual duplicate does not overwrite the kept row.
+    private static Map<String, Long> buildAccountHave(DB db, long account) {
+        Map<String, Long> have = new HashMap<>();
+        for (EntityFolder f : db.folder().getFolders(account, false, false))
+            for (TupleUidl u : db.message().getUidls(f.id))
+                if (u.uidl != null && !have.containsKey(u.uidl))
+                    have.put(u.uidl, u.id);
+        return have;
+    }
+
+    // One-time migration to the "labels, not duplicate folders" model. Before
+    // this build a JMAP email filed into N mailboxes was stored as N rows (one
+    // per folder) -- 51,955 rows for 17,632 threads on device, the root of the
+    // RoomTrackingLiveData invalidation storm ("extremely slow"). For each set
+    // of duplicate rows keep the single PRIMARY-folder row, fold the other rows'
+    // folder names into its labels[], and delete the duplicates; switch every
+    // USER/label + SYSTEM/health mailbox to synchronize=false so nothing
+    // re-inflates them.
+    //
+    // Safe + idempotent: Stalwart stays the source of truth, the kept row keeps
+    // its ui_seen/ui_flagged, deleteMessage() cascades the dup rows'
+    // operations/attachments (FK ON DELETE CASCADE), and after a run every uidl
+    // has one row so a re-run (or a reset pref, or a crash-resumed partial run)
+    // is a no-op. Per-row deletes (not one giant transaction) so a mid-run crash
+    // keeps its progress. Parent takes a DB volume backup before deploy anyway.
+    private static void collapseDuplicates(Context context, DB db, EntityAccount account,
+                                           Map<Long, EntityFolder> folderById) {
+        // 1) De-sync everything that is not a role folder.
+        for (EntityFolder f : folderById.values()) {
+            boolean shouldSync = isSyncingType(f.type) && !noPhoneSync(f.name);
+            if (!shouldSync && Boolean.TRUE.equals(f.synchronize)) {
+                db.folder().setFolderSynchronize(f.id, false);
+                f.synchronize = false;
+                EntityLog.log(context, "JMAP label rework: desync folder=" + f.name + " type=" + f.type);
+            }
+        }
+
+        // 2) Group every stored row by uidl (account-wide) → list of {msgId, folderId}.
+        Map<String, List<long[]>> byUidl = new HashMap<>();
+        for (EntityFolder f : folderById.values())
+            for (TupleUidl u : db.message().getUidls(f.id))
+                if (u.uidl != null) {
+                    List<long[]> l = byUidl.get(u.uidl);
+                    if (l == null) {
+                        l = new ArrayList<>();
+                        byUidl.put(u.uidl, l);
+                    }
+                    l.add(new long[]{u.id, f.id});
+                }
+
+        int collapsed = 0, dropped = 0;
+        for (Map.Entry<String, List<long[]>> e : byUidl.entrySet()) {
+            List<long[]> rows = e.getValue();
+            if (rows.size() < 2)
+                continue;
+
+            // Primary = row in the highest-priority folder; tie-break lowest
+            // msgId for a deterministic (idempotent) choice across re-runs.
+            long[] primary = null;
+            int bestP = Integer.MAX_VALUE;
+            for (long[] r : rows) {
+                EntityFolder f = folderById.get(r[1]);
+                int p = folderPriority(f == null ? null : f.type);
+                if (p < bestP || (p == bestP && (primary == null || r[0] < primary[0]))) {
+                    bestP = p;
+                    primary = r;
+                }
+            }
+            EntityFolder primaryFolder = folderById.get(primary[1]);
+            String primaryName = (primaryFolder == null ? null : primaryFolder.name);
+
+            EntityMessage pm = db.message().getMessage(primary[0]);
+            if (pm == null)
+                continue;
+
+            // Fold the other rows' folder names into labels[] (union with any
+            // labels already present) then delete the duplicate rows.
+            List<String> labels = new ArrayList<>();
+            if (pm.labels != null)
+                for (String s : pm.labels)
+                    if (s != null && !labels.contains(s))
+                        labels.add(s);
+            for (long[] r : rows) {
+                if (r == primary)
+                    continue;
+                EntityFolder f = folderById.get(r[1]);
+                if (f != null && f.name != null && !noPhoneSync(f.name)
+                        && !f.name.equals(primaryName) && !labels.contains(f.name))
+                    labels.add(f.name);
+                db.message().deleteMessage(r[0]);
+                dropped++;
+            }
+            Collections.sort(labels);
+            String[] arr = (labels.isEmpty() ? null : labels.toArray(new String[0]));
+            if (!Helper.equal(pm.labels, arr))
+                db.message().setMessageLabels(pm.id, DB.Converters.fromStringArray(arr));
+            collapsed++;
+        }
+        EntityLog.log(context, "JMAP label rework: collapsed=" + collapsed + " dropped=" + dropped
+                + " account=" + account.name);
     }
 
     // ── helpers ───────────────────────────────────────────────────────────────

@@ -3046,6 +3046,13 @@ class Core {
                             }
                         }
 
+                        // comms: never sync the shared Stalwart health-probe tree
+                        // (Cloud-Infra/Health/*, thousands of "memPSI=42%" rows)
+                        // onto a phone. Mirrors JmapSync.noPhoneSync on the IMAP
+                        // side; the account otherwise behaves unchanged.
+                        if (JmapSync.noPhoneSync(folder.name))
+                            folder.synchronize = false;
+
                         folder.id = db.folder().insertFolder(folder);
                         Log.i(folder.name + " added type=" + folder.type + " sync=" + folder.synchronize);
                         if (folder.synchronize)
@@ -3078,6 +3085,11 @@ class Core {
                                 db.folder().setFolderType(folder.id, type);
                         }
                         db.folder().setFolderSubtype(folder.id, subtype);
+
+                        // comms: retro-guard an existing health-probe folder so
+                        // it stops syncing to the phone (see the new-folder branch).
+                        if (JmapSync.noPhoneSync(folder.name) && Boolean.TRUE.equals(folder.synchronize))
+                            db.folder().setFolderSynchronize(folder.id, false);
                     }
 
                     db.setTransactionSuccessful();
