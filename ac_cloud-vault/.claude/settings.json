@@ -10,5 +10,13 @@
         "repo": "bitwarden/ai-plugins"
       }
     }
-  }
+  },
+  "alwaysThinkingEnabled": true,
+  "env": {
+    "ENABLE_TOOL_SEARCH": "auto"
+  },
+  "disabledMcpjsonServers": [
+    "cloud-services-mcp",
+    "cloud-infra-mcp"
+  ]
 }
