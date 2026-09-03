@@ -1690,13 +1690,13 @@
                 "_doc": "app:// resolves MAIN/LAUNCHER for the package and adds FLAG_ACTIVITY_NEW_TASK (see ShellActivity.handleTarget), which lands on .MainActivity — the app door, own taskAffinity, own Overview card. .HomeActivity (the launcher door) is a different task and is not reachable this way, which is the point.",
                 "id": "cloud-superapp",
                 "label": "Cloud SuperApp",
-                "icon": "ic_home_apps",
+                "icon": "ic_superapp_d",
                 "target": "app://com.diegonmarcos.superapp"
               },
               {
                 "id": "ai-tmx",
                 "label": "Cloud Terminal",
-                "icon": "ic_ai_sparkle",
+                "icon": "ic_terminal",
                 "target": "app://com.termux.nix?fallback=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dcom.termux.nix"
               },
               {

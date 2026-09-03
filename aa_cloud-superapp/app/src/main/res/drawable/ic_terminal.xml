@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Shell prompt: a ">" chevron and a caret underscore. Same 24dp grid, stroke
+     weight and tint as ic_code.xml so it sits level with the other tile icons.
+     Deliberately no window frame — at tile size a rounded rect plus an inner
+     glyph collapses into a grey blob, while ">_" still reads as a terminal. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24"
+    android:tint="?android:attr/textColorPrimary">
+    <!-- ">" — ic_code's right chevron, shifted 11.6 left to sit at the margin -->
+    <path android:fillColor="#000000"
+        android:pathData="M3,16.6l4.6,-4.6 -4.6,-4.6L4.4,6l6,6 -6,6 -1.4,-1.4z"/>
+    <!-- "_" — the prompt caret, baseline-aligned with the chevron's foot -->
+    <path android:fillColor="#000000"
+        android:pathData="M12,16.5L21,16.5L21,18.5L12,18.5Z"/>
+</vector>
