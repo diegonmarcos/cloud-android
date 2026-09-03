@@ -247,10 +247,31 @@ class PermissionsFragment : Fragment() {
             "privileged-plane", androidx.work.ExistingWorkPolicy.REPLACE,
             androidx.work.OneTimeWorkRequestBuilder<com.diegonmarcos.superapp.system.PrivilegedPlaneWorker>().build())
     }.let { }
-    /** Ensure ACCESS_FINE_LOCATION (required by the platform for
-     *  startLocalOnlyHotspot) then start the local-only hotspot. */
+    /** startLocalOnlyHotspot has THREE platform preconditions, and failing any
+     *  throws or onFailed()s with an opaque code. Check + guide the user through
+     *  each in order (measured 2026-09-03: WiFi radio off + location denied both
+     *  hit at once). Apps CANNOT enable WiFi (deprecated no-op since Android 10)
+     *  or the location toggle programmatically — deep-link to the right panel. */
     private fun requestLocalHotspot() {
-        val granted = ctxAny().checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) ==
+        val ctx = ctxAny()
+        // 1. WiFi radio ON.
+        val wifi = ctx.applicationContext.getSystemService(Context.WIFI_SERVICE) as? android.net.wifi.WifiManager
+        if (wifi?.isWifiEnabled != true) {
+            Toast.makeText(ctx, "Turn WiFi ON first, then tap again (the hotspot needs the WiFi radio up).", Toast.LENGTH_LONG).show()
+            runCatching { startActivity(android.content.Intent(android.provider.Settings.Panel.ACTION_WIFI)) }
+                .onFailure { runCatching { startActivity(android.content.Intent(android.provider.Settings.ACTION_WIFI_SETTINGS)) } }
+            return
+        }
+        // 2. Device location SERVICES ON (separate from the permission).
+        val lm = ctx.getSystemService(Context.LOCATION_SERVICE) as? android.location.LocationManager
+        val locOff = lm != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P && !lm.isLocationEnabled
+        if (locOff) {
+            Toast.makeText(ctx, "Turn Location ON, then tap again (the platform requires it for a hotspot).", Toast.LENGTH_LONG).show()
+            runCatching { startActivity(android.content.Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS)) }
+            return
+        }
+        // 3. ACCESS_FINE_LOCATION permission.
+        val granted = ctx.checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION) ==
             PackageManager.PERMISSION_GRANTED
         if (granted) startLocalHotspot()
         else hotspotLocationLauncher.launch(android.Manifest.permission.ACCESS_FINE_LOCATION)

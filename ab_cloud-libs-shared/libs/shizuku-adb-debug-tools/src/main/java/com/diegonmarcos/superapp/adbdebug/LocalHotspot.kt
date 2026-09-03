@@ -50,7 +50,15 @@ object LocalHotspot {
                 }
                 override fun onFailed(reasonCode: Int) {
                     reservation = null
-                    status = Status.Failed("startLocalOnlyHotspot failed, code=$reasonCode")
+                    // Decode the opaque platform code so the toast is actionable.
+                    val why = when (reasonCode) {
+                        ERROR_NO_CHANNEL -> "no usable WiFi channel (try toggling WiFi, or another band)"
+                        ERROR_GENERIC -> "generic error (often WiFi busy / VPN or tether conflict)"
+                        ERROR_INCOMPATIBLE_MODE -> "incompatible mode — a hotspot/tether is already active, or the OEM blocks it"
+                        ERROR_TETHERING_DISALLOWED -> "tethering is disallowed by policy/carrier on this device"
+                        else -> "code=$reasonCode"
+                    }
+                    status = Status.Failed(why)
                     onResult(status)
                 }
             }, Handler(Looper.getMainLooper()))
