@@ -1045,24 +1045,16 @@ class DevControlFragment : Fragment() {
                 }
             })
 
-            // Regenerate the bearer token. Rotates the cached value AND
-            // restarts the server so the new token is bound to the
-            // accept loop instead of the stale one captured at start().
-            it.addView(actionButton(ctx, "Regenerate API token") {
-                val fresh = prefs.resetToken()
-                // Bounce the server so the in-memory token (captured at
-                // start) is replaced by the fresh value.
-                if (DevControlServer.isRunning()) {
-                    DevControlServer.stop()
-                    DevControlServer.start(requireContext().applicationContext)
-                }
-                Toast.makeText(requireContext(),
-                    "New token: ${fresh.take(8)}…", Toast.LENGTH_SHORT).show()
-                // Re-render so the new token + restarted server status
-                // populate immediately.
-                parentFragmentManager.beginTransaction().detach(this@DevControlFragment).commitNow()
-                parentFragmentManager.beginTransaction().attach(this@DevControlFragment).commitNow()
-            })
+            // Regenerate REMOVED: the token is now declarative (BuildConfig.FLEET_TOKEN
+            // from the vault sops secret, seeded in App.onCreate). Rotating it on one
+            // device would only split the fleet from the value the MCP and every other
+            // member hold; rotation, if ever needed, is a vault secret change + rebuild.
+            //
+            // This copy of the fragment kept the button after DevControlPrefs.resetToken
+            // was deleted alongside it in :libs:devtools, which is why cloud-nav has been
+            // failing to compile since 2026-09-02 with "Unresolved reference: resetToken".
+            // Re-adding the method would have restored a per-device locally-minted token —
+            // precisely the fleet split DevControlPrefs.hasToken's own doc warns about.
         }
 
         section(ctx, column, "Curl shortcuts") {
