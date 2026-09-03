@@ -318,7 +318,14 @@ class DevControlFragment : Fragment() {
             box.addView(grantRow)
 
             box.addView(logScroll)
-            refresh()
+            // DO NOT auto-refresh on open. Any `logcat` exec by a non-shell app on
+            // Android 13+ (Samsung especially, SM-G996B) pops the system
+            // LogAccessDialogActivity, which launched OVER the About page every
+            // time it opened — the screen looked like it "would not open / crashed"
+            // (2026-09-03; no exception, a system consent dialog stealing focus).
+            // Load lazily: the user taps This App / All Apps / Refresh when they
+            // actually want logs, so merely opening About never execs logcat.
+            logView.text = "Tap “This App”, “All Apps”, or “Refresh” to load logs."
         }
     }
 
