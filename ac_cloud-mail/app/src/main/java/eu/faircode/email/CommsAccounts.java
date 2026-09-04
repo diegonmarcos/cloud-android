@@ -202,15 +202,21 @@ public class CommsAccounts {
     static long createRssFeed(DB db, String url, String title) {
         EntityAccount rss = ensureRssAccount(db);
 
+        String name = TextUtils.isEmpty(title) ? url : title;
+
         List<EntityFolder> existing = db.folder().getFolders(rss.id, false, false);
         if (existing != null)
             for (EntityFolder f : existing)
-                if (url.equals(f.feed_url))
+                // comms: the unique index is (account, name), not feed_url, so a folder
+                // that already owns this name makes the insert below throw
+                // SQLiteConstraintException -- e.g. when the seeded release feed keeps
+                // its title but its url changed. Deduplicate on both keys.
+                if (url.equals(f.feed_url) || name.equals(f.name))
                     return -1;
 
         EntityFolder folder = new EntityFolder();
         folder.account = rss.id;
-        folder.name = TextUtils.isEmpty(title) ? url : title;
+        folder.name = name;
         folder.type = EntityFolder.USER;
         folder.feed_url = url;
         folder.local = true;

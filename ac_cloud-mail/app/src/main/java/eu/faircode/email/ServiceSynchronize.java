@@ -71,6 +71,7 @@ import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.UnknownHostException;
 import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1167,6 +1168,22 @@ public class ServiceSynchronize extends ServiceBase implements SharedPreferences
                 try {
                     startForeground(NotificationHelper.NOTIFICATION_SYNCHRONIZE,
                             getNotificationService(null, null));
+                    // comms: startForeground() is mandatory here (alarms and the watchdog
+                    // start us with startForegroundService(), so skipping it risks a
+                    // ForegroundServiceDidNotStartInTimeException), but it re-posts the
+                    // notification the user swiped away -- and this runs on every single
+                    // service command, which is why the dismissal never appeared to stick.
+                    // The notification is built non-ongoing since API 33, so take it back
+                    // down immediately to honour the dismissal.
+                    if (serviceNotificationDismissed)
+                        try {
+                            NotificationManager nm =
+                                    Helper.getSystemService(this, NotificationManager.class);
+                            if (nm != null)
+                                nm.cancel(NotificationHelper.NOTIFICATION_SYNCHRONIZE);
+                        } catch (Throwable ex) {
+                            Log.w(ex);
+                        }
                     String msg = "onStartCommand" +
                             " class=" + this.getClass().getName() +
                             " action=" + action;
@@ -2867,10 +2884,22 @@ public class ServiceSynchronize extends ServiceBase implements SharedPreferences
                     }
 
                     int backoff = state.getBackoff();
+
+                    // comms: a name resolution failure is a local, transient DNS/VPN problem,
+                    // not a server refusing us, so it must never reach the hour-long alarm
+                    // back-off -- a single mesh blip would then stop synchronizing for an hour
+                    // even after connectivity is back. Cap it at the intermediate period.
+                    boolean unresolved = isUnresolvedHost(last_fail);
+                    if (unresolved && backoff > CONNECT_BACKOFF_INTERMEDIATE * 60) {
+                        backoff = CONNECT_BACKOFF_INTERMEDIATE * 60;
+                        state.setBackoff(backoff);
+                    }
+
                     int recently = (lastLost + LOST_RECENTLY < now ? 1 : 2);
                     EntityLog.log(this, EntityLog.Type.Account, account,
                             account.name + " backoff=" + backoff + "/" + max_backoff +
                                     " recently=" + recently + "x" +
+                                    " unresolved=" + unresolved +
                                     " logarithmic=" + logarithmic_backoff +
                                     " network=" + (cm == null ? null : cm.getActiveNetworkInfo()) +
                                     " ex=" + Log.formatThrowable(last_fail, false));
@@ -2898,6 +2927,11 @@ public class ServiceSynchronize extends ServiceBase implements SharedPreferences
                             b = CONNECT_BACKOFF_ALARM_MAX * 60;
                         state.setBackoff(b);
                     }
+
+                    // comms: keep the next attempt capped too, so repeated DNS failures
+                    // retry every 5 minutes instead of climbing 5 -> 15 -> 30 -> 60 minutes
+                    if (unresolved && state.getBackoff() > CONNECT_BACKOFF_INTERMEDIATE * 60)
+                        state.setBackoff(CONNECT_BACKOFF_INTERMEDIATE * 60);
 
                     Map<String, String> crumb = new HashMap<>();
                     crumb.put("account", account.name);
@@ -3179,6 +3213,47 @@ public class ServiceSynchronize extends ServiceBase implements SharedPreferences
         }
     };
 
+    // comms: javax.mail wraps the platform UnknownHostException in a MessagingException,
+    // so the whole cause chain has to be walked to recognize a name resolution failure.
+    private static boolean isUnresolvedHost(Throwable ex) {
+        for (int depth = 0; ex != null && depth < 10; depth++) {
+            if (ex instanceof UnknownHostException)
+                return true;
+            Throwable cause = ex.getCause();
+            if (cause == null && ex instanceof MessagingException)
+                cause = ((MessagingException) ex).getNextException();
+            if (cause == ex)
+                break;
+            ex = cause;
+        }
+        return false;
+    }
+
+    // comms: the active network really changed, so any pending back-off was computed
+    // against a network that no longer exists. Retry now instead of sleeping out an
+    // alarm that can be up to an hour long.
+    private void resetBackoff(final String reason) {
+        // release() yields for 200 ms per account, so never do this on the main thread
+        executorService.submit(new RunnableEx("state#backoff") {
+            @Override
+            public void delegate() {
+                // snapshot: coreStates is mutated on the main thread, and Hashtable
+                // iterators are fail-fast
+                for (Core.State state : new ArrayList<>(coreStates.values()))
+                    // an unrecoverable failure (wrong password) parks the account above the
+                    // normal ceiling on purpose -- reconnecting every 8 seconds would only
+                    // re-fire the error notification, so leave that penalty alone
+                    if (state.isBackingOff() &&
+                            state.getBackoff() <= CONNECT_BACKOFF_ALARM_MAX * 60) {
+                        state.setBackoff(CONNECT_BACKOFF_START);
+                        EntityLog.log(ServiceSynchronize.this, EntityLog.Type.Network,
+                                reason + ": reset backoff");
+                        state.release();
+                    }
+            }
+        });
+    }
+
     private void updateNetworkState(final Network network, final String reason) {
         getMainHandler().post(new RunnableEx("network") {
             @Override
@@ -3193,6 +3268,7 @@ public class ServiceSynchronize extends ServiceBase implements SharedPreferences
                             DnsHelper.clear(ServiceSynchronize.this);
                             EntityLog.log(ServiceSynchronize.this, EntityLog.Type.Network,
                                     reason + ": new active network=" + active + "/" + lastActive);
+                            ServiceSynchronize.this.resetBackoff(reason);
                         }
                     } else if (lastActive != null) {
                         if (!ConnectionHelper.isConnected(ServiceSynchronize.this, lastActive)) {
@@ -3220,6 +3296,11 @@ public class ServiceSynchronize extends ServiceBase implements SharedPreferences
                         lastSuitable = isSuitable;
                         EntityLog.log(ServiceSynchronize.this, EntityLog.Type.Network,
                                 reason + ": updated suitable=" + lastSuitable);
+
+                        // comms: capabilities changed back to usable, so stop waiting out
+                        // a back-off that was decided while the network was unusable
+                        if (isSuitable)
+                            ServiceSynchronize.this.resetBackoff(reason);
 
                         if (!isBackgroundService(ServiceSynchronize.this))
                             try {

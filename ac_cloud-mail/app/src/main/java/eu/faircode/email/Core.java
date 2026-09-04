@@ -5869,8 +5869,9 @@ class Core {
     }
 
     static class State {
-        private int backoff;
-        private boolean backingoff = false;
+        // comms: read/written from both the account thread and the main handler
+        private volatile int backoff;
+        private volatile boolean backingoff = false;
         private ConnectionHelper.NetworkState networkState;
         private Thread thread = new Thread();
         private Semaphore semaphore = new Semaphore(0);
@@ -5901,6 +5902,10 @@ class Core {
 
         int getBackoff() {
             return backoff;
+        }
+
+        boolean isBackingOff() {
+            return backingoff;
         }
 
         void runnable(Runnable runnable, String name) {
