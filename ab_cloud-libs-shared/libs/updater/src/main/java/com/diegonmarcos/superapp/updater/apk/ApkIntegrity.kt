@@ -42,4 +42,32 @@ internal object ApkIntegrity {
     fun looksLikeApk(file: File): Boolean = runCatching {
         java.util.zip.ZipFile(file).use { it.size() > 0 }
     }.getOrDefault(false)
+
+    /** Package name and versionCode read out of a candidate APK's own binary
+     *  manifest, WITHOUT installing it. null when the file cannot be parsed. */
+    class Identity(val pkg: String, val versionCode: Long) {
+        override fun toString() = "$pkg versionCode $versionCode"
+    }
+
+    /**
+     * What this APK actually claims to be.
+     *
+     * The updater used to find this out the hard way: hand the bytes to
+     * PackageInstaller and read the failure. That is how a stale artifact
+     * surfaced as the hard error "INSTALL_FAILED_VERSION_DOWNGRADE: Update
+     * version code 190 is older than current 3355358" — 190 being the old
+     * per-workflow version_code + GITHUB_RUN_NUMBER scheme, i.e. bytes from
+     * long before the wall-clock fix, offered against a live release asset
+     * that was in fact NEWER than what was installed. The candidate could
+     * have been asked directly, before committing anything.
+     */
+    fun identify(ctx: android.content.Context, file: File): Identity? = runCatching {
+        @Suppress("DEPRECATION")
+        val info = ctx.packageManager.getPackageArchiveInfo(file.absolutePath, 0) ?: return null
+        val code = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P)
+            info.longVersionCode
+        else
+            @Suppress("DEPRECATION") info.versionCode.toLong()
+        Identity(info.packageName, code)
+    }.getOrNull()
 }

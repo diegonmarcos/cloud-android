@@ -518,7 +518,15 @@ class ConstellationFragment : Fragment() {
         com.diegonmarcos.superapp.updater.Updater.checkNow(ctx)
         Toast.makeText(ctx, "Updating $what (+ SuperApp)…", Toast.LENGTH_SHORT).show()
         thread(name = "fleet-update-all") {
-            val n = Fleet.installAll(ctx, targets, Fleet.Mode.UPDATES)
+            // Mode.AUTO, not Mode.UPDATES. For an APP the two are identical, so
+            // the Apps tab is unchanged. For a LIB, UPDATES was why this button
+            // "installs one lib and stops": UPDATES drops every State.Missing,
+            // and a lib is Missing on any device that never installed it — so
+            // the only libs it could ever act on were the ones already present,
+            // typically exactly one. It was not stopping. It only ever had one
+            // eligible entry, for the same reason the background pass ignored
+            // all 36 lib entries. AUTO makes a missing lib eligible.
+            val n = Fleet.installAll(ctx, targets, Fleet.Mode.AUTO)
             view?.post {
                 Toast.makeText(ctx,
                     if (n == 0) "Everything up to date ($what)" else "$n update(s) queued",

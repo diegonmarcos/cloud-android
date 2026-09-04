@@ -283,7 +283,10 @@ object Fleet {
         UpdateProgress.update(UpdateProgress.State.CheckingManifest)
         for (source in sources) {
             val apk = source.fetch(ctx, app) ?: continue
-            Log.i(TAG, "download ${app.id}: ${source.name} → ${apk.evidence}")
+            // WHICH SOURCE SERVED IT is the first question to ask of a stale
+            // artifact, and it used to be unanswerable from the logs.
+            Log.i(TAG, "download ${app.kind} ${app.id}: source=${source.name} " +
+                       "→ ${apk.evidence}, ${apk.length} bytes")
             return apk
         }
         error("no source could provide a verified APK for ${app.id} " +
@@ -301,6 +304,39 @@ object Fleet {
      *  second (prompts, but always available). Cheap — the work was the
      *  download. */
     fun commit(ctx: Context, app: App, apk: VerifiedApk) {
+        // ASK THE CANDIDATE WHAT IT IS, BEFORE COMMITTING IT.
+        //
+        // "Verified" answers "are these the bytes the server meant to send" —
+        // it says nothing about WHICH BUILD they are. Both sources can hand
+        // back a perfectly verified stale artifact: ReleaseSource verifies a
+        // declared length, and a same-length older build passes; GhcrSource
+        // verifies the digest of whatever the `latest` tag currently points
+        // at, which is only as fresh as the last successful ORAS push.
+        //
+        // Without this check the first thing to notice was PackageInstaller,
+        // failing with "INSTALL_FAILED_VERSION_DOWNGRADE: Update version code
+        // 190 is older than current 3355358" — a hard, repeating error for
+        // what is really a no-op, and one that told the user their app was
+        // broken while the live release asset was in fact newer than what they
+        // had installed. A downgrade is not an install failure. It is nothing
+        // to do, and it should say so and drop the stale file so the next pass
+        // re-fetches instead of re-offering the same bytes forever.
+        val identity = ApkIntegrity.identify(ctx, apk.file)
+        if (identity == null) {
+            Log.w(TAG, "cannot read the manifest of the candidate for ${app.id} " +
+                       "(${apk.file.name}) — installing anyway, PackageInstaller decides")
+        } else {
+            val installedCode = installedInfo(ctx, app)?.versionCode
+            Log.i(TAG, "candidate ${app.kind} ${app.id}: $identity " +
+                       "(installed: ${installedCode ?: "none"}, ${apk.evidence})")
+            if (installedCode != null && identity.versionCode < installedCode) {
+                apk.file.delete()   // stale: never re-offer these exact bytes
+                error("stale candidate for ${app.id}: versionCode ${identity.versionCode} is " +
+                      "OLDER than the installed $installedCode — this is a downgrade, not an " +
+                      "update. Discarded the cached artifact; the source served a build older " +
+                      "than the device has. Nothing installed")
+            }
+        }
         for (channel in channels) {
             if (channel.install(ctx, app, apk)) {
                 Log.i(TAG, "install committed via ${channel.name}: ${app.label} (${app.pkg})")
