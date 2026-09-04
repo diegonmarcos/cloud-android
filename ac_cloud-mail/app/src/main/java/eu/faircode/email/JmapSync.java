@@ -95,6 +95,11 @@ public class JmapSync {
     // before it is dropped instead of wedging the folder's queue forever.
     private static final int OP_RETRY_MAX = 10;
 
+    // Max ids folded into ONE coalesced Email/set (see processOperations).
+    // Stalwart's maxObjectsInSet defaults to 500; 200 mirrors JmapService's
+    // JMAP_PAGE_SIZE and keeps a wide margin under it.
+    private static final int SET_BATCH_MAX = 200;
+
     // Entry from ServiceSynchronize.monitorAccount's TYPE_JMAP branch. JMAP has
     // no IMAP IDLE, so this is a PERSISTENT POLL LOOP (mirroring the IMAP/POP
     // monitorAccount lifetime, NOT a one-pass return): connect → one sync pass →
@@ -836,9 +841,39 @@ public class JmapSync {
         List<EntityOperation> ops = db.operation().getOperationsByFolder(folder.id);
         if (ops == null)
             return;
+
+        // Coalescing buffer. Each queued flag/move/delete used to be its own
+        // POST -- ~600ms per round trip from a phone in DE to the store in
+        // Marseille via the Iowa hub, so marking 50 messages read cost ~30s.
+        // A RUN OF CONSECUTIVE ops sharing a batch signature is now sent as ONE
+        // Email/set (see describeBatch for why that cannot change the outcome).
+        SetBatch batch = null;
+
         for (EntityOperation op : ops) {
+            EntityMessage message = (op.message == null ? null : db.message().getMessage(op.message));
+            SetBatch shape = describeBatch(op, message, mailboxToFolder);
+
+            if (shape != null && batch != null && shape.key.equals(batch.key)
+                    && batch.ops.size() < SET_BATCH_MAX) {
+                batch.ops.add(op);
+                batch.ids.add(message.uidl);
+                continue;
+            }
+
+            // Signature changed (or the op is not coalescable): everything
+            // buffered must reach the server BEFORE this op does, or ordering
+            // would be violated.
+            flushBatch(context, db, folder, jmap, batch);
+            batch = null;
+
+            if (shape != null) {
+                shape.ops.add(op);
+                shape.ids.add(message.uidl);
+                batch = shape;
+                continue;
+            }
+
             try {
-                EntityMessage message = (op.message == null ? null : db.message().getMessage(op.message));
                 List<String> ids = (message == null || message.uidl == null
                         ? null : Arrays.asList(message.uidl));
                 switch (op.name) {
@@ -899,22 +934,136 @@ public class JmapSync {
                 }
                 db.operation().deleteOperation(op.id);
             } catch (Throwable ex) {
-                // One poisoned op must not wedge every other op behind it in
-                // this folder -- isolate per-op instead of throwing out of the
-                // loop. Retried up to OP_RETRY_MAX passes, then dropped (mirrors
-                // EntityOperation.cleanup so ui state is re-asserted instead of
-                // left stuck mid-operation).
-                Log.e(folder.name + " JMAP op=" + op.name + " id=" + op.id, ex);
-                db.operation().setOperationError(op.id, Log.formatThrowable(ex));
-                int tries = op.tries + 1;
-                db.operation().setOperationTries(op.id, tries);
-                if (tries >= OP_RETRY_MAX) {
-                    EntityLog.log(context, "JMAP op=" + op.name + " id=" + op.id +
-                            " tries=" + tries + " exceeded retry max, dropping");
-                    op.cleanup(context, false);
-                    db.operation().deleteOperation(op.id);
-                }
+                failOperation(context, db, folder, op, ex);
             }
+        }
+
+        flushBatch(context, db, folder, jmap, batch);
+    }
+
+    // A run of consecutive same-shaped operations sent as ONE Email/set.
+    private static class SetBatch {
+        String key;      // coalescing signature; equal keys mean an identical patch
+        String name;     // EntityOperation name
+        boolean value;   // SEEN / FLAG / KEYWORD boolean
+        String keyword;  // KEYWORD name
+        String mailbox;  // MOVE target mailbox id
+        final List<EntityOperation> ops = new ArrayList<>();
+        final List<String> ids = new ArrayList<>();
+    }
+
+    // The coalescing signature of one operation, or null when it must be run on
+    // its own.
+    //
+    // WHY THIS CANNOT LOSE OR MISLABEL MAIL: two operations only ever merge when
+    // they are ADJACENT in the queue AND carry the SAME key, i.e. the exact same
+    // Email/set patch ($seen=true, or mailboxIds={X:true}, or destroy). Applying
+    // one identical patch to N ids in a single call and applying it to each id in
+    // N calls produce the same server state: the patch is per-id, independent of
+    // the other ids, and idempotent if an id repeats. Because a differing key
+    // (or a non-coalescable op) FLUSHES the buffer first, relative order is never
+    // disturbed -- SEEN(a) → MOVE(a,Trash) → SEEN(a,false) stays three calls in
+    // that order, and a MOVE to Trash is never reordered past a MOVE to Archive.
+    // null is returned for anything ambiguous (missing message, missing uidl,
+    // malformed args, unresolvable move target) so the single-op path below
+    // handles it exactly as before.
+    private static SetBatch describeBatch(EntityOperation op, EntityMessage message,
+                                          Map<String, Long> mailboxToFolder) {
+        if (message == null || message.uidl == null || op.name == null)
+            return null;
+        SetBatch b = new SetBatch();
+        b.name = op.name;
+        try {
+            switch (op.name) {
+                case EntityOperation.SEEN:
+                    b.value = Boolean.TRUE.equals(message.ui_seen);
+                    b.key = "SEEN:" + b.value;
+                    return b;
+                case EntityOperation.FLAG:
+                    b.value = Boolean.TRUE.equals(message.ui_flagged);
+                    b.key = "FLAG:" + b.value;
+                    return b;
+                case EntityOperation.KEYWORD: {
+                    org.json.JSONArray jargs = new org.json.JSONArray(op.args);
+                    b.keyword = jargs.getString(0);
+                    b.value = jargs.getBoolean(1);
+                    b.key = "KEYWORD:" + b.value + ":" + b.keyword;
+                    return b;
+                }
+                case EntityOperation.MOVE: {
+                    long target = new org.json.JSONArray(op.args).getLong(0);
+                    b.mailbox = mailboxForFolder(mailboxToFolder, target);
+                    if (b.mailbox == null)
+                        return null;
+                    b.key = "MOVE:" + b.mailbox;
+                    return b;
+                }
+                case EntityOperation.DELETE:
+                    b.key = "DELETE";
+                    return b;
+                default:
+                    return null;
+            }
+        } catch (Throwable ex) {
+            return null; // malformed args: the single-op path records the error
+        }
+    }
+
+    // Send the buffered run as one Email/set and settle every operation in it.
+    private static void flushBatch(Context context, DB db, EntityFolder folder,
+                                   JmapService jmap, SetBatch batch) {
+        if (batch == null || batch.ops.isEmpty())
+            return;
+        try {
+            switch (batch.name) {
+                case EntityOperation.SEEN:
+                    jmap.setSeen(batch.ids, batch.value);
+                    break;
+                case EntityOperation.FLAG:
+                    jmap.setFlagged(batch.ids, batch.value);
+                    break;
+                case EntityOperation.KEYWORD:
+                    jmap.setKeyword(batch.ids, batch.keyword, batch.value);
+                    break;
+                case EntityOperation.MOVE:
+                    jmap.moveToMailbox(batch.ids, batch.mailbox);
+                    break;
+                case EntityOperation.DELETE:
+                    jmap.deleteMessages(batch.ids);
+                    break;
+                default:
+                    throw new IllegalStateException("JMAP unbatchable op=" + batch.name);
+            }
+            for (EntityOperation op : batch.ops)
+                db.operation().deleteOperation(op.id);
+            if (batch.ops.size() > 1)
+                EntityLog.log(context, "JMAP " + folder.name + " coalesced "
+                        + batch.ops.size() + " ops into one Email/set (" + batch.key + ")");
+        } catch (Throwable ex) {
+            // The batch is ONE call: it either applied to every id or to none,
+            // so on failure NO operation is deleted. Each is errored and retried
+            // exactly as the single-op path does, and the local ui_* state still
+            // holds the user's intent until it lands. Nothing is lost.
+            for (EntityOperation op : batch.ops)
+                failOperation(context, db, folder, op, ex);
+        }
+    }
+
+    // One poisoned op must not wedge every other op behind it in this folder --
+    // isolate per-op instead of throwing out of the loop. Retried up to
+    // OP_RETRY_MAX passes, then dropped (mirrors EntityOperation.cleanup so ui
+    // state is re-asserted instead of left stuck mid-operation).
+    private static void failOperation(Context context, DB db, EntityFolder folder,
+                                      EntityOperation op, Throwable ex) {
+        Log.e(folder.name + " JMAP op=" + op.name + " id=" + op.id, ex);
+        db.operation().setOperationError(op.id, Log.formatThrowable(ex));
+        int tries = op.tries + 1;
+        db.operation().setOperationTries(op.id, tries);
+        if (tries >= OP_RETRY_MAX) {
+            EntityLog.log(context, "JMAP op=" + op.name + " id=" + op.id +
+                    " tries=" + tries + " exceeded retry max, dropping");
+            op.cleanup(context, false);
+            db.operation().deleteOperation(op.id);
         }
     }
 
