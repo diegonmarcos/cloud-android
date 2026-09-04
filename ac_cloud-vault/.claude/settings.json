@@ -1,22 +1,36 @@
 {
-  "attribution": {
-    "commit": "",
-    "pr": ""
-  },
-  "extraKnownMarketplaces": {
-    "bitwarden-marketplace": {
-      "source": {
-        "source": "github",
-        "repo": "bitwarden/ai-plugins"
-      }
-    }
-  },
+  "_doc": "PROJECT-scoped Claude Code settings — the SoT for the settings.json committed into every repo under cloud. It carries the machine-independent half of settings.base.json + settings.desktop.json (its neighbours here, the SoT for ~/.claude/settings.json). cloud-infra's 9_others/src/deploy-dotfiles.sh copies this file to 0_apps/src/claude/settings.json on every dotfiles build, which then deploys to <repo>/.claude/settings.json. Edit HERE; the copies are generated. It used to be hand-kept in cloud-infra with an instruction to 're-copy', and three repos had drifted the first time anything looked.",
+
+  "_why_committed": "~/.claude/settings.json only exists where unix's home-manager has run. A fresh clone — CI, a container, Claude Code on the web, a second machine, someone else's checkout — has no user config, so without this the repo gets Claude's stock defaults: no thinking, no tool search, no agents. Project settings merge OVER user settings, so on a home-manager machine these keys are already what ~/.claude sets and the merge is a no-op.",
+
+  "_deliberately_absent": "Everything from settings.base.json that carries a @HOME@ path: statusLine.command, and env GIT_BASE / NODE_PATH / AUTHELIA_OIDC_CREDENTIALS_DIR / AUTHELIA_OIDC_TOKENS_DIR. unix substitutes @HOME@ with config.home.homeDirectory at nix eval time, per machine. A committed file has no such step, so those paths would harden to one person's home directory and be wrong in every clone — the same failure .mcp.json had as a symlink to /home/diego/.mcp.json. They stay in ~/.claude, where the substitution happens.",
+
+  "_also_absent": "enabledPlugins. Those name @cloud-marketplace and @claude-plugins-official entries that are installed per-machine; enabling a plugin that is not installed is noise in every clone that lacks it. Plugin choice stays user-level.",
+
   "alwaysThinkingEnabled": true,
+
   "env": {
-    "ENABLE_TOOL_SEARCH": "auto"
+    "_doc": "Only machine-independent values — no paths.",
+    "_ENABLE_TOOL_SEARCH_comment": "auto, mirrored from settings.base.json. 'true' force-defers EVERY MCP tool behind Tool Search unconditionally; 'auto' defers only past 10% of context (~20k tokens) so the lean detached servers (cgc-pub etc.) stay eager while the fat, mostly-disabled cloud-services-mcp aggregator is what trips deferral when enabled. Project settings merge OVER user, so this MUST match base.json or it silently re-forces 'true' inside every repo.",
+    "ENABLE_TOOL_SEARCH": "auto",
+
+    "_AUTHELIA_comment": "The NON-SECRET half of what mcp-auth-headers.sh needs, placed here because this is the only delivery path that is early enough. A container runs no home-manager, so settings.base.json never lands; and anything a session does after it starts — cloning the vault, exporting a variable, running a hook — arrives after the MCP client has already bound and taken its 403. That ordering is the whole reason c3-infra-mcp has never autoloaded off-mesh. This file is read at session start and its env DOES reach the process: ENABLE_TOOL_SEARCH above was verified live in a container shell, sourced from here.",
+
+    "_AUTHELIA_secret_comment": "The SECRET is absent and must stay absent — this file is committed into every repo, several of them public. It is the one value that has to come from the remote environment's OWN variable config, which is the only carrier that exists before the process starts. Set ONE of: AUTHELIA_BEARER_TOKEN (a ready-made bearer; works today) or AUTHELIA_OIDC_CLIENT_SECRET (mints a short-lived token per session; preferred, but blocked until the Authelia clients stop rejecting as invalid_client). One variable, set once — everything else is declared here and deployed by the dotfiles build.",
+
+    "AUTHELIA_TOKEN_URL": "https://auth.diegonmarcos.com/api/oidc/token",
+    "AUTHELIA_OIDC_CLIENT_ID": "claude-opus"
   },
-  "disabledMcpjsonServers": [
-    "cloud-services-mcp",
-    "cloud-infra-mcp"
-  ]
+
+  "_disabledMcpjsonServers_comment": "Default-OFF the ONE remaining fat aggregator (mirror of settings.base.json) so the auto 10% cap is not spent on ~139 eager tools. cloud-services-mcp is the master index; /mcp re-enables it on demand.",
+
+  "_why_cloud-infra-mcp_is_no_longer_here": "It was in this list, and that quietly defeated the entire off-mesh auth chain. c3-infra-mcp is the ONLY MCP endpoint reachable from off the WireGuard mesh, so it is the one server a container, CI runner or web session can actually use — and it was the one being default-disabled. A disabled server is never dialed at all: it appears in neither the connected nor the failed list, which is why it read as 'missing' rather than 'off' and was diagnosed twice as an auth problem it never had.\n\nThe trap was the NAME. derive-mcp-json.ts names servers after the service directory (infra-api_cloud-infra-mcp -> cloud-infra-mcp) while the URL keeps the deployed path (/c3-infra-mcp/mcp). Until the derive was regenerated, the shipped .mcp.json still carried the older key c3-infra-mcp, which this list does not match — so the server WAS dialed and the disable was inert. Regenerating renamed the key to cloud-infra-mcp, which this list DOES match, and the server silently stopped being dialed at the same moment the static bearer header was added to make it work. Two changes that each looked correct, cancelling out.\n\nWith ENABLE_TOOL_SEARCH: auto the cost of leaving it enabled is bounded anyway: past ~10% of context its tools defer behind Tool Search instead of being dropped, so they stay reachable. An unreachable server is not a saving.",
+
+  "disabledMcpjsonServers": ["cloud-services-mcp"],
+
+  "permissions": {
+    "_doc": "Left empty on purpose. Pre-approving commands is a per-person trust decision, not a repo-wide one — the /fewer-permission-prompts skill generates an allowlist from your own transcripts. defaultMode is user-level too: settings.base.json sets \"auto\", and forcing it from a committed file would override that choice for anyone who clones this repo.",
+    "allow": [],
+    "deny": []
+  }
 }
