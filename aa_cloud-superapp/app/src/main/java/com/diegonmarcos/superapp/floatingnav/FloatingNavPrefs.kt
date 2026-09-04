@@ -24,6 +24,16 @@ object FloatingNavPrefs {
     private const val FILE = "floatingnav_prefs"
     private const val KEY_ENABLED = "enabled"
 
+    /**
+     * The dragged position of the floating circle, written by
+     * [FloatingNavService] itself. It lives in its own store because it is
+     * per-position state rather than an opinion about the feature, but the keys
+     * belong here so neither side has to spell them as literals.
+     */
+    const val POS_FILE = "floating_nav_pos"
+    const val KEY_POS_X = "x"
+    const val KEY_POS_Y = "y"
+
     private fun prefs(ctx: Context) =
         ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE)
 
@@ -33,5 +43,16 @@ object FloatingNavPrefs {
 
     fun setEnabled(ctx: Context, on: Boolean) {
         prefs(ctx).edit().putBoolean(KEY_ENABLED, on).apply()
+    }
+
+    /**
+     * Forget where the circle was dragged to. Deliberately a REMOVE and not a
+     * write of some pixel pair: with no stored position the service falls back
+     * to its top-centre default, which it computes from the live display
+     * metrics and therefore stays right on any screen size or rotation.
+     */
+    fun clearPosition(ctx: Context) {
+        ctx.getSharedPreferences(POS_FILE, Context.MODE_PRIVATE)
+            .edit().remove(KEY_POS_X).remove(KEY_POS_Y).apply()
     }
 }

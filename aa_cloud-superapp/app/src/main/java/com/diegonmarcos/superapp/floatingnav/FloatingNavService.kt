@@ -90,6 +90,7 @@ class FloatingNavService : Service() {
                 // tapped — run it, no menu.
                 intent.getStringExtra(EXTRA_TARGET)?.let { dispatch(it, "") }
             }
+            ACTION_RESET_POSITION -> main.post { resetPosition() }
             ACTION_RENOTIFY -> {
                 // User swiped the (supposedly persistent) notification away on
                 // Android 14+ — re-post it immediately.
@@ -255,13 +256,31 @@ class FloatingNavService : Service() {
         }
     }
 
-    private fun posPrefs() = getSharedPreferences("floating_nav_pos", Context.MODE_PRIVATE)
+    private fun posPrefs() =
+        getSharedPreferences(FloatingNavPrefs.POS_FILE, Context.MODE_PRIVATE)
     private fun loadPos() {
-        bubbleX = posPrefs().getInt("x", -1)
-        bubbleY = posPrefs().getInt("y", -1)
+        bubbleX = posPrefs().getInt(FloatingNavPrefs.KEY_POS_X, -1)
+        bubbleY = posPrefs().getInt(FloatingNavPrefs.KEY_POS_Y, -1)
     }
     private fun savePos() {
-        posPrefs().edit().putInt("x", bubbleX).putInt("y", bubbleY).apply()
+        posPrefs().edit()
+            .putInt(FloatingNavPrefs.KEY_POS_X, bubbleX)
+            .putInt(FloatingNavPrefs.KEY_POS_Y, bubbleY)
+            .apply()
+    }
+
+    /**
+     * Back to the top-centre of whatever display we are on now. Dropping the
+     * stored pair is enough — [bubbleParams] then falls through to its defX
+     * (half of the current width minus half the circle) and dp(6) from the top,
+     * so this is right after a rotation or on a tablet, which a hardcoded pixel
+     * pair could never be. The re-add is what makes it visible immediately
+     * instead of at the next show.
+     */
+    private fun resetPosition() {
+        FloatingNavPrefs.clearPosition(this)
+        bubbleX = -1; bubbleY = -1
+        if (bubble != null) { removeBubble(); showBubble() }
     }
 
     // ── The menu box (compact 2-line, or Expanded view) ────────────
@@ -559,6 +578,8 @@ class FloatingNavService : Service() {
         const val ACTION_SHOW_MENU = "com.diegonmarcos.superapp.floatingnav.SHOW_MENU"
         internal const val ACTION_NAV = "com.diegonmarcos.superapp.floatingnav.NAV_ACTION"
         private const val ACTION_RENOTIFY = "com.diegonmarcos.superapp.floatingnav.RENOTIFY"
+        private const val ACTION_RESET_POSITION =
+            "com.diegonmarcos.superapp.floatingnav.RESET_POSITION"
         internal const val EXTRA_TARGET = "target"
 
         /** Force-open the nav menu (the Sirius Star on the home screen). Starts
@@ -624,6 +645,22 @@ class FloatingNavService : Service() {
 
         fun stop(ctx: Context) {
             ctx.stopService(Intent(ctx, FloatingNavService::class.java))
+        }
+
+        /** Put the floating circle back at the top-centre of the screen.
+         *
+         *  The stored position is cleared here rather than in the service so it
+         *  also takes effect when nothing is running — the circle then comes up
+         *  centred the next time it is switched on. Only a live service gets the
+         *  intent, because starting one just to move a view that does not exist
+         *  would turn a reset into an enable. */
+        fun resetPosition(ctx: Context) {
+            FloatingNavPrefs.clearPosition(ctx)
+            if (!isRunning) return
+            val i = Intent(ctx, FloatingNavService::class.java)
+                .setAction(ACTION_RESET_POSITION)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) ctx.startForegroundService(i)
+            else ctx.startService(i)
         }
 
         /** Run a notification-action target on the service (called by the

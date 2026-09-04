@@ -73,6 +73,9 @@ class OneHandFragment : Fragment() {
         section(root, ctx, "Edge Menu")
         addEdgeMenu(root, ctx, pad)
 
+        section(root, ctx, "Floating menu")
+        addFloatingMenu(root, ctx, pad)
+
         section(root, ctx, "Home-Screen Gestures")
         addHomeGestures(root, ctx)
 
@@ -185,40 +188,6 @@ class OneHandFragment : Fragment() {
         }
         root.addView(toggle)
 
-        // ── Floating button ──────────────────────────────────────────────
-        // A separate service from the edge handles: different permission
-        // (overlay only, no accessibility) and a different lifetime. It is a
-        // START_STICKY foreground service, so once on it OUTLIVES the SuperApp
-        // — closing the app does not take the button with it, which is the
-        // whole point of it and the reason it needs an off switch that sticks
-        // just as hard.
-        root.addView(subhead(ctx, "Floating button"))
-        root.addView(caption(ctx,
-            "A round button that floats over every app and opens the same nav " +
-            "menu. Runs as a foreground service, so it stays after Cloud " +
-            "SuperApp is closed and returns after a reboot. Needs only " +
-            "'Display over apps' — no accessibility grant."))
-        floatingToggle = Switch(ctx).apply {
-            text = "Floating button (persists when the app is closed)"
-            setPadding(0, pad, 0, pad)
-            // Set the state BEFORE wiring the listener, so opening this screen
-            // cannot start or stop the service by itself.
-            isChecked = FloatingNavPrefs.enabled(ctx)
-            setOnCheckedChangeListener { _, on ->
-                if (on && !android.provider.Settings.canDrawOverlays(ctx)) {
-                    isChecked = false
-                    Toast.makeText(ctx,
-                        "Grant 'Display over apps' in Configs › Permissions",
-                        Toast.LENGTH_LONG).show()
-                    return@setOnCheckedChangeListener
-                }
-                FloatingNavPrefs.setEnabled(ctx, on)
-                if (on) FloatingNavService.startIfPermitted(ctx)
-                else    FloatingNavService.stop(ctx)
-            }
-        }
-        root.addView(floatingToggle)
-
         // How the menu is summoned. Swipe (Samsung edge-panel style) is the default:
         // touch the edge handle + drag inward. A plain tap passes through to the app.
         root.addView(subhead(ctx, "Activation"))
@@ -318,7 +287,55 @@ class OneHandFragment : Fragment() {
             "check does not leave the handles enabled."))
     }
 
-    // ─────────────────────────── 3. Home gestures ───────────────────────────
+    // ───────────────────────── 3. Floating menu ─────────────────────────
+
+    /**
+     * A separate service from the edge handles: different permission (overlay
+     * only, no accessibility) and a different lifetime. It is a START_STICKY
+     * foreground service, so once on it OUTLIVES the SuperApp — closing the app
+     * does not take the button with it, which is the whole point of it and the
+     * reason it needs an off switch that sticks just as hard.
+     */
+    private fun addFloatingMenu(root: LinearLayout, ctx: Context, pad: Int) {
+        root.addView(caption(ctx,
+            "A round button that floats over every app and opens the same nav " +
+            "menu. Runs as a foreground service, so it stays after Cloud " +
+            "SuperApp is closed and returns after a reboot. Needs only " +
+            "'Display over apps' — no accessibility grant."))
+        floatingToggle = Switch(ctx).apply {
+            text = "Floating button (persists when the app is closed)"
+            setPadding(0, pad, 0, pad)
+            // Set the state BEFORE wiring the listener, so opening this screen
+            // cannot start or stop the service by itself.
+            isChecked = FloatingNavPrefs.enabled(ctx)
+            setOnCheckedChangeListener { _, on ->
+                if (on && !android.provider.Settings.canDrawOverlays(ctx)) {
+                    isChecked = false
+                    Toast.makeText(ctx,
+                        "Grant 'Display over apps' in Configs › Permissions",
+                        Toast.LENGTH_LONG).show()
+                    return@setOnCheckedChangeListener
+                }
+                FloatingNavPrefs.setEnabled(ctx, on)
+                if (on) FloatingNavService.startIfPermitted(ctx)
+                else    FloatingNavService.stop(ctx)
+            }
+        }
+        root.addView(floatingToggle)
+
+        root.addView(android.widget.Button(ctx).apply {
+            text = "Reset position to top-center"
+            setOnClickListener { FloatingNavService.resetPosition(ctx) }
+        })
+        root.addView(caption(ctx,
+            "The button remembers wherever you drag it. This forgets that spot, " +
+            "so it goes back to the middle of the top edge — measured from the " +
+            "screen as it is right now, so it lands correctly whatever the size " +
+            "or rotation. A visible button moves at once; a switched-off one " +
+            "comes back centred."))
+    }
+
+    // ─────────────────────────── 4. Home gestures ───────────────────────────
 
     private fun addHomeGestures(root: LinearLayout, ctx: Context) {
         // Runtime-editable overrides of build.json::onehand.home_swipes. These
