@@ -12,7 +12,14 @@
   "env": {
     "_doc": "Only machine-independent values — no paths.",
     "_ENABLE_TOOL_SEARCH_comment": "auto, mirrored from settings.base.json. 'true' force-defers EVERY MCP tool behind Tool Search unconditionally; 'auto' defers only past 10% of context (~20k tokens) so the lean detached servers (cgc-pub etc.) stay eager while the fat, mostly-disabled cloud-services-mcp aggregator is what trips deferral when enabled. Project settings merge OVER user, so this MUST match base.json or it silently re-forces 'true' inside every repo.",
-    "ENABLE_TOOL_SEARCH": "auto"
+    "ENABLE_TOOL_SEARCH": "auto",
+
+    "_AUTHELIA_comment": "The NON-SECRET half of what mcp-auth-headers.sh needs, placed here because this is the only delivery path that is early enough. A container runs no home-manager, so settings.base.json never lands; and anything a session does after it starts — cloning the vault, exporting a variable, running a hook — arrives after the MCP client has already bound and taken its 403. That ordering is the whole reason c3-infra-mcp has never autoloaded off-mesh. This file is read at session start and its env DOES reach the process: ENABLE_TOOL_SEARCH above was verified live in a container shell, sourced from here.",
+
+    "_AUTHELIA_secret_comment": "The SECRET is absent and must stay absent — this file is committed into every repo, several of them public. It is the one value that has to come from the remote environment's OWN variable config, which is the only carrier that exists before the process starts. Set ONE of: AUTHELIA_BEARER_TOKEN (a ready-made bearer; works today) or AUTHELIA_OIDC_CLIENT_SECRET (mints a short-lived token per session; preferred, but blocked until the Authelia clients stop rejecting as invalid_client). One variable, set once — everything else is declared here and deployed by the dotfiles build.",
+
+    "AUTHELIA_TOKEN_URL": "https://auth.diegonmarcos.com/api/oidc/token",
+    "AUTHELIA_OIDC_CLIENT_ID": "claude-opus"
   },
 
   "_disabledMcpjsonServers_comment": "Default-OFF the two fat aggregators (mirror of settings.base.json) so the auto 10% cap is spent on the lean detached servers and cgc-pub stays eager. cloud-services-mcp (master index, ~139 tools) + cloud-infra-mcp (devops/obs/sec, ~138) are ~40k eager and force everything to defer. /mcp re-enables either on demand.",
