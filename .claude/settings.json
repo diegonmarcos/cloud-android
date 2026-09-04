@@ -22,8 +22,11 @@
     "AUTHELIA_OIDC_CLIENT_ID": "claude-opus"
   },
 
-  "_disabledMcpjsonServers_comment": "Default-OFF the two fat aggregators (mirror of settings.base.json) so the auto 10% cap is spent on the lean detached servers and cgc-pub stays eager. cloud-services-mcp (master index, ~139 tools) + cloud-infra-mcp (devops/obs/sec, ~138) are ~40k eager and force everything to defer. /mcp re-enables either on demand.",
-  "disabledMcpjsonServers": ["cloud-services-mcp", "cloud-infra-mcp"],
+  "_disabledMcpjsonServers_comment": "Default-OFF the ONE remaining fat aggregator (mirror of settings.base.json) so the auto 10% cap is not spent on ~139 eager tools. cloud-services-mcp is the master index; /mcp re-enables it on demand.",
+
+  "_why_cloud-infra-mcp_is_no_longer_here": "It was in this list, and that quietly defeated the entire off-mesh auth chain. c3-infra-mcp is the ONLY MCP endpoint reachable from off the WireGuard mesh, so it is the one server a container, CI runner or web session can actually use — and it was the one being default-disabled. A disabled server is never dialed at all: it appears in neither the connected nor the failed list, which is why it read as 'missing' rather than 'off' and was diagnosed twice as an auth problem it never had.\n\nThe trap was the NAME. derive-mcp-json.ts names servers after the service directory (infra-api_cloud-infra-mcp -> cloud-infra-mcp) while the URL keeps the deployed path (/c3-infra-mcp/mcp). Until the derive was regenerated, the shipped .mcp.json still carried the older key c3-infra-mcp, which this list does not match — so the server WAS dialed and the disable was inert. Regenerating renamed the key to cloud-infra-mcp, which this list DOES match, and the server silently stopped being dialed at the same moment the static bearer header was added to make it work. Two changes that each looked correct, cancelling out.\n\nWith ENABLE_TOOL_SEARCH: auto the cost of leaving it enabled is bounded anyway: past ~10% of context its tools defer behind Tool Search instead of being dropped, so they stay reachable. An unreachable server is not a saving.",
+
+  "disabledMcpjsonServers": ["cloud-services-mcp"],
 
   "permissions": {
     "_doc": "Left empty on purpose. Pre-approving commands is a per-person trust decision, not a repo-wide one — the /fewer-permission-prompts skill generates an allowlist from your own transcripts. defaultMode is user-level too: settings.base.json sets \"auto\", and forcing it from a committed file would override that choice for anyone who clones this repo.",
