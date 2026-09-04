@@ -26,6 +26,15 @@
 -dontwarn org.slf4j.impl.StaticLoggerBinder
 
 -keep class com.diegonmarcos.mediacenter.feature_node.presentation.edit.adjustments.** { *; }
+# The editor's models were moved OUT of the package above into
+# domain.model.editor by the 2026-08-30 layering split (0d1bb618a, fd2f13580),
+# which silently dropped them out of the keep rule that had covered them since
+# upstream. EditorDestination's subclasses are Navigation-Compose type-safe
+# routes, so their generated serializers are resolved when the editor graph is
+# built — the same class of runtime-only failure bc507e557 fixed by restoring
+# @Keep/@Serializable on VariableFilterTypes. Restores the pre-move parity for
+# the whole package rather than annotating them one at a time.
+-keep class com.diegonmarcos.mediacenter.feature_node.domain.model.editor.** { *; }
 -keep class com.drew.** { *; }
 -keep class java.io.** { *; }
 -keep class com.adobe.** { *; }
