@@ -400,7 +400,7 @@ public class FragmentOptionsNotifications extends FragmentBase implements Shared
 
         final Intent channelService = new Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
                 .putExtra(Settings.EXTRA_APP_PACKAGE, getContext().getPackageName())
-                .putExtra(Settings.EXTRA_CHANNEL_ID, "service");
+                .putExtra(Settings.EXTRA_CHANNEL_ID, NotificationHelper.CHANNEL_SERVICE);
 
         btnManageService.setEnabled(channelService.resolveActivity(pm) != null); // system whitelisted
         btnManageService.setOnClickListener(new View.OnClickListener() {
@@ -846,7 +846,7 @@ public class FragmentOptionsNotifications extends FragmentBase implements Shared
                 ivChannelDefault.setVisibility(View.VISIBLE);
             }
 
-            NotificationChannel service = nm.getNotificationChannel("service");
+            NotificationChannel service = nm.getNotificationChannel(NotificationHelper.CHANNEL_SERVICE);
             if (service != null) {
                 ivChannelService.setImageLevel(service.getImportance() == NotificationManager.IMPORTANCE_NONE ? 0 : 1);
                 ivChannelService.setVisibility(View.VISIBLE);

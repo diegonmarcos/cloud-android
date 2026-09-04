@@ -12,15 +12,36 @@ def a = buildJson.android
 // not ship: the store says "installed", the install button does nothing, and
 // the bug you are staring at is a build from days ago.
 //
-// GITHUB_RUN_NUMBER because it is monotonic per workflow and needs no state:
-// a commit count would go backwards on a rebase and a timestamp would collide
-// between the two ABI legs of one run. Locally it is 0, so a hand build stays
-// at the declared base and cannot outrank a CI one by accident.
+// Version code: minutes since 2026-01-01 UTC over a 3,000,000 base.
 //
-// This is the same line ac_cloud-nav, ac_cloud-ide and the rest already had —
-// this app was written from a thinner template and simply never got it.
-def runNumber = (System.getenv('GITHUB_RUN_NUMBER') ?: '0').toInteger()
-def codeFinal = (a.version_code as Number).intValue() + runNumber
+// This used to be build.json's version_code plus GITHUB_RUN_NUMBER, which is
+// per-WORKFLOW. Every app here ships from its own ship-*.yml with its own
+// independent counter, so the moment an app was built by a different workflow
+// than the one that produced the installed APK -- or a workflow was re-created,
+// or a dispatch cancelled a push-triggered run via the concurrency group -- the
+// number handed out was SMALLER than the last published one and Android refused
+// the update with "Update version code 190 is older than current 192". A build
+// counter can only be monotonic for the one counter that issued it.
+//
+// Wall clock only ever moves forward and is identical for every workflow, every
+// runner and every trigger, so this cannot go backwards again. Same encoding as
+// ac_cloud-mail and ab_cloud-libs-shared/lib-apks, so the whole fleet is
+// comparable: ~3.35M in Sep 2026, far above any version code in the field and
+// inside the 2^31 limit for centuries. COMMS_BUILD_TIMESTAMP is honoured when
+// CI provides one so the code matches the release tag; otherwise build time.
+def codeFinal = { ->
+    def base  = java.time.LocalDateTime.of(2026, 1, 1, 0, 0)
+    def built = java.time.LocalDateTime.now(java.time.ZoneOffset.UTC)
+    def stamp = System.getenv('COMMS_BUILD_TIMESTAMP')
+    if (stamp) {
+        try {
+            built = java.time.LocalDateTime.parse(stamp,
+                java.time.format.DateTimeFormatter.ofPattern('yyyyMMdd.HHmmss'))
+        } catch (ignored) { }
+    }
+    long mins = java.time.Duration.between(base, built).toMinutes()
+    return mins > 0 ? (int) (3000000L + mins) : 3000000
+}()
 
 android {
     namespace 'com.diegonmarcos.watchdog'

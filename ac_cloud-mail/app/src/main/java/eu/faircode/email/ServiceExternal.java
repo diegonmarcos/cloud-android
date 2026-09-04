@@ -175,7 +175,7 @@ public class ServiceExternal extends ServiceBase {
 
     private Notification getNotification() {
         NotificationCompat.Builder builder =
-                new NotificationCompat.Builder(this, "service")
+                new NotificationCompat.Builder(this, NotificationHelper.CHANNEL_SERVICE)
                         .setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_DEFERRED)
                         .setSmallIcon(R.drawable.baseline_compare_arrows_white_24)
                         .setContentTitle(getString(R.string.tile_synchronize))

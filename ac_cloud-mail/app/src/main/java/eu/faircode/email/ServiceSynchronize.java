@@ -1170,20 +1170,13 @@ public class ServiceSynchronize extends ServiceBase implements SharedPreferences
                             getNotificationService(null, null));
                     // comms: startForeground() is mandatory here (alarms and the watchdog
                     // start us with startForegroundService(), so skipping it risks a
-                    // ForegroundServiceDidNotStartInTimeException), but it re-posts the
-                    // notification the user swiped away -- and this runs on every single
-                    // service command, which is why the dismissal never appeared to stick.
-                    // The notification is built non-ongoing since API 33, so take it back
-                    // down immediately to honour the dismissal.
-                    if (serviceNotificationDismissed)
-                        try {
-                            NotificationManager nm =
-                                    Helper.getSystemService(this, NotificationManager.class);
-                            if (nm != null)
-                                nm.cancel(NotificationHelper.NOTIFICATION_SYNCHRONIZE);
-                        } catch (Throwable ex) {
-                            Log.w(ex);
-                        }
+                    // ForegroundServiceDidNotStartInTimeException), and it unavoidably
+                    // re-posts the notification on every single service command.
+                    // NotificationManager.cancel() cannot undo that: the platform refuses
+                    // to cancel any notification carrying FLAG_FOREGROUND_SERVICE, so the
+                    // cancel() that used to sit here was a no-op. Keeping the row out of
+                    // the shade is done by blocking the notification channel instead, see
+                    // NotificationHelper.CHANNEL_SERVICE.
                     String msg = "onStartCommand" +
                             " class=" + this.getClass().getName() +
                             " action=" + action;
@@ -1580,7 +1573,7 @@ public class ServiceSynchronize extends ServiceBase implements SharedPreferences
 
         // Build notification
         NotificationCompat.Builder builder =
-                new NotificationCompat.Builder(this, "service")
+                new NotificationCompat.Builder(this, NotificationHelper.CHANNEL_SERVICE)
                         .setForegroundServiceBehavior(Notification.FOREGROUND_SERVICE_DEFAULT)
                         .setSmallIcon(R.drawable.baseline_compare_arrows_white_24)
                         .setContentIntent(piWhy)

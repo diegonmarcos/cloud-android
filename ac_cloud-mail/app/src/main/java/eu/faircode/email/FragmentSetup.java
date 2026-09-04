@@ -867,7 +867,7 @@ public class FragmentSetup extends FragmentBase implements SharedPreferences.OnS
 
         final Intent channelService = new Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
                 .putExtra(Settings.EXTRA_APP_PACKAGE, getContext().getPackageName())
-                .putExtra(Settings.EXTRA_CHANNEL_ID, "service");
+                .putExtra(Settings.EXTRA_CHANNEL_ID, NotificationHelper.CHANNEL_SERVICE);
 
         btnNotification.setEnabled(channelService.resolveActivity(pm) != null); // system whitelisted
         btnNotification.setOnClickListener(new View.OnClickListener() {

@@ -92,8 +92,17 @@ class NotificationHelper {
 
     private static final long WHEN_PERIOD = 7 * 24 * 3600 * 1000L; // milliseconds
 
+    // comms: notification channel settings are IMMUTABLE after creation -- importance can
+    // never be lowered programmatically for an existing channel id. The legacy "service"
+    // channel was created at IMPORTANCE_MIN, so changing the importance in code was being
+    // silently ignored on every device that already had it. The id is bumped here so the
+    // system creates a genuinely new, blocked channel.
+    static final String CHANNEL_SERVICE = "service.silent";
+    static final String CHANNEL_SERVICE_LEGACY = "service";
+
     private static final List<String> PERSISTENT_IDS = Collections.unmodifiableList(Arrays.asList(
-            "service",
+            CHANNEL_SERVICE,
+            CHANNEL_SERVICE_LEGACY,
             "send",
             "notification",
             "progress",
@@ -112,9 +121,15 @@ class NotificationHelper {
         NotificationManager nm = Helper.getSystemService(context, NotificationManager.class);
 
         // Sync
+        // comms: a foreground service notification cannot be removed by the app --
+        // NotificationManager.cancel() refuses anything carrying FLAG_FOREGROUND_SERVICE,
+        // and every startForeground() re-posts it. The only thing that keeps it out of the
+        // shade is a blocked channel, so this one is created at IMPORTANCE_NONE. The
+        // service itself keeps running exactly as before; only the row is suppressed.
+        nm.deleteNotificationChannel(CHANNEL_SERVICE_LEGACY);
         NotificationChannel service = new NotificationChannel(
-                "service", context.getString(R.string.channel_service),
-                NotificationManager.IMPORTANCE_MIN);
+                CHANNEL_SERVICE, context.getString(R.string.channel_service),
+                NotificationManager.IMPORTANCE_NONE);
         service.setDescription(context.getString(R.string.channel_service_description));
         service.setSound(null, null);
         service.enableVibration(false);
