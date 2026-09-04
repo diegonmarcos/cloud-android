@@ -1,5 +1,12 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.io.FileInputStream
+// Imported rather than spelled out inline: in a .kts the `java` accessor
+// shadows the package root, so a fully-qualified java.time.* reference does
+// not resolve.
+import java.time.Duration
+import java.time.LocalDateTime
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
 import java.util.Properties
 
 plugins {
@@ -37,17 +44,17 @@ manifestConfig {
 // APK was already installed in place. CI passes COMMS_BUILD_TIMESTAMP so the
 // code matches the release tag; otherwise the build time is used.
 val wallClockVersionCode: Int = run {
-    val base = java.time.LocalDateTime.of(2026, 1, 1, 0, 0)
-    var built = java.time.LocalDateTime.now(java.time.ZoneOffset.UTC)
+    val base = LocalDateTime.of(2026, 1, 1, 0, 0)
+    var built = LocalDateTime.now(ZoneOffset.UTC)
     System.getenv("COMMS_BUILD_TIMESTAMP")?.let { stamp ->
         runCatching {
-            built = java.time.LocalDateTime.parse(
+            built = LocalDateTime.parse(
                 stamp,
-                java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd.HHmmss")
+                DateTimeFormatter.ofPattern("yyyyMMdd.HHmmss")
             )
         }
     }
-    val minutes = java.time.Duration.between(base, built).toMinutes()
+    val minutes = Duration.between(base, built).toMinutes()
     if (minutes > 0) (3000000L + minutes).toInt() else 3000000
 }
 
