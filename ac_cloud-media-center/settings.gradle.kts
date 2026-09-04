@@ -37,6 +37,19 @@ project(":libs:panoramaviewer").projectDir = file("../ab_cloud-libs-shared/libs/
 include(":libs:scrollbar")
 project(":libs:scrollbar").projectDir = file("../ab_cloud-libs-shared/libs/scrollbar")
 
+// Crash telemetry. libs:core carries CoreInitProvider, which installs the
+// uncaught-exception handler that POSTs the stack trace plus the tail of this
+// process's logcat to c3-infra-api — so a crash here reports itself instead of
+// dying on the phone, which is what made the last startup failure in this app
+// take a dex teardown to diagnose rather than one launch.
+include(":libs:core")
+project(":libs:core").projectDir = file("../ab_cloud-libs-shared/libs/core")
+// Not optional and not a stray: libs:core declares `api project(':libs:devtools')`,
+// and Gradle resolves that path against THIS settings file. Without the include
+// the core dependency fails configuration outright.
+include(":libs:devtools")
+project(":libs:devtools").projectDir = file("../ab_cloud-libs-shared/libs/devtools")
+
 // ':libs:<x>' implicitly declares an intermediate ':libs' project whose default
 // projectDir is <root>/libs. This app HAD one, so it never needed mapping —
 // until its four modules moved into the shared root and the directory went

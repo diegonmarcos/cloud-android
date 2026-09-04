@@ -490,6 +490,13 @@ dependencies {
     // Composable - Scrollbar
     implementation(project(":libs:scrollbar"))
 
+    // Crash telemetry, constellation default. There is nothing to call:
+    // libs:core's CoreInitProvider is a manifest-merged ContentProvider, so
+    // declaring the dependency IS the integration, and it installs before
+    // Application.onCreate — which is exactly where a crash that reads as
+    // "the app does not open" happens.
+    implementation(project(":libs:core"))
+
     // ONNX Runtime (CPU + NNAPI)
     implementation(libs.onnxruntime.android)
 
