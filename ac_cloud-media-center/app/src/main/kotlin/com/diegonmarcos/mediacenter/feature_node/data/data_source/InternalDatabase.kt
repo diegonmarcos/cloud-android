@@ -96,7 +96,7 @@ import com.diegonmarcos.mediacenter.feature_node.domain.util.Converters
         AlbumSection::class,
         AlbumSectionMember::class
     ],
-    version = 40,
+    version = 41,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
