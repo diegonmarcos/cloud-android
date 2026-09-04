@@ -53,6 +53,59 @@ json_target() { node -e 'const m=JSON.parse(require("fs").readFileSync(process.a
 json_root_keys()   { node -e 'const m=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));process.stdout.write(Object.keys(m.root_targets||{}).join(" "))' "$1"; }
 json_root_target() { node -e 'const m=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));process.stdout.write(String(m.root_targets[process.argv[2]]))' "$1" "$2"; }
 
+# ── refresh src/claude/ from the ONE claude SoT ─────────────────────────────
+# Same pattern as the mcp.json refresh below, one tier up: src/ is a GENERATED
+# copy, not a hand-kept mirror, so "regenerate the source of truth" changes what
+# gets deployed.
+#
+# The SoT is da_my-ai/data/claude/, which already feeds ~/.claude via both
+# flakes' home.activation.claudeAssets. Until now cloud-infra held its OWN copy
+# of agents/ and its own settings.json, whose _doc said "edit there, then
+# re-copy here" — and agents/README.md had duplicate rule numbering in one copy
+# and a stale `unix/` path in the other, each claiming to be the same file.
+#
+# NOT symlinks. That was tried and it is what line 89's comment is about:
+# a cross-repo link resolves on one laptop and dangles in every clone, CI runner
+# and container, and Claude Code loads NOTHING from an unreadable .mcp.json
+# without saying so. Two dangling .mcp.json links from that attempt still exist
+# in cloud-infra-desktop. Real files, refreshed at build time.
+#
+# CLAUDE_SOT_DIR is the same override the flakes' claude.nix uses, so one
+# variable relocates every consumer of the SoT.
+#
+# Absent checkout SKIPS, loudly but without failing: a clone or a CI runner that
+# has cloud-infra and not cloud-u-linux must still be able to deploy the copies
+# already committed here. Only a machine that HAS the SoT can refresh them.
+CLAUDE_SOT="${CLAUDE_SOT_DIR:-$HOME/git/cloud-u-linux/da_my-ai/data/claude}"
+if [ -d "$DF_SRC/claude" ]; then
+    if [ -d "$CLAUDE_SOT" ]; then
+        # <name in SoT>:<name under src/claude/>. settings.project.json is
+        # renamed on the way in: in the SoT it sits beside settings.base.json /
+        # settings.{termux,desktop}.json and needs a distinguishing suffix,
+        # while Claude Code will only read `.claude/settings.json`.
+        for _pair in agents:agents mcp-auth-headers.sh:mcp-auth-headers.sh settings.project.json:settings.json; do
+            _from="$CLAUDE_SOT/${_pair%%:*}"
+            _to="$DF_SRC/claude/${_pair##*:}"
+            if [ -d "$_from" ]; then
+                # Wiped then copied, like claude.nix does for agents/: for a
+                # directory that IS the whole semantics, a merge would leave a
+                # deleted agent behind forever.
+                rm -rf "$_to"; cp -a "$_from" "$_to"
+                log "claude: ${_pair##*:}/ refreshed from the SoT ($(find "$_to" -type f | wc -l | tr -d ' ') files)"
+            elif [ -f "$_from" ]; then
+                cmp -s "$_from" "$_to" 2>/dev/null || {
+                    cp -f "$_from" "$_to"
+                    log "claude: ${_pair##*:} refreshed from the SoT"
+                }
+            else
+                log "claude: '${_pair%%:*}' absent from $CLAUDE_SOT — skipping"
+            fi
+        done
+    else
+        log "claude: SoT not checked out at $CLAUDE_SOT — deploying the committed copies unchanged"
+    fi
+fi
+
 # Validate every source file BEFORE touching the working tree — a half-applied
 # set of broken JSON is worse than not deploying at all.
 for f in $(find "$DF_SRC" -maxdepth 2 -path '*app-*' -name '*.json'); do
@@ -101,7 +154,7 @@ for rf in $ROOT_FILES; do
     # into 1_cloud-configs/dist/. Nothing connected that to src/apps/root/, so
     # the file every repo ships was a hand-made copy, and "regenerate the
     # derive" did not change what got deployed. That is how .mcp.json in vault
-    # ended up without the c3-infra-mcp headersHelper while cloud's had it —
+    # ended up without the cloud-infra-mcp headersHelper while cloud's had it —
     # both claiming, in their own _doc, to be the same file.
     #
     # No-op in the other repos: they have no 1_cloud-configs/, so the guard

@@ -1,5 +1,5 @@
 {
-  "_doc": "PROJECT-scoped Claude Code settings, committed into every repo under cloud. Mirrors the machine-independent half of unix/da_my-ai/src/data/claude/settings.base.json + settings.desktop.json, which is the source of truth for ~/.claude/settings.json — edit there, then re-copy here.",
+  "_doc": "PROJECT-scoped Claude Code settings — the SoT for the settings.json committed into every repo under cloud. It carries the machine-independent half of settings.base.json + settings.desktop.json (its neighbours here, the SoT for ~/.claude/settings.json). cloud-infra's 9_others/src/deploy-dotfiles.sh copies this file to 0_apps/src/claude/settings.json on every dotfiles build, which then deploys to <repo>/.claude/settings.json. Edit HERE; the copies are generated. It used to be hand-kept in cloud-infra with an instruction to 're-copy', and three repos had drifted the first time anything looked.",
 
   "_why_committed": "~/.claude/settings.json only exists where unix's home-manager has run. A fresh clone — CI, a container, Claude Code on the web, a second machine, someone else's checkout — has no user config, so without this the repo gets Claude's stock defaults: no thinking, no tool search, no agents. Project settings merge OVER user settings, so on a home-manager machine these keys are already what ~/.claude sets and the merge is a no-op.",
 
@@ -11,8 +11,12 @@
 
   "env": {
     "_doc": "Only machine-independent values — no paths.",
-    "ENABLE_TOOL_SEARCH": "true"
+    "_ENABLE_TOOL_SEARCH_comment": "auto, mirrored from settings.base.json. 'true' force-defers EVERY MCP tool behind Tool Search unconditionally; 'auto' defers only past 10% of context (~20k tokens) so the lean detached servers (cgc-pub etc.) stay eager while the fat, mostly-disabled cloud-services-mcp aggregator is what trips deferral when enabled. Project settings merge OVER user, so this MUST match base.json or it silently re-forces 'true' inside every repo.",
+    "ENABLE_TOOL_SEARCH": "auto"
   },
+
+  "_disabledMcpjsonServers_comment": "Default-OFF the two fat aggregators (mirror of settings.base.json) so the auto 10% cap is spent on the lean detached servers and cgc-pub stays eager. cloud-services-mcp (master index, ~139 tools) + cloud-infra-mcp (devops/obs/sec, ~138) are ~40k eager and force everything to defer. /mcp re-enables either on demand.",
+  "disabledMcpjsonServers": ["cloud-services-mcp", "cloud-infra-mcp"],
 
   "permissions": {
     "_doc": "Left empty on purpose. Pre-approving commands is a per-person trust decision, not a repo-wide one — the /fewer-permission-prompts skill generates an allowlist from your own transcripts. defaultMode is user-level too: settings.base.json sets \"auto\", and forcing it from a committed file would override that choice for anyone who clones this repo.",

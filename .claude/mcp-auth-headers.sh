@@ -34,7 +34,48 @@ if [ -n "${AUTHELIA_BEARER_TOKEN:-}" ]; then
     exit 0
 fi
 
-# Source 2+: a vault checkout on disk. Tried in order; first readable wins.
+# Source 2: MINT one from client credentials.
+#
+# This is what makes a container work without handing it a long-lived token at
+# all. Source 1 says "prefer a narrow client" and then offers no way to be
+# narrow: the only thing it accepts is a finished bearer, so the path of least
+# resistance is exporting claude-admin — full admin, valid into 2036 — into an
+# environment every session in it can read.
+#
+# client_credentials closes that gap. The environment carries an id and a
+# secret, this exchanges them for a short-lived token per session, and what
+# sits at rest is scoped to that client instead of to everything, forever.
+#
+# Same grant, endpoint and scope as 1_cicd/src/ops/cloud-health-mail-full.sh,
+# which already mints this way — deliberately not a second dialect of one
+# exchange.
+#
+# A failure here is not fatal: it falls through to the vault sources below and
+# ultimately to {}. A container has nothing to fall through TO, which is
+# exactly why this must not be the step that aborts the script.
+if [ -n "${AUTHELIA_TOKEN_URL:-}" ] \
+   && [ -n "${AUTHELIA_OIDC_CLIENT_ID:-}" ] \
+   && [ -n "${AUTHELIA_OIDC_CLIENT_SECRET:-}" ]; then
+    # -u, not a POST body: keeps the secret out of the process list.
+    _minted=$(curl -s --max-time 10 -X POST "$AUTHELIA_TOKEN_URL" \
+        -u "$AUTHELIA_OIDC_CLIENT_ID:$AUTHELIA_OIDC_CLIENT_SECRET" \
+        -d 'grant_type=client_credentials&scope=authelia.bearer.authz' 2>/dev/null \
+        | node -e '
+            let s = "";
+            process.stdin.on("data", d => s += d).on("end", () => {
+              try { process.stdout.write(JSON.parse(s).access_token || ""); }
+              catch { process.stdout.write(""); }
+            });
+          ' 2>/dev/null) || _minted=""
+    if [ -n "$_minted" ]; then
+        node -e 'process.stdout.write(JSON.stringify({Authorization:"Bearer "+process.argv[1]}))' "$_minted" 2>/dev/null \
+            || printf '%s\n' '{}'
+        exit 0
+    fi
+    echo "mcp-auth-headers: client_credentials mint failed for $AUTHELIA_OIDC_CLIENT_ID — trying the vault sources." >&2
+fi
+
+# Source 3+: a vault checkout on disk. Tried in order; first readable wins.
 #
 # This script lives at <repo>/.claude/mcp-auth-headers.sh, so the repo root is
 # two levels up from $0 — derived rather than assumed, because the helper is
