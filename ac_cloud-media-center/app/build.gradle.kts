@@ -29,6 +29,28 @@ manifestConfig {
     }
 }
 
+// Wall-clock versionCode, the fleet convention every other constellation app
+// already uses: minutes since 2026-01-01 UTC over a 3,000,000 base, so each
+// build is strictly newer than the one before it. This replaces a versionCode
+// hardcoded to 51101 (the upstream ReFra version), which never moved between
+// builds — so the Constellation updater never saw an upgrade and left whatever
+// APK was already installed in place. CI passes COMMS_BUILD_TIMESTAMP so the
+// code matches the release tag; otherwise the build time is used.
+val wallClockVersionCode: Int = run {
+    val base = java.time.LocalDateTime.of(2026, 1, 1, 0, 0)
+    var built = java.time.LocalDateTime.now(java.time.ZoneOffset.UTC)
+    System.getenv("COMMS_BUILD_TIMESTAMP")?.let { stamp ->
+        runCatching {
+            built = java.time.LocalDateTime.parse(
+                stamp,
+                java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd.HHmmss")
+            )
+        }
+    }
+    val minutes = java.time.Duration.between(base, built).toMinutes()
+    if (minutes > 0) (3000000L + minutes).toInt() else 3000000
+}
+
 val abiVersionCodes = mapOf(
     "arm64-v8a" to 4,
     "armeabi-v7a" to 3,
@@ -87,7 +109,7 @@ android {
         applicationId = "com.diegonmarcos.mediacenter"
         minSdk = 29
         targetSdk = 37
-        versionCode = 51101
+        versionCode = wallClockVersionCode
         versionName = "5.1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
