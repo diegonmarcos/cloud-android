@@ -26,4 +26,23 @@
 
     <uses-permission android:name="com.diegonmarcos.cloud.permission.CONSTELLATION_DATA" />
 
+    <application>
+        <!-- Crash telemetry, on by default for every app that links libs:core.
+             A provider's onCreate runs BEFORE Application.onCreate, so this
+             also covers a crash IN Application.onCreate — the one a user
+             experiences as "the app does not open", and the one nothing else
+             here could see.
+
+             initOrder is ABOVE devtools' DebugInitProvider (100) deliberately:
+             installed first, this ends up the innermost handler, so a crash in
+             the window between the two installs still gets OFF the device.
+             Both handlers chain to the one they replaced, so the local crash
+             file and the upload both still happen. -->
+        <provider
+            android:name="com.diegonmarcos.superapp.core.CoreInitProvider"
+            android:authorities="${applicationId}.core.crashinit"
+            android:exported="false"
+            android:initOrder="110" />
+    </application>
+
 </manifest>

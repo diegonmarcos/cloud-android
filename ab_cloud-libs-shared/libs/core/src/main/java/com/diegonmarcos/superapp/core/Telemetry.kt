@@ -29,6 +29,17 @@ object Telemetry {
     private const val TAG = "Telemetry"
     private const val BASE_URL = "https://api.diegonmarcos.com/c3-infra-api/public/events/"
 
+    /** Newest logcat bytes attached to a crash report. Deliberately far below
+     *  [LogUpload]'s 1.5 MB ceiling: this is read and uploaded on the dying
+     *  thread, so the budget is "enough lead-up to explain the throw", not
+     *  "everything the app ever logged". */
+    private const val CRASH_LOGCAT_BYTES = 256_000
+
+    /** Crash-path HTTP budget, tighter than ordinary telemetry's 5 s/8 s: the
+     *  app is frozen in front of the user until the POST returns or gives up. */
+    private const val CRASH_CONNECT_TIMEOUT_MS = 3_000
+    private const val CRASH_READ_TIMEOUT_MS = 4_000
+
     /**
      * Derive the app id the events ingest and the ntfy topic key on:
      * last segment(s) of the package name after "com.diegonmarcos.", with
@@ -142,13 +153,28 @@ object Telemetry {
             try {
                 val sw = java.io.StringWriter()
                 throwable.printStackTrace(java.io.PrintWriter(sw))
+                val trace = LogUpload.redact(sw.toString())
+                // The trace alone says WHERE it threw, never WHY. The lead-up
+                // is in logcat, and this handler runs BEFORE the runtime logs
+                // the fatal exception, so the two do not overlap — ship both,
+                // trace first so the report is readable without scrolling.
+                // Own-process logcat is all an unprivileged uid may read, which
+                // is exactly the process that is dying, so it is the right dump.
+                val logcat = runCatching {
+                    LogUpload.captureAndRedactLogcat(CRASH_LOGCAT_BYTES)
+                }.getOrElse { "logcat capture failed: ${it.javaClass.simpleName}: ${it.message}" }
                 postBlocking(
                     ctx,
                     kind = "crash",
                     title = throwable.javaClass.name,
                     message = throwable.message,
-                    log = LogUpload.redact(sw.toString()),
+                    log = trace + "\n\n--- logcat (own process, newest ${CRASH_LOGCAT_BYTES}B) ---\n" + logcat,
                     meta = emptyMap(),
+                    // The process is already dead on its feet: the user is
+                    // looking at a frozen app until this returns, so the crash
+                    // path gets its own tighter budget than ordinary telemetry.
+                    connectTimeoutMs = CRASH_CONNECT_TIMEOUT_MS,
+                    readTimeoutMs = CRASH_READ_TIMEOUT_MS,
                 )
             } catch (t: Throwable) {
                 // Telemetry must never be the reason a crash goes unreported
@@ -171,6 +197,8 @@ object Telemetry {
         message: String?,
         log: String?,
         meta: Map<String, String>,
+        connectTimeoutMs: Int = 5_000,
+        readTimeoutMs: Int = 8_000,
     ) {
         val url = endpoint(context)
         if (url.isBlank()) {
@@ -187,8 +215,8 @@ object Telemetry {
         val conn = (URL(url).openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
             doOutput = true
-            connectTimeout = 5_000
-            readTimeout = 8_000
+            connectTimeout = connectTimeoutMs
+            readTimeout = readTimeoutMs
             setRequestProperty("Content-Type", "application/json; charset=utf-8")
             // Public endpoint by design — no Authorization, same reasoning as
             // LogUpload.
