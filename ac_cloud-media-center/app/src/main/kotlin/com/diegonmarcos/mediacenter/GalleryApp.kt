@@ -28,6 +28,7 @@ import com.diegonmarcos.mediacenter.core.metadata.MetadataSanitizer
 import com.diegonmarcos.mediacenter.core.sandbox.IsolatedImageDecoder
 import com.diegonmarcos.mediacenter.core.sandbox.SandboxedDecoderHolder
 import com.diegonmarcos.mediacenter.core.security.AdvancedProtectionMonitor
+import com.diegonmarcos.mediacenter.core.decoder.NativeLibraries
 import com.diegonmarcos.mediacenter.core.decoder.supportApng
 import com.diegonmarcos.mediacenter.core.decoder.supportHeifDecoder
 import com.diegonmarcos.mediacenter.core.decoder.supportAnimatedJxlDecoder
@@ -171,6 +172,9 @@ class GalleryApp : Application(), SingletonSketch.Factory, Configuration.Provide
 
     override fun onCreate() {
         val onCreateSpan = StartupTracer.begin("App.onCreate")
+        // Before the isolated-process bail-out below: the native decoders are
+        // used from isolated processes too, and this only stores a context.
+        NativeLibraries.attach(this)
         // Isolated-process services inherit this Application class but must NOT
         // run Hilt injection (WorkManager/JobScheduler are unavailable there).
         if (getProcessName() != packageName) return

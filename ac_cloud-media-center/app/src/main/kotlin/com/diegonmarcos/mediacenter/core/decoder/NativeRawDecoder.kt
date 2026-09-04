@@ -26,13 +26,7 @@ object NativeRawDecoder {
     private const val TAG = "NativeRawDecoder"
 
     val isAvailable: Boolean by lazy {
-        runCatching {
-            System.loadLibrary("rawcodec")
-            nativeSelfTest()
-        }.getOrElse {
-            Log.w(TAG, "rawcodec native library unavailable: ${it.message}")
-            false
-        }
+        NativeLibraries.load("rawcodec") { nativeSelfTest() }
     }
 
     /** Full sensor size (post-crop) reported by LibRaw, orientation-swapped to match display. */

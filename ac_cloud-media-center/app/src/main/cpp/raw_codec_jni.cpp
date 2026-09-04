@@ -258,13 +258,13 @@ jintArray toArgbIntArray(JNIEnv* env, const uint8_t* rgb, int w, int h) {
 } // namespace
 
 extern "C" JNIEXPORT jboolean JNICALL
-Java_com_dot_gallery_core_decoder_NativeRawDecoder_nativeSelfTest(JNIEnv*, jclass) {
+Java_com_diegonmarcos_mediacenter_core_decoder_NativeRawDecoder_nativeSelfTest(JNIEnv*, jclass) {
     return JNI_TRUE;
 }
 
 // Returns [fullW, fullH, thumbW, thumbH, isFoveon, flip] or null.
 extern "C" JNIEXPORT jintArray JNICALL
-Java_com_dot_gallery_core_decoder_NativeRawDecoder_nativeGetInfo(
+Java_com_diegonmarcos_mediacenter_core_decoder_NativeRawDecoder_nativeGetInfo(
         JNIEnv* env, jclass, jbyteArray dataArr) {
     if (dataArr == nullptr) return nullptr;
     const jsize size = env->GetArrayLength(dataArr);
@@ -293,7 +293,7 @@ Java_com_dot_gallery_core_decoder_NativeRawDecoder_nativeGetInfo(
 
 // Decodes the embedded camera thumbnail. Returns [w, h, ARGB...] or null.
 extern "C" JNIEXPORT jintArray JNICALL
-Java_com_dot_gallery_core_decoder_NativeRawDecoder_nativeGetThumbnail(
+Java_com_diegonmarcos_mediacenter_core_decoder_NativeRawDecoder_nativeGetThumbnail(
         JNIEnv* env, jclass, jbyteArray dataArr) {
     if (dataArr == nullptr) return nullptr;
     const jsize size = env->GetArrayLength(dataArr);
@@ -323,7 +323,7 @@ Java_com_dot_gallery_core_decoder_NativeRawDecoder_nativeGetThumbnail(
 
 // Demosaics to 8-bit and returns [w, h, ARGB...] or null.
 extern "C" JNIEXPORT jintArray JNICALL
-Java_com_dot_gallery_core_decoder_NativeRawDecoder_nativeDemosaic(
+Java_com_diegonmarcos_mediacenter_core_decoder_NativeRawDecoder_nativeDemosaic(
         JNIEnv* env, jclass, jbyteArray dataArr,
         jintArray intParams, jfloatArray floatParams, jfloatArray userMul) {
     if (dataArr == nullptr) return nullptr;
@@ -355,7 +355,7 @@ Java_com_dot_gallery_core_decoder_NativeRawDecoder_nativeDemosaic(
 
 // Demosaics at [outputBps] (8 or 16) and writes a TIFF to [fd] via libtiff. Returns success.
 extern "C" JNIEXPORT jboolean JNICALL
-Java_com_dot_gallery_core_decoder_NativeRawDecoder_nativeExportTiff(
+Java_com_diegonmarcos_mediacenter_core_decoder_NativeRawDecoder_nativeExportTiff(
         JNIEnv* env, jclass, jbyteArray dataArr,
         jintArray intParams, jfloatArray floatParams, jfloatArray userMul,
         jint outputBps, jint fd, jint compression) {
@@ -416,7 +416,7 @@ Java_com_dot_gallery_core_decoder_NativeRawDecoder_nativeExportTiff(
 // float bundle, applies it to a copy of [argbArr], and returns [w, h, ARGB...] to
 // match packedToBitmap. The input array is left unchanged.
 extern "C" JNIEXPORT jintArray JNICALL
-Java_com_dot_gallery_core_decoder_NativeRawDecoder_nativeApplyTone(
+Java_com_diegonmarcos_mediacenter_core_decoder_NativeRawDecoder_nativeApplyTone(
         JNIEnv* env, jclass, jintArray argbArr, jint w, jint h, jfloatArray floatParams) {
     if (argbArr == nullptr || w <= 0 || h <= 0) return nullptr;
     const size_t px = static_cast<size_t>(w) * static_cast<size_t>(h);
@@ -449,30 +449,30 @@ Java_com_dot_gallery_core_decoder_NativeRawDecoder_nativeApplyTone(
 #else // !HAVE_LIBRAW — stubs so the .so still loads and Kotlin falls back to embedded preview.
 
 extern "C" JNIEXPORT jboolean JNICALL
-Java_com_dot_gallery_core_decoder_NativeRawDecoder_nativeSelfTest(JNIEnv*, jclass) {
+Java_com_diegonmarcos_mediacenter_core_decoder_NativeRawDecoder_nativeSelfTest(JNIEnv*, jclass) {
     return JNI_FALSE;
 }
 extern "C" JNIEXPORT jintArray JNICALL
-Java_com_dot_gallery_core_decoder_NativeRawDecoder_nativeGetInfo(JNIEnv*, jclass, jbyteArray) {
+Java_com_diegonmarcos_mediacenter_core_decoder_NativeRawDecoder_nativeGetInfo(JNIEnv*, jclass, jbyteArray) {
     return nullptr;
 }
 extern "C" JNIEXPORT jintArray JNICALL
-Java_com_dot_gallery_core_decoder_NativeRawDecoder_nativeGetThumbnail(JNIEnv*, jclass, jbyteArray) {
+Java_com_diegonmarcos_mediacenter_core_decoder_NativeRawDecoder_nativeGetThumbnail(JNIEnv*, jclass, jbyteArray) {
     return nullptr;
 }
 extern "C" JNIEXPORT jintArray JNICALL
-Java_com_dot_gallery_core_decoder_NativeRawDecoder_nativeDemosaic(
+Java_com_diegonmarcos_mediacenter_core_decoder_NativeRawDecoder_nativeDemosaic(
         JNIEnv*, jclass, jbyteArray, jintArray, jfloatArray, jfloatArray) {
     return nullptr;
 }
 extern "C" JNIEXPORT jboolean JNICALL
-Java_com_dot_gallery_core_decoder_NativeRawDecoder_nativeExportTiff(
+Java_com_diegonmarcos_mediacenter_core_decoder_NativeRawDecoder_nativeExportTiff(
         JNIEnv*, jclass, jbyteArray, jintArray, jfloatArray, jfloatArray,
         jint, jint, jint) {
     return JNI_FALSE;
 }
 extern "C" JNIEXPORT jintArray JNICALL
-Java_com_dot_gallery_core_decoder_NativeRawDecoder_nativeApplyTone(
+Java_com_diegonmarcos_mediacenter_core_decoder_NativeRawDecoder_nativeApplyTone(
         JNIEnv*, jclass, jintArray, jint, jint, jfloatArray) {
     return nullptr;
 }

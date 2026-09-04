@@ -18,7 +18,7 @@
         errorLine1="        putString(ContentResolver.QUERY_ARG_SQL_LIMIT, &quot;250&quot;)"
         errorLine2="                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/core/util/ext/ContentResolverExt.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/core/util/ext/ContentResolverExt.kt"
             line="57"
             column="19"/>
     </issue>
@@ -29,7 +29,7 @@
         errorLine1="                                    HapticFeedbackConstants.CONFIRM"
         errorLine2="                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/common/components/GridPinchZoomState.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/common/components/GridPinchZoomState.kt"
             line="208"
             column="37"/>
     </issue>
@@ -40,7 +40,7 @@
         errorLine1="                MediaMetadataRetriever.METADATA_KEY_COLOR_STANDARD to &quot;Color Standard&quot;,"
         errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/core/sandbox/IsolatedMetadataService.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/core/sandbox/IsolatedMetadataService.kt"
             line="335"
             column="17"/>
     </issue>
@@ -51,7 +51,7 @@
         errorLine1="                MediaMetadataRetriever.METADATA_KEY_COLOR_TRANSFER to &quot;Color Transfer&quot;,"
         errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/core/sandbox/IsolatedMetadataService.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/core/sandbox/IsolatedMetadataService.kt"
             line="336"
             column="17"/>
     </issue>
@@ -62,7 +62,7 @@
         errorLine1="                MediaMetadataRetriever.METADATA_KEY_COLOR_RANGE to &quot;Color Range&quot;,"
         errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/core/sandbox/IsolatedMetadataService.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/core/sandbox/IsolatedMetadataService.kt"
             line="337"
             column="17"/>
     </issue>
@@ -73,7 +73,7 @@
         errorLine1="                MediaMetadataRetriever.METADATA_KEY_SAMPLERATE to &quot;Sample Rate&quot;,"
         errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/core/sandbox/IsolatedMetadataService.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/core/sandbox/IsolatedMetadataService.kt"
             line="338"
             column="17"/>
     </issue>
@@ -84,7 +84,7 @@
         errorLine1="                MediaMetadataRetriever.METADATA_KEY_BITS_PER_SAMPLE to &quot;Bits Per Sample&quot;,"
         errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/core/sandbox/IsolatedMetadataService.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/core/sandbox/IsolatedMetadataService.kt"
             line="339"
             column="17"/>
     </issue>
@@ -95,7 +95,7 @@
         errorLine1="                                    HapticFeedbackConstants.CONFIRM"
         errorLine2="                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/common/components/MosaicPinchZoomState.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/common/components/MosaicPinchZoomState.kt"
             line="190"
             column="37"/>
     </issue>
@@ -480,7 +480,7 @@
         errorLine1="                                        VideoPlayerController("
         errorLine2="                                        ~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/mediaview/MediaViewScreen.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/mediaview/MediaViewScreen.kt"
             line="822"
             column="41"/>
     </issue>
@@ -491,7 +491,7 @@
         errorLine1="    private val savedStateHandle: SavedStateHandle = SavedStateHandle(),"
         errorLine2="                                                     ~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/mediaview/components/video/VideoPlayerViewModel.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/mediaview/components/video/VideoPlayerViewModel.kt"
             line="55"
             column="54"/>
     </issue>
@@ -502,7 +502,7 @@
         errorLine1="    private val savedStateHandle: SavedStateHandle = SavedStateHandle(),"
         errorLine2="                                                     ~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/mediaview/components/video/VideoPlayerViewModel.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/mediaview/components/video/VideoPlayerViewModel.kt"
             line="55"
             column="54"/>
     </issue>
@@ -513,7 +513,7 @@
         errorLine1="                                Toast.makeText(context, context.getString(R.string.vault_hide_in_progress), Toast.LENGTH_SHORT).show()"
         errorLine2="                                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/core/presentation/components/SelectionSheet.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/core/presentation/components/SelectionSheet.kt"
             line="558"
             column="57"/>
     </issue>
@@ -524,7 +524,7 @@
         errorLine1="                                Toast.makeText(context, context.getString(R.string.vault_hide_in_progress), Toast.LENGTH_SHORT).show()"
         errorLine2="                                                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/core/presentation/components/SelectionSheet.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/core/presentation/components/SelectionSheet.kt"
             line="565"
             column="57"/>
     </issue>
@@ -535,7 +535,7 @@
         errorLine1="            Toast.makeText(context, context.getString(R.string.vault_hide_in_progress), Toast.LENGTH_SHORT).show()"
         errorLine2="                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/core/presentation/components/SelectionSheet.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/core/presentation/components/SelectionSheet.kt"
             line="588"
             column="37"/>
     </issue>
@@ -546,7 +546,7 @@
         errorLine1="            Toast.makeText(context, context.getString(R.string.vault_hide_in_progress), Toast.LENGTH_SHORT).show()"
         errorLine2="                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/core/presentation/components/SelectionSheet.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/core/presentation/components/SelectionSheet.kt"
             line="596"
             column="37"/>
     </issue>
@@ -557,7 +557,7 @@
         errorLine1="                val builtinLabel = context.getString(R.string.default_image_editor_builtin)"
         errorLine2="                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/settings/subsettings/SettingsMediaViewerScreen.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/settings/subsettings/SettingsMediaViewerScreen.kt"
             line="168"
             column="36"/>
     </issue>
@@ -568,7 +568,7 @@
         errorLine1="            SettingsEntity.Header(title = context.getString(R.string.media_view))"
         errorLine2="                                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/settings/subsettings/SettingsMediaViewerScreen.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/settings/subsettings/SettingsMediaViewerScreen.kt"
             line="271"
             column="43"/>
     </issue>
@@ -579,7 +579,7 @@
         errorLine1="                context.getString(R.string.default_image_editor_builtin)"
         errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/settings/subsettings/SettingsMediaViewerScreen.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/settings/subsettings/SettingsMediaViewerScreen.kt"
             line="306"
             column="17"/>
     </issue>
@@ -590,7 +590,7 @@
         errorLine1="                    ?: context.getString(R.string.default_image_editor_builtin)"
         errorLine2="                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/settings/subsettings/SettingsMediaViewerScreen.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/settings/subsettings/SettingsMediaViewerScreen.kt"
             line="310"
             column="24"/>
     </issue>
@@ -601,7 +601,7 @@
         errorLine1="            SettingsEntity.Header(title = context.getString(R.string.video_playback))"
         errorLine2="                                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/settings/subsettings/SettingsMediaViewerScreen.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/settings/subsettings/SettingsMediaViewerScreen.kt"
             line="322"
             column="43"/>
     </issue>
@@ -612,7 +612,7 @@
         errorLine1="                    PreferenceOption(&quot;auto&quot;, context.getString(R.string.use_last_opened_screen), !forcedLastScreen),"
         errorLine2="                                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/settings/subsettings/SettingsNavigationScreen.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/settings/subsettings/SettingsNavigationScreen.kt"
             line="96"
             column="46"/>
     </issue>
@@ -623,7 +623,7 @@
         errorLine1="                    PreferenceOption(Screen.TimelineScreen(), context.getString(R.string.launch_on_timeline), forcedLastScreen &amp;&amp; lastScreen == Screen.TimelineScreen()),"
         errorLine2="                                                              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/settings/subsettings/SettingsNavigationScreen.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/settings/subsettings/SettingsNavigationScreen.kt"
             line="97"
             column="63"/>
     </issue>
@@ -634,7 +634,7 @@
         errorLine1="                    PreferenceOption(Screen.AlbumsScreen(), context.getString(R.string.launch_on_albums), forcedLastScreen &amp;&amp; lastScreen == Screen.AlbumsScreen()),"
         errorLine2="                                                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/settings/subsettings/SettingsNavigationScreen.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/settings/subsettings/SettingsNavigationScreen.kt"
             line="98"
             column="61"/>
     </issue>
@@ -645,7 +645,7 @@
         errorLine1="                    PreferenceOption(Screen.LibraryScreen(), context.getString(R.string.launch_on_library), forcedLastScreen &amp;&amp; lastScreen == Screen.LibraryScreen()),"
         errorLine2="                                                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/settings/subsettings/SettingsNavigationScreen.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/settings/subsettings/SettingsNavigationScreen.kt"
             line="99"
             column="62"/>
     </issue>
@@ -656,7 +656,7 @@
         errorLine1="            SettingsEntity.Header(title = context.getString(R.string.set_default_launch_screen))"
         errorLine2="                                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/settings/subsettings/SettingsNavigationScreen.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/settings/subsettings/SettingsNavigationScreen.kt"
             line="389"
             column="43"/>
     </issue>
@@ -667,7 +667,7 @@
         errorLine1="                    Screen.TimelineScreen() -> context.getString(R.string.launch_on_timeline)"
         errorLine2="                                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/settings/subsettings/SettingsNavigationScreen.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/settings/subsettings/SettingsNavigationScreen.kt"
             line="395"
             column="48"/>
     </issue>
@@ -678,7 +678,7 @@
         errorLine1="                    Screen.AlbumsScreen() -> context.getString(R.string.launch_on_albums)"
         errorLine2="                                             ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/settings/subsettings/SettingsNavigationScreen.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/settings/subsettings/SettingsNavigationScreen.kt"
             line="396"
             column="46"/>
     </issue>
@@ -689,7 +689,7 @@
         errorLine1="                    else -> context.getString(R.string.launch_on_library)"
         errorLine2="                            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/settings/subsettings/SettingsNavigationScreen.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/settings/subsettings/SettingsNavigationScreen.kt"
             line="397"
             column="29"/>
     </issue>
@@ -700,7 +700,7 @@
         errorLine1="                context.getString(R.string.launch_auto)"
         errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/settings/subsettings/SettingsNavigationScreen.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/settings/subsettings/SettingsNavigationScreen.kt"
             line="400"
             column="17"/>
     </issue>
@@ -711,7 +711,7 @@
         errorLine1="            SettingsEntity.Header(title = context.getString(R.string.navigation))"
         errorLine2="                                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/settings/subsettings/SettingsNavigationScreen.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/settings/subsettings/SettingsNavigationScreen.kt"
             line="412"
             column="43"/>
     </issue>
@@ -722,7 +722,7 @@
         errorLine1="            SettingsEntity.Header(title = context.getString(R.string.interface_settings))"
         errorLine2="                                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/settings/subsettings/SettingsNavigationScreen.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/settings/subsettings/SettingsNavigationScreen.kt"
             line="446"
             column="43"/>
     </issue>
@@ -733,7 +733,7 @@
         errorLine1="            SettingsEntity.Header(title = context.getString(R.string.timeline))"
         errorLine2="                                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/settings/subsettings/SettingsTimelineAlbumsScreen.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/settings/subsettings/SettingsTimelineAlbumsScreen.kt"
             line="272"
             column="43"/>
     </issue>
@@ -744,7 +744,7 @@
         errorLine1="                Settings.Misc.LAYOUT_MOSAIC -> context.getString(R.string.timeline_layout_mosaic)"
         errorLine2="                                               ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/settings/subsettings/SettingsTimelineAlbumsScreen.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/settings/subsettings/SettingsTimelineAlbumsScreen.kt"
             line="287"
             column="48"/>
     </issue>
@@ -755,7 +755,7 @@
         errorLine1="                else -> context.getString(R.string.timeline_layout_grid)"
         errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/settings/subsettings/SettingsTimelineAlbumsScreen.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/settings/subsettings/SettingsTimelineAlbumsScreen.kt"
             line="288"
             column="25"/>
     </issue>
@@ -766,7 +766,7 @@
         errorLine1="            SettingsEntity.Header(title = context.getString(R.string.albums))"
         errorLine2="                                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/settings/subsettings/SettingsTimelineAlbumsScreen.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/settings/subsettings/SettingsTimelineAlbumsScreen.kt"
             line="327"
             column="43"/>
     </issue>
@@ -777,7 +777,7 @@
         errorLine1="                Settings.Misc.FAV_ICON_DISABLED -> context.getString(R.string.fav_position_disabled)"
         errorLine2="                                                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/settings/subsettings/SettingsTimelineAlbumsScreen.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/settings/subsettings/SettingsTimelineAlbumsScreen.kt"
             line="352"
             column="52"/>
     </issue>
@@ -788,7 +788,7 @@
         errorLine1="                Settings.Misc.FAV_ICON_BOTTOM_START -> context.getString(R.string.fav_position_bottom_start)"
         errorLine2="                                                       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/settings/subsettings/SettingsTimelineAlbumsScreen.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/settings/subsettings/SettingsTimelineAlbumsScreen.kt"
             line="353"
             column="56"/>
     </issue>
@@ -799,7 +799,7 @@
         errorLine1="                Settings.Misc.FAV_ICON_TOP_END -> context.getString(R.string.fav_position_top_end)"
         errorLine2="                                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/settings/subsettings/SettingsTimelineAlbumsScreen.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/settings/subsettings/SettingsTimelineAlbumsScreen.kt"
             line="354"
             column="51"/>
     </issue>
@@ -810,7 +810,7 @@
         errorLine1="                Settings.Misc.FAV_ICON_TOP_START -> context.getString(R.string.fav_position_top_start)"
         errorLine2="                                                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/settings/subsettings/SettingsTimelineAlbumsScreen.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/settings/subsettings/SettingsTimelineAlbumsScreen.kt"
             line="355"
             column="53"/>
     </issue>
@@ -821,7 +821,7 @@
         errorLine1="                else -> context.getString(R.string.fav_position_bottom_end)"
         errorLine2="                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/settings/subsettings/SettingsTimelineAlbumsScreen.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/settings/subsettings/SettingsTimelineAlbumsScreen.kt"
             line="356"
             column="25"/>
     </issue>
@@ -832,7 +832,7 @@
         errorLine1="                                context.getString(R.string.vault_already_exists, newVault.name)"
         errorLine2="                                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/vault/VaultSetup.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/vault/VaultSetup.kt"
             line="78"
             column="33"/>
     </issue>
@@ -843,7 +843,7 @@
         errorLine1="        val targetPx = (selectedIndex * 132 * context.resources.displayMetrics.density).toInt()"
         errorLine2="                                              ~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/settings/subsettings/SettingsMediaViewerScreen.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/settings/subsettings/SettingsMediaViewerScreen.kt"
             line="624"
             column="47"/>
     </issue>
@@ -854,7 +854,7 @@
         errorLine1="    modifier: Modifier = Modifier,"
         errorLine2="    ~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/edit/components/adjustment/AdjustScrubber.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/edit/components/adjustment/AdjustScrubber.kt"
             line="26"
             column="5"/>
     </issue>
@@ -865,7 +865,7 @@
         errorLine1="    modifier: Modifier = Modifier"
         errorLine2="    ~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/cast/components/CastButton.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/cast/components/CastButton.kt"
             line="42"
             column="5"/>
     </issue>
@@ -876,7 +876,7 @@
         errorLine1="    modifier: Modifier = Modifier"
         errorLine2="    ~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/cast/components/FCastMiniController.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/cast/components/FCastMiniController.kt"
             line="49"
             column="5"/>
     </issue>
@@ -887,7 +887,7 @@
         errorLine1="    modifier: Modifier = Modifier,"
         errorLine2="    ~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/settings/subsettings/SettingsSelectionActionsScreen.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/settings/subsettings/SettingsSelectionActionsScreen.kt"
             line="814"
             column="5"/>
     </issue>
@@ -898,7 +898,7 @@
         errorLine1="        excludeVault = if (isInVault) vaultViewModel.currentVault.value else null,"
         errorLine2="                                                                  ~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/core/presentation/components/SelectionSheet.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/core/presentation/components/SelectionSheet.kt"
             line="540"
             column="67"/>
     </issue>
@@ -909,7 +909,7 @@
         errorLine1="                        navController.getBackStackEntry(Screen.PrivateFolderScreen())"
         errorLine2="                                      ~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/core/presentation/components/NavigationComp.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/core/presentation/components/NavigationComp.kt"
             line="654"
             column="39"/>
     </issue>
@@ -920,7 +920,7 @@
         errorLine1="            AnimatedContent(targetState = Unit, label = &quot;preview&quot;) { _ ->"
         errorLine2="                                                                     ~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/help/previews/PreviewImageProvider.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/help/previews/PreviewImageProvider.kt"
             line="54"
             column="70"/>
     </issue>
@@ -8576,7 +8576,7 @@
         errorLine1="                Log.d(Constants.TAG, &quot;Uri: $uri&quot;)"
         errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/util/FileUtils.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/util/FileUtils.kt"
             line="155"
             column="17"/>
     </issue>
@@ -8587,7 +8587,7 @@
         errorLine1="            Log.e(TAG, e.message!!)"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/util/FileUtils.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/util/FileUtils.kt"
             line="192"
             column="13"/>
     </issue>
@@ -8598,7 +8598,7 @@
         errorLine1="            Log.e(TAG, e.message!!)"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/util/FileUtils.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/util/FileUtils.kt"
             line="243"
             column="13"/>
     </issue>
@@ -8609,7 +8609,7 @@
         errorLine1="            Log.d(&quot;HeifBitmapDecoder&quot;, &quot;handles()=false brand=null sample=${HeifSniffer.hexSample(header, read)}&quot;)"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/core/decoder/glide/HeifBitmapDecoder.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/core/decoder/glide/HeifBitmapDecoder.kt"
             line="33"
             column="13"/>
     </issue>
@@ -8620,7 +8620,7 @@
         errorLine1="            Log.d(&quot;HeifBitmapDecoder&quot;, &quot;handles()=true brand=$brand&quot;)"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/core/decoder/glide/HeifBitmapDecoder.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/core/decoder/glide/HeifBitmapDecoder.kt"
             line="35"
             column="13"/>
     </issue>
@@ -8631,7 +8631,7 @@
         errorLine1="        Log.d(&quot;HeifBitmapDecoder&quot;, &quot;decode() size=${size?.width}x${size?.height} -> ${bmp.width}x${bmp.height}&quot;)"
         errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/core/decoder/glide/HeifBitmapDecoder.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/core/decoder/glide/HeifBitmapDecoder.kt"
             line="51"
             column="9"/>
     </issue>
@@ -8642,7 +8642,7 @@
         errorLine1="            Log.e(tag, &quot;decode failed mime=$mime: ${e.message}&quot;, e)"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/core/decoder/glide/HeifDecoderCore.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/core/decoder/glide/HeifDecoderCore.kt"
             line="41"
             column="13"/>
     </issue>
@@ -8653,7 +8653,7 @@
         errorLine1="            Log.e(&quot;HeifMimeDecoder&quot;, &quot;stream read failed mime=${source.mimeType}: ${e.message}&quot;, e)"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/core/decoder/glide/HeifMimeInputStreamDecoder.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/core/decoder/glide/HeifMimeInputStreamDecoder.kt"
             line="38"
             column="13"/>
     </issue>
@@ -8664,7 +8664,7 @@
         errorLine1="            Log.d(TAG, &quot;handles() dup fail: ${e.message}&quot;)"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/core/decoder/glide/HeifPfdBitmapDecoder.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/core/decoder/glide/HeifPfdBitmapDecoder.kt"
             line="31"
             column="13"/>
     </issue>
@@ -8675,7 +8675,7 @@
         errorLine1="            Log.d(TAG, &quot;handles() read fail: ${e.message}&quot;)"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/core/decoder/glide/HeifPfdBitmapDecoder.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/core/decoder/glide/HeifPfdBitmapDecoder.kt"
             line="38"
             column="13"/>
     </issue>
@@ -8686,7 +8686,7 @@
         errorLine1="            Log.d(TAG, &quot;handles() too small read=$readBytes&quot;)"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/core/decoder/glide/HeifPfdBitmapDecoder.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/core/decoder/glide/HeifPfdBitmapDecoder.kt"
             line="44"
             column="13"/>
     </issue>
@@ -8697,7 +8697,7 @@
         errorLine1="            Log.d(TAG, &quot;handles()=false brand=null sample=${HeifSniffer.hexSample(header, readBytes)}&quot;)"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/core/decoder/glide/HeifPfdBitmapDecoder.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/core/decoder/glide/HeifPfdBitmapDecoder.kt"
             line="50"
             column="13"/>
     </issue>
@@ -8708,7 +8708,7 @@
         errorLine1="            Log.d(TAG, &quot;handles()=true brand=$brand&quot;)"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/core/decoder/glide/HeifPfdBitmapDecoder.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/core/decoder/glide/HeifPfdBitmapDecoder.kt"
             line="52"
             column="13"/>
     </issue>
@@ -8719,7 +8719,7 @@
         errorLine1="            Log.d(TAG, &quot;decode() size=${size.width}x${size.height} -> ${bmp.width}x${bmp.height}&quot;)"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/core/decoder/glide/HeifPfdBitmapDecoder.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/core/decoder/glide/HeifPfdBitmapDecoder.kt"
             line="69"
             column="13"/>
     </issue>
@@ -8730,7 +8730,7 @@
         errorLine1="            Log.d(TAG, &quot;Heuristic brand match &apos;$hit&apos; without ftyp alignment&quot;)"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/core/decoder/glide/HeifSniffer.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/core/decoder/glide/HeifSniffer.kt"
             line="36"
             column="13"/>
     </issue>
@@ -8741,7 +8741,7 @@
         errorLine1="    Log.i(&quot;GalleryInfo&quot;, message.toString())"
         errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/util/LogExt.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/util/LogExt.kt"
             line="9"
             column="5"/>
     </issue>
@@ -8752,7 +8752,7 @@
         errorLine1="        Log.d(&quot;GalleryInfo&quot;, message)"
         errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/util/LogExt.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/util/LogExt.kt"
             line="18"
             column="9"/>
     </issue>
@@ -8763,7 +8763,7 @@
         errorLine1="    Log.e(&quot;GalleryInfo&quot;, message)"
         errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/util/LogExt.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/util/LogExt.kt"
             line="23"
             column="5"/>
     </issue>
@@ -8774,7 +8774,7 @@
         errorLine1="    Log.w(&quot;GalleryInfo&quot;, message)"
         errorLine2="    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/util/LogExt.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/util/LogExt.kt"
             line="27"
             column="5"/>
     </issue>
@@ -8785,7 +8785,7 @@
         errorLine1="        if (match) Log.v(&quot;TiffMimeDecoder&quot;, &quot;handles() mime=${source.mimeType}&quot;)"
         errorLine2="                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/core/decoder/glide/TiffMimeInputStreamDecoder.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/core/decoder/glide/TiffMimeInputStreamDecoder.kt"
             line="26"
             column="20"/>
     </issue>
@@ -8796,7 +8796,7 @@
         errorLine1="                Log.w(&quot;TiffMimeDecoder&quot;, &quot;decode() abort – data too large=${data.size} bytes; trying thumbnail fallback&quot;)"
         errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/core/decoder/glide/TiffMimeInputStreamDecoder.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/core/decoder/glide/TiffMimeInputStreamDecoder.kt"
             line="41"
             column="17"/>
     </issue>
@@ -8807,7 +8807,7 @@
         errorLine1="                Log.w(&quot;TiffMimeDecoder&quot;, &quot;decode() BigTIFF detected – ImageDecoder unsupported; trying thumbnail fallback&quot;)"
         errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/core/decoder/glide/TiffMimeInputStreamDecoder.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/core/decoder/glide/TiffMimeInputStreamDecoder.kt"
             line="46"
             column="17"/>
     </issue>
@@ -8818,7 +8818,7 @@
         errorLine1="            Log.d(&quot;TiffMimeDecoder&quot;, &quot;decode() success mime=${source.mimeType} full result=${bmp.width}x${bmp.height}&quot;)"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/core/decoder/glide/TiffMimeInputStreamDecoder.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/core/decoder/glide/TiffMimeInputStreamDecoder.kt"
             line="54"
             column="13"/>
     </issue>
@@ -8829,7 +8829,7 @@
         errorLine1="            Log.e(&quot;TiffMimeDecoder&quot;, &quot;decode() failed primary path mime=${source.mimeType}: ${e.message}; attempting thumbnail&quot;, e)"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/core/decoder/glide/TiffMimeInputStreamDecoder.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/core/decoder/glide/TiffMimeInputStreamDecoder.kt"
             line="57"
             column="13"/>
     </issue>
@@ -8840,7 +8840,7 @@
         errorLine1="            Log.e(&quot;TiffMimeDecoder&quot;, &quot;thumbnail fallback failed (stream reread) mime=${source.mimeType}: ${e.message}&quot;)"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/core/decoder/glide/TiffMimeInputStreamDecoder.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/core/decoder/glide/TiffMimeInputStreamDecoder.kt"
             line="84"
             column="13"/>
     </issue>
@@ -8851,7 +8851,7 @@
         errorLine1="                    Log.d(&quot;TiffMimeDecoder&quot;, &quot;decode() using EXIF thumbnail fallback ${thumb.width}x${thumb.height}&quot;)"
         errorLine2="                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/core/decoder/glide/TiffMimeInputStreamDecoder.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/core/decoder/glide/TiffMimeInputStreamDecoder.kt"
             line="95"
             column="21"/>
     </issue>
@@ -8862,7 +8862,7 @@
         errorLine1="            Log.w(&quot;TiffMimeDecoder&quot;, &quot;decode() no EXIF thumbnail available&quot;)"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/core/decoder/glide/TiffMimeInputStreamDecoder.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/core/decoder/glide/TiffMimeInputStreamDecoder.kt"
             line="99"
             column="13"/>
     </issue>
@@ -8873,7 +8873,7 @@
         errorLine1="            Log.e(&quot;TiffMimeDecoder&quot;, &quot;EXIF thumbnail extraction failed: ${e.message}&quot;)"
         errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/core/decoder/glide/TiffMimeInputStreamDecoder.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/core/decoder/glide/TiffMimeInputStreamDecoder.kt"
             line="102"
             column="13"/>
     </issue>
@@ -9247,7 +9247,7 @@
         errorLine1="        val file = File(context.cacheDir, name)"
         errorLine2="                                          ~~~~">
         <location
-            file="src/main/kotlin/com/dot/gallery/feature_node/presentation/util/FileUtils.kt"
+            file="src/main/kotlin/com/diegonmarcos/mediacenter/feature_node/presentation/util/FileUtils.kt"
             line="177"
             column="43"/>
     </issue>

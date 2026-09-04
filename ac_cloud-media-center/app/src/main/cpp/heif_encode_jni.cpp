@@ -48,13 +48,13 @@ heif_error writeToFile(heif_context*, const void* data, size_t size, void* userd
 } // namespace
 
 extern "C" JNIEXPORT jboolean JNICALL
-Java_com_dot_gallery_feature_1node_presentation_edit_bake_NativeHeifEncoder_nativeSelfTest(JNIEnv*, jclass) {
+Java_com_diegonmarcos_mediacenter_feature_1node_presentation_edit_bake_NativeHeifEncoder_nativeSelfTest(JNIEnv*, jclass) {
     return JNI_TRUE;
 }
 
 // format: 0 = HEIC (HEVC/x265), 1 = AVIF (AV1/aom). Returns a handle or 0 on failure.
 extern "C" JNIEXPORT jlong JNICALL
-Java_com_dot_gallery_feature_1node_presentation_edit_bake_NativeHeifEncoder_nativeOpen(
+Java_com_diegonmarcos_mediacenter_feature_1node_presentation_edit_bake_NativeHeifEncoder_nativeOpen(
         JNIEnv*, jclass, jint fd, jint width, jint height,
         jint tileWidth, jint tileHeight, jint format, jint quality) {
     if (width <= 0 || height <= 0 || tileWidth <= 0 || tileHeight <= 0) return 0;
@@ -96,7 +96,7 @@ Java_com_dot_gallery_feature_1node_presentation_edit_bake_NativeHeifEncoder_nati
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
-Java_com_dot_gallery_feature_1node_presentation_edit_bake_NativeHeifEncoder_nativeEncodeTile(
+Java_com_diegonmarcos_mediacenter_feature_1node_presentation_edit_bake_NativeHeifEncoder_nativeEncodeTile(
         JNIEnv* env, jclass, jlong ptr, jintArray argb, jint tileW, jint tileH, jint tileX, jint tileY) {
     auto* enc = reinterpret_cast<HeifGridEncoder*>(ptr);
     if (enc == nullptr || tileW <= 0 || tileH <= 0) return JNI_FALSE;
@@ -152,7 +152,7 @@ Java_com_dot_gallery_feature_1node_presentation_edit_bake_NativeHeifEncoder_nati
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
-Java_com_dot_gallery_feature_1node_presentation_edit_bake_NativeHeifEncoder_nativeFinish(
+Java_com_diegonmarcos_mediacenter_feature_1node_presentation_edit_bake_NativeHeifEncoder_nativeFinish(
         JNIEnv*, jclass, jlong ptr) {
     auto* enc = reinterpret_cast<HeifGridEncoder*>(ptr);
     if (enc == nullptr) return JNI_FALSE;
@@ -175,12 +175,12 @@ Java_com_dot_gallery_feature_1node_presentation_edit_bake_NativeHeifEncoder_nati
 #else // !HAVE_HEIFENC — stubs.
 
 extern "C" JNIEXPORT jboolean JNICALL
-Java_com_dot_gallery_feature_1node_presentation_edit_bake_NativeHeifEncoder_nativeSelfTest(JNIEnv*, jclass) { return JNI_FALSE; }
+Java_com_diegonmarcos_mediacenter_feature_1node_presentation_edit_bake_NativeHeifEncoder_nativeSelfTest(JNIEnv*, jclass) { return JNI_FALSE; }
 extern "C" JNIEXPORT jlong JNICALL
-Java_com_dot_gallery_feature_1node_presentation_edit_bake_NativeHeifEncoder_nativeOpen(JNIEnv*, jclass, jint, jint, jint, jint, jint, jint, jint) { return 0; }
+Java_com_diegonmarcos_mediacenter_feature_1node_presentation_edit_bake_NativeHeifEncoder_nativeOpen(JNIEnv*, jclass, jint, jint, jint, jint, jint, jint, jint) { return 0; }
 extern "C" JNIEXPORT jboolean JNICALL
-Java_com_dot_gallery_feature_1node_presentation_edit_bake_NativeHeifEncoder_nativeEncodeTile(JNIEnv*, jclass, jlong, jintArray, jint, jint, jint, jint) { return JNI_FALSE; }
+Java_com_diegonmarcos_mediacenter_feature_1node_presentation_edit_bake_NativeHeifEncoder_nativeEncodeTile(JNIEnv*, jclass, jlong, jintArray, jint, jint, jint, jint) { return JNI_FALSE; }
 extern "C" JNIEXPORT jboolean JNICALL
-Java_com_dot_gallery_feature_1node_presentation_edit_bake_NativeHeifEncoder_nativeFinish(JNIEnv*, jclass, jlong) { return JNI_FALSE; }
+Java_com_diegonmarcos_mediacenter_feature_1node_presentation_edit_bake_NativeHeifEncoder_nativeFinish(JNIEnv*, jclass, jlong) { return JNI_FALSE; }
 
 #endif // HAVE_HEIFENC

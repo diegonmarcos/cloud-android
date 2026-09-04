@@ -5,6 +5,8 @@
 
 package com.diegonmarcos.mediacenter.feature_node.presentation.edit.bake
 
+import com.diegonmarcos.mediacenter.core.decoder.NativeLibraries
+
 /**
  * Kotlin wrapper over the `imgstream` JNI library — scanline (row-streaming) JPEG + PNG encoders
  * backed by prebuilt static libjpeg-turbo + libpng. Rows are supplied as packed ARGB_8888 ints
@@ -17,10 +19,7 @@ package com.diegonmarcos.mediacenter.feature_node.presentation.edit.bake
 object NativeImageEncoder {
 
     val isAvailable: Boolean by lazy {
-        runCatching {
-            System.loadLibrary("imgstream")
-            nativeSelfTest()
-        }.getOrDefault(false)
+        NativeLibraries.load("imgstream") { nativeSelfTest() }
     }
 
     private external fun nativeSelfTest(): Boolean

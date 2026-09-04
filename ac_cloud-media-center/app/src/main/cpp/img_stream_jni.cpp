@@ -58,14 +58,14 @@ FILE* fdopenDup(int fd, const char* mode) {
 
 // ============================== self test ==============================
 extern "C" JNIEXPORT jboolean JNICALL
-Java_com_dot_gallery_feature_1node_presentation_edit_bake_NativeImageEncoder_nativeSelfTest(
+Java_com_diegonmarcos_mediacenter_feature_1node_presentation_edit_bake_NativeImageEncoder_nativeSelfTest(
         JNIEnv*, jclass) {
     return JNI_TRUE;
 }
 
 // ============================== JPEG ==============================
 extern "C" JNIEXPORT jlong JNICALL
-Java_com_dot_gallery_feature_1node_presentation_edit_bake_NativeImageEncoder_nativeJpegOpen(
+Java_com_diegonmarcos_mediacenter_feature_1node_presentation_edit_bake_NativeImageEncoder_nativeJpegOpen(
         JNIEnv*, jclass, jint fd, jint width, jint height, jint quality) {
     if (width <= 0 || height <= 0) return 0;
     auto* enc = new JpegEncoder();
@@ -89,7 +89,7 @@ Java_com_dot_gallery_feature_1node_presentation_edit_bake_NativeImageEncoder_nat
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
-Java_com_dot_gallery_feature_1node_presentation_edit_bake_NativeImageEncoder_nativeJpegWriteRows(
+Java_com_diegonmarcos_mediacenter_feature_1node_presentation_edit_bake_NativeImageEncoder_nativeJpegWriteRows(
         JNIEnv* env, jclass, jlong ptr, jintArray argb, jint rowCount) {
     auto* enc = reinterpret_cast<JpegEncoder*>(ptr);
     if (enc == nullptr || rowCount <= 0) return JNI_FALSE;
@@ -118,7 +118,7 @@ Java_com_dot_gallery_feature_1node_presentation_edit_bake_NativeImageEncoder_nat
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
-Java_com_dot_gallery_feature_1node_presentation_edit_bake_NativeImageEncoder_nativeJpegFinish(
+Java_com_diegonmarcos_mediacenter_feature_1node_presentation_edit_bake_NativeImageEncoder_nativeJpegFinish(
         JNIEnv*, jclass, jlong ptr) {
     auto* enc = reinterpret_cast<JpegEncoder*>(ptr);
     if (enc == nullptr) return JNI_FALSE;
@@ -131,7 +131,7 @@ Java_com_dot_gallery_feature_1node_presentation_edit_bake_NativeImageEncoder_nat
 
 // ============================== PNG ==============================
 extern "C" JNIEXPORT jlong JNICALL
-Java_com_dot_gallery_feature_1node_presentation_edit_bake_NativeImageEncoder_nativePngOpen(
+Java_com_diegonmarcos_mediacenter_feature_1node_presentation_edit_bake_NativeImageEncoder_nativePngOpen(
         JNIEnv*, jclass, jint fd, jint width, jint height) {
     if (width <= 0 || height <= 0) return 0;
     auto* enc = new PngEncoder();
@@ -160,7 +160,7 @@ Java_com_dot_gallery_feature_1node_presentation_edit_bake_NativeImageEncoder_nat
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
-Java_com_dot_gallery_feature_1node_presentation_edit_bake_NativeImageEncoder_nativePngWriteRows(
+Java_com_diegonmarcos_mediacenter_feature_1node_presentation_edit_bake_NativeImageEncoder_nativePngWriteRows(
         JNIEnv* env, jclass, jlong ptr, jintArray argb, jint rowCount) {
     auto* enc = reinterpret_cast<PngEncoder*>(ptr);
     if (enc == nullptr || rowCount <= 0) return JNI_FALSE;
@@ -194,7 +194,7 @@ Java_com_dot_gallery_feature_1node_presentation_edit_bake_NativeImageEncoder_nat
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
-Java_com_dot_gallery_feature_1node_presentation_edit_bake_NativeImageEncoder_nativePngFinish(
+Java_com_diegonmarcos_mediacenter_feature_1node_presentation_edit_bake_NativeImageEncoder_nativePngFinish(
         JNIEnv*, jclass, jlong ptr) {
     auto* enc = reinterpret_cast<PngEncoder*>(ptr);
     if (enc == nullptr) return JNI_FALSE;
@@ -214,18 +214,18 @@ Java_com_dot_gallery_feature_1node_presentation_edit_bake_NativeImageEncoder_nat
 #else // !HAVE_IMGCODEC — stubs so the .so still loads and Kotlin falls back.
 
 extern "C" JNIEXPORT jboolean JNICALL
-Java_com_dot_gallery_feature_1node_presentation_edit_bake_NativeImageEncoder_nativeSelfTest(JNIEnv*, jclass) { return JNI_FALSE; }
+Java_com_diegonmarcos_mediacenter_feature_1node_presentation_edit_bake_NativeImageEncoder_nativeSelfTest(JNIEnv*, jclass) { return JNI_FALSE; }
 extern "C" JNIEXPORT jlong JNICALL
-Java_com_dot_gallery_feature_1node_presentation_edit_bake_NativeImageEncoder_nativeJpegOpen(JNIEnv*, jclass, jint, jint, jint, jint) { return 0; }
+Java_com_diegonmarcos_mediacenter_feature_1node_presentation_edit_bake_NativeImageEncoder_nativeJpegOpen(JNIEnv*, jclass, jint, jint, jint, jint) { return 0; }
 extern "C" JNIEXPORT jboolean JNICALL
-Java_com_dot_gallery_feature_1node_presentation_edit_bake_NativeImageEncoder_nativeJpegWriteRows(JNIEnv*, jclass, jlong, jintArray, jint) { return JNI_FALSE; }
+Java_com_diegonmarcos_mediacenter_feature_1node_presentation_edit_bake_NativeImageEncoder_nativeJpegWriteRows(JNIEnv*, jclass, jlong, jintArray, jint) { return JNI_FALSE; }
 extern "C" JNIEXPORT jboolean JNICALL
-Java_com_dot_gallery_feature_1node_presentation_edit_bake_NativeImageEncoder_nativeJpegFinish(JNIEnv*, jclass, jlong) { return JNI_FALSE; }
+Java_com_diegonmarcos_mediacenter_feature_1node_presentation_edit_bake_NativeImageEncoder_nativeJpegFinish(JNIEnv*, jclass, jlong) { return JNI_FALSE; }
 extern "C" JNIEXPORT jlong JNICALL
-Java_com_dot_gallery_feature_1node_presentation_edit_bake_NativeImageEncoder_nativePngOpen(JNIEnv*, jclass, jint, jint, jint) { return 0; }
+Java_com_diegonmarcos_mediacenter_feature_1node_presentation_edit_bake_NativeImageEncoder_nativePngOpen(JNIEnv*, jclass, jint, jint, jint) { return 0; }
 extern "C" JNIEXPORT jboolean JNICALL
-Java_com_dot_gallery_feature_1node_presentation_edit_bake_NativeImageEncoder_nativePngWriteRows(JNIEnv*, jclass, jlong, jintArray, jint) { return JNI_FALSE; }
+Java_com_diegonmarcos_mediacenter_feature_1node_presentation_edit_bake_NativeImageEncoder_nativePngWriteRows(JNIEnv*, jclass, jlong, jintArray, jint) { return JNI_FALSE; }
 extern "C" JNIEXPORT jboolean JNICALL
-Java_com_dot_gallery_feature_1node_presentation_edit_bake_NativeImageEncoder_nativePngFinish(JNIEnv*, jclass, jlong) { return JNI_FALSE; }
+Java_com_diegonmarcos_mediacenter_feature_1node_presentation_edit_bake_NativeImageEncoder_nativePngFinish(JNIEnv*, jclass, jlong) { return JNI_FALSE; }
 
 #endif // HAVE_IMGCODEC

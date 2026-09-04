@@ -5,6 +5,8 @@
 
 package com.diegonmarcos.mediacenter.feature_node.presentation.edit.bake
 
+import com.diegonmarcos.mediacenter.core.decoder.NativeLibraries
+
 /**
  * Kotlin wrapper over the `heifenc` JNI library — libheif TILED (grid-image) HEIC/AVIF encode
  * backed by prebuilt static libheif (with x265 + aom encoders). Tiles are supplied as packed
@@ -21,10 +23,7 @@ object NativeHeifEncoder {
     const val FORMAT_AVIF = 1
 
     val isAvailable: Boolean by lazy {
-        runCatching {
-            System.loadLibrary("heifenc")
-            nativeSelfTest()
-        }.getOrDefault(false)
+        NativeLibraries.load("heifenc") { nativeSelfTest() }
     }
 
     private external fun nativeSelfTest(): Boolean

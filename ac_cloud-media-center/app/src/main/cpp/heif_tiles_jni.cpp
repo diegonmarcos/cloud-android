@@ -41,12 +41,12 @@ constexpr int kProcessTransforms = 1;
 } // namespace
 
 extern "C" JNIEXPORT jboolean JNICALL
-Java_com_dot_gallery_core_decoder_NativeHeifTiler_nativeSelfTest(JNIEnv*, jclass) {
+Java_com_diegonmarcos_mediacenter_core_decoder_NativeHeifTiler_nativeSelfTest(JNIEnv*, jclass) {
     return JNI_TRUE;
 }
 
 extern "C" JNIEXPORT jlong JNICALL
-Java_com_dot_gallery_core_decoder_NativeHeifTiler_nativeOpen(JNIEnv* env, jclass, jbyteArray data) {
+Java_com_diegonmarcos_mediacenter_core_decoder_NativeHeifTiler_nativeOpen(JNIEnv* env, jclass, jbyteArray data) {
     if (data == nullptr) return 0;
     const jsize size = env->GetArrayLength(data);
     if (size <= 0) return 0;
@@ -94,7 +94,7 @@ Java_com_dot_gallery_core_decoder_NativeHeifTiler_nativeOpen(JNIEnv* env, jclass
 }
 
 extern "C" JNIEXPORT jintArray JNICALL
-Java_com_dot_gallery_core_decoder_NativeHeifTiler_nativeGetInfo(JNIEnv* env, jclass, jlong ptr) {
+Java_com_diegonmarcos_mediacenter_core_decoder_NativeHeifTiler_nativeGetInfo(JNIEnv* env, jclass, jlong ptr) {
     auto* tiler = reinterpret_cast<HeifTiler*>(ptr);
     if (tiler == nullptr) return nullptr;
     int lumaBits = heif_image_handle_get_luma_bits_per_pixel(tiler->handle);
@@ -117,7 +117,7 @@ Java_com_dot_gallery_core_decoder_NativeHeifTiler_nativeGetInfo(JNIEnv* env, jcl
 // Returns an int[] laid out as [width, height, pixels...] where pixels are packed ARGB_8888,
 // or null on failure. Decodes exactly one grid tile at native resolution (bounded memory).
 extern "C" JNIEXPORT jintArray JNICALL
-Java_com_dot_gallery_core_decoder_NativeHeifTiler_nativeDecodeTile(
+Java_com_diegonmarcos_mediacenter_core_decoder_NativeHeifTiler_nativeDecodeTile(
         JNIEnv* env, jclass, jlong ptr, jint tileX, jint tileY) {
     auto* tiler = reinterpret_cast<HeifTiler*>(ptr);
     if (tiler == nullptr) return nullptr;
@@ -190,7 +190,7 @@ Java_com_dot_gallery_core_decoder_NativeHeifTiler_nativeDecodeTile(
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_dot_gallery_core_decoder_NativeHeifTiler_nativeClose(JNIEnv*, jclass, jlong ptr) {
+Java_com_diegonmarcos_mediacenter_core_decoder_NativeHeifTiler_nativeClose(JNIEnv*, jclass, jlong ptr) {
     auto* tiler = reinterpret_cast<HeifTiler*>(ptr);
     if (tiler == nullptr) return;
     if (tiler->handle != nullptr) heif_image_handle_release(tiler->handle);
@@ -202,23 +202,23 @@ Java_com_dot_gallery_core_decoder_NativeHeifTiler_nativeClose(JNIEnv*, jclass, j
 #else // !HAVE_LIBHEIF — stubs so the .so still loads and the Kotlin layer falls back.
 
 extern "C" JNIEXPORT jboolean JNICALL
-Java_com_dot_gallery_core_decoder_NativeHeifTiler_nativeSelfTest(JNIEnv*, jclass) {
+Java_com_diegonmarcos_mediacenter_core_decoder_NativeHeifTiler_nativeSelfTest(JNIEnv*, jclass) {
     return JNI_FALSE;
 }
 extern "C" JNIEXPORT jlong JNICALL
-Java_com_dot_gallery_core_decoder_NativeHeifTiler_nativeOpen(JNIEnv*, jclass, jbyteArray) {
+Java_com_diegonmarcos_mediacenter_core_decoder_NativeHeifTiler_nativeOpen(JNIEnv*, jclass, jbyteArray) {
     return 0;
 }
 extern "C" JNIEXPORT jintArray JNICALL
-Java_com_dot_gallery_core_decoder_NativeHeifTiler_nativeGetInfo(JNIEnv*, jclass, jlong) {
+Java_com_diegonmarcos_mediacenter_core_decoder_NativeHeifTiler_nativeGetInfo(JNIEnv*, jclass, jlong) {
     return nullptr;
 }
 extern "C" JNIEXPORT jintArray JNICALL
-Java_com_dot_gallery_core_decoder_NativeHeifTiler_nativeDecodeTile(JNIEnv*, jclass, jlong, jint, jint) {
+Java_com_diegonmarcos_mediacenter_core_decoder_NativeHeifTiler_nativeDecodeTile(JNIEnv*, jclass, jlong, jint, jint) {
     return nullptr;
 }
 extern "C" JNIEXPORT void JNICALL
-Java_com_dot_gallery_core_decoder_NativeHeifTiler_nativeClose(JNIEnv*, jclass, jlong) {
+Java_com_diegonmarcos_mediacenter_core_decoder_NativeHeifTiler_nativeClose(JNIEnv*, jclass, jlong) {
 }
 
 #endif // HAVE_LIBHEIF

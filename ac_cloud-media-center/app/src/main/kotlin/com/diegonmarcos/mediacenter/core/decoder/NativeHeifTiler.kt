@@ -5,8 +5,6 @@
 
 package com.diegonmarcos.mediacenter.core.decoder
 
-import android.util.Log
-
 /**
  * Kotlin binding for the `heiftiles` JNI library, which exposes libheif's memory-bounded tiled
  * decode (native HEVC via libde265). Lets [HeifRegionDecoder] decode arbitrarily large (e.g.
@@ -20,15 +18,8 @@ import android.util.Log
  */
 object NativeHeifTiler {
 
-    private const val TAG = "NativeHeifTiler"
-
-    val isAvailable: Boolean = runCatching {
-        System.loadLibrary("heiftiles")
-        nativeSelfTest()
-    }.getOrElse {
-        Log.w(TAG, "heiftiles native library unavailable: ${it.message}")
-        false
-    }.also { HeifDebug.d("NativeHeifTiler.isAvailable=$it") }
+    val isAvailable: Boolean = NativeLibraries.load("heiftiles") { nativeSelfTest() }
+        .also { HeifDebug.d("NativeHeifTiler.isAvailable=$it") }
 
     /** Opens the image from encoded bytes, returning a native handle (0 on failure). */
     fun open(data: ByteArray): Long = if (isAvailable) {
