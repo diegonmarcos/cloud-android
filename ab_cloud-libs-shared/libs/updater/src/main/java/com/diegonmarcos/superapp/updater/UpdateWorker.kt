@@ -36,6 +36,13 @@ class UpdateWorker(
         if (!force && (!BuildConfig.AUTO_UPDATE_ENABLED || !AutoUpdatePrefs.enabled(applicationContext)))
             return@withContext Result.success()
         UpdateProgress.beginDownload() // disarm any stale cancel from a prior run
+        // NOTHING IS DRAWN BY AN UNATTENDED PASS. Fleet.autoPass already held
+        // this for the fleet half, which left the SELF-update half above it
+        // still driving the overlay: an auto-update the user never asked for
+        // put a progress bar over whatever they were doing. `force` is the
+        // user tapping "Check for updates", and that one must still show
+        // progress, so this is keyed on `force` rather than set unconditionally.
+        UpdateProgress.quiet = !force
         try {
             // ── The fleet FIRST, then this app.
             // Installing our own APK tears this process (and therefore this
@@ -71,6 +78,10 @@ class UpdateWorker(
         } catch (t: Throwable) {
             Log.w("Updater/Worker", "check failed: ${t.message}", t)
             Result.retry()
+        } finally {
+            // Process-wide flag: it must not survive this worker, or the next
+            // thing the USER starts would run with no progress bar at all.
+            UpdateProgress.quiet = false
         }
     }
 

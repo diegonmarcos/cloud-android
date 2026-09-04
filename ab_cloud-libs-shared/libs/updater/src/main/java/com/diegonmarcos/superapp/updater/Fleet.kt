@@ -344,10 +344,44 @@ object Fleet {
             }
         }
         error("no install channel accepted ${app.pkg} " +
-            "(tried ${channels.joinToString { it.name }})")
+            "(tried ${channels.joinToString { it.name }})" +
+            if (!ALLOW_PROMPTING_FALLBACK && activeShellChannel(ctx) == null)
+                ". There is no privileged shell channel (embedded adb / Shizuku), and the " +
+                "prompting PackageInstaller fallback is disabled — see Fleet.ALLOW_PROMPTING_FALLBACK"
+            else "")
     }
 
-    private val channels: List<InstallChannel> = listOf(ShellInstall, SessionInstall)
+    /**
+     * NO CONFIRMATION DIALOG, IN ANY MODE — which means no non-privileged commit.
+     *
+     * A PackageInstaller session commit made by an ordinary app ALWAYS shows
+     * the "do you want to install this update?" sheet, and Play Protect stacks
+     * its scan on top. That is platform behaviour, not app behaviour: there is
+     * no flag, no permission short of INSTALL_PACKAGES (system-only), and no
+     * amount of USER_ACTION_NOT_REQUIRED that removes it for a package we are
+     * not already the installer of record for. It CANNOT be suppressed from
+     * inside the app, and the only honest way to never show it is to never
+     * make that kind of commit.
+     *
+     * So [SessionInstall] is off the ladder. The shell channel runs `pm
+     * install` as uid 2000, which does hold INSTALL_PACKAGES, so it neither
+     * confirms nor gives Play Protect a prompt to stack — that is the ONLY
+     * dialog-free path, and it is now the only path. When it is unavailable an
+     * install fails loudly, with the reason above in logcat and a notification
+     * from ConstellationWorker, instead of quietly falling back to prompting —
+     * a fallback that is indistinguishable, from the user's side, from the
+     * suppression never having worked at all.
+     *
+     * Nothing about verification changes: every install still commits a
+     * [VerifiedApk], and ApkIntegrity/VerifiedApk are untouched. What is given
+     * up is the ability to install with NO privileged channel at all. Flip
+     * this to true to restore the old prompting fallback.
+     */
+    private const val ALLOW_PROMPTING_FALLBACK = false
+
+    private val channels: List<InstallChannel> =
+        if (ALLOW_PROMPTING_FALLBACK) listOf(ShellInstall, SessionInstall)
+        else listOf(ShellInstall)
 
 
     /** Which apps installAll acts on. UPDATES = only apps ALREADY installed
@@ -577,6 +611,22 @@ object Fleet {
         if (todo.isEmpty()) {
             return Pass(0, 0, 0, silent, channel,
                 "nothing to do — all ${apps.size} fleet entries are current")
+        }
+        // Fail BEFORE downloading, not after. With the prompting fallback off
+        // (see [ALLOW_PROMPTING_FALLBACK]) every commit would throw once the
+        // bytes were already on disk, so this would otherwise pull tens of MB
+        // over mobile data on every pass to install none of it, and report it
+        // as N failed installs rather than as the one thing that is actually
+        // wrong. This is the loud version of "cannot install unattended".
+        if (!silent && !ALLOW_PROMPTING_FALLBACK) {
+            Log.w(TAG, "NO PRIVILEGED INSTALL CHANNEL: ${todo.size} update(s) ready and " +
+                       "nothing can install them without a confirmation dialog, which is " +
+                       "disabled. Bring up the embedded adb channel (Wireless debugging → " +
+                       "pair) or Shizuku, then the next pass installs all of them silently")
+            return Pass(0, todo.size, 0, silent, channel,
+                "BLOCKED: ${todo.size} update(s) ready but there is no privileged shell " +
+                "channel, and the confirmation-dialog fallback is disabled — nothing " +
+                "downloaded, nothing installed")
         }
         // Cap the batch. [limit] is Int.MAX_VALUE for user-initiated "Update
         // all"/"Install all" - those run in the foreground, the system dialog
