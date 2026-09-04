@@ -18,6 +18,9 @@
     "cloud-infra-mcp": {
       "type": "http",
       "url": "https://mcp.diegonmarcos.com/c3-infra-mcp/mcp",
+      "headers": {
+        "Authorization": "Bearer ${AUTHELIA_BEARER_TOKEN:-}"
+      },
       "headersHelper": "sh \"${CLAUDE_PROJECT_DIR:-.}/.claude/mcp-auth-headers.sh\""
     },
     "cloud-mail-mcp": {
