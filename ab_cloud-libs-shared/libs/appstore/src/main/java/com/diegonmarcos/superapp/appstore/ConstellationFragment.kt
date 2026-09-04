@@ -310,8 +310,9 @@ class ConstellationFragment : Fragment() {
         ))
         headerControls.addView(caption(ctx,
             if (!scan.on) "No install-scan prompt - fleet installs go straight through."
-            else "Play Protect prompts on every install. Turning it off needs Shizuku " +
-                 "or the embedded adb channel; it is device-wide and survives uninstall."))
+            else "Play Protect prompts on every install. Turning it off needs the " +
+                 "embedded adb channel (or Shizuku, if you run it); it is device-wide " +
+                 "and survives uninstall."))
     }
 
     // ── one COLLAPSED row per app; the full card is one tap away ─────────────

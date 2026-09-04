@@ -1,6 +1,8 @@
 package com.diegonmarcos.superapp.adbdebug
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import android.provider.Settings
 
 /**
@@ -56,12 +58,20 @@ object PackageVerifier {
         return State(g(CONSENT, 1), g(ENABLE, 1), g(ADB, 1))
     }
 
-    /** The commands that put the device into [scan] state. Pure, so it's testable. */
-    internal fun commands(scan: Boolean): List<String> = listOf(
-        "settings put global $CONSENT ${if (scan) 1 else -1}",
-        "settings put global $ENABLE ${if (scan) 1 else 0}",
-        "settings put global $ADB ${if (scan) 1 else 0}",
+    /** The three Settings.Global values that put the device into [scan] state.
+     *  Pure, so it's testable, and the single source both write paths render:
+     *  [commands] for a shell channel, direct putInt when we hold the permission
+     *  ourselves. Two hand-written copies of this triple was one edit away from
+     *  the two paths disagreeing about what "off" means. */
+    internal fun values(scan: Boolean): List<Pair<String, Int>> = listOf(
+        CONSENT to if (scan) 1 else -1,
+        ENABLE  to if (scan) 1 else 0,
+        ADB     to if (scan) 1 else 0,
     )
+
+    /** The commands that put the device into [scan] state. Pure, so it's testable. */
+    internal fun commands(scan: Boolean): List<String> =
+        values(scan).map { (key, value) -> "settings put global $key $value" }
 
     data class Result(val ok: Boolean, val channel: String, val output: String, val state: State)
 
@@ -71,9 +81,30 @@ object PackageVerifier {
      * re-read state, so the caller never has to assume the write landed.
      */
     fun setScanning(ctx: Context, scan: Boolean): Result {
+        // OURSELVES FIRST. WRITE_SECURE_SETTINGS is the ONLY thing these three
+        // writes need, and the self-contained privileged plane pm-grants it to
+        // this app on its first connect — so on a phone that has been paired
+        // once we can write them directly, with no channel to find, nothing to
+        // bind, and no dependence on Wireless Debugging still being on. Apps
+        // that were never granted it fall straight through to the ladder below,
+        // which is what every device did before.
+        if (ctx.checkSelfPermission(Manifest.permission.WRITE_SECURE_SETTINGS) ==
+            PackageManager.PERMISSION_GRANTED) {
+            val out = values(scan).joinToString("\n") { (key, value) ->
+                "$key=$value → " + runCatching {
+                    if (Settings.Global.putInt(ctx.contentResolver, key, value)) "ok"
+                    else "rejected"
+                }.getOrElse { "failed: ${it.message}" }
+            }
+            val after = state(ctx)
+            // Only claim it when the re-read agrees; a grant that is present but
+            // whose write did not take must fall back, not report success.
+            if (after.on == scan) return Result(true, "self (WRITE_SECURE_SETTINGS)", out, after)
+        }
         val channel = ShellChannels.active(ctx)
             ?: return Result(false, "none",
-                "No shell channel. Start Shizuku (or the embedded adb channel) and grant it, then retry.",
+                "No shell channel. Pair/reconnect the embedded adb channel under Dev tools " +
+                "(or start Shizuku, if you run it), then retry.",
                 state(ctx))
         val out = commands(scan).joinToString("\n") { cmd ->
             cmd + " → " + (channel.exec(ctx, cmd) ?: "no output").trim().ifBlank { "ok" }

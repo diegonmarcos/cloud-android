@@ -6,6 +6,8 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Build
 import android.util.Log
 import androidx.work.Constraints
@@ -39,6 +41,16 @@ class ConstellationWorker(appCtx: Context, params: WorkerParameters) :
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         if (!AuConfig.AUTO_UPDATE_ENABLED || !AutoUpdatePrefs.enabled(applicationContext))
             return@withContext Result.success()
+        // The metered decision the UNMETERED constraint used to make, made here
+        // instead (same place UpdateWorker makes it). Deliberately a different
+        // question: WorkManager's constraint asks the system default network,
+        // which on a permanently-VPN'd phone reports metered even over Wi-Fi;
+        // this asks the ACTIVE network, which inherits NOT_METERED from the
+        // VPN's underlying transport. Next pass retries, so this only defers.
+        if (AuConfig.AU_REQUIRE_UNMETERED && isMetered(applicationContext)) {
+            Log.i(TAG, "auto-update: skipped, metered network and require_unmetered is set")
+            return@withContext Result.success()
+        }
         try {
             val apps = Fleet.parse(BuildConfig.CONSTELLATION_FLEET_B64)
             // Auto-update ON ⇒ actually INSTALL available updates for the whole
@@ -65,6 +77,14 @@ class ConstellationWorker(appCtx: Context, params: WorkerParameters) :
             Log.w(TAG, "fleet auto-update failed: ${t.message}")
         }
         Result.success()
+    }
+
+    /** Metered per the ACTIVE network. Unknown network ⇒ not metered, so a
+     *  transient null can only defer, never permanently suppress, the pass. */
+    private fun isMetered(ctx: Context): Boolean {
+        val cm = ctx.getSystemService(ConnectivityManager::class.java) ?: return false
+        val caps = cm.activeNetwork?.let { cm.getNetworkCapabilities(it) } ?: return false
+        return !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
     }
 
     private fun notifyUpdates(ctx: Context, n: Int) {
@@ -126,16 +146,25 @@ class ConstellationWorker(appCtx: Context, params: WorkerParameters) :
                 WorkManager.getInstance(context).cancelUniqueWork("$WORK_NAME-now")
                 return
             }
+            // Always CONNECTED (not UNMETERED) — the same fix Updater.start got.
+            // An UNMETERED constraint is evaluated by WorkManager against the
+            // system's default network, and a device permanently on a VPN
+            // routinely has no NET_CAPABILITY_NOT_METERED there, so the work sat
+            // ENQUEUED with a constraint that was never going to be met. Run on
+            // metered too and decide in doWork, where we can look at the ACTIVE
+            // network instead.
             val constraints = Constraints.Builder().apply {
-                if (AuConfig.AU_REQUIRE_UNMETERED) setRequiredNetworkType(NetworkType.UNMETERED)
-                else setRequiredNetworkType(NetworkType.CONNECTED)
+                setRequiredNetworkType(NetworkType.CONNECTED)
                 if (AuConfig.AU_REQUIRE_CHARGING) setRequiresCharging(true)
             }.build()
             val request = PeriodicWorkRequestBuilder<ConstellationWorker>(
                 AuConfig.AUTO_UPDATE_INTERVAL_HOURS, TimeUnit.HOURS,
             ).setConstraints(constraints).build()
+            // UPDATE (not KEEP): KEEP pins the FIRST interval/constraints the
+            // device ever saw, so shipping a corrected build.json never reaches
+            // an already-installed phone — including the constraint fix above.
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-                WORK_NAME, ExistingPeriodicWorkPolicy.KEEP, request,
+                WORK_NAME, ExistingPeriodicWorkPolicy.UPDATE, request,
             )
             // The periodic worker's first run is a full interval out, so on a
             // fresh install/launch auto-update wouldn't fire for hours ("still
@@ -148,16 +177,20 @@ class ConstellationWorker(appCtx: Context, params: WorkerParameters) :
         fun checkNow(context: Context) {
             if (!AuConfig.AUTO_UPDATE_ENABLED || !AutoUpdatePrefs.enabled(context)) return
             val constraints = Constraints.Builder().apply {
-                if (AuConfig.AU_REQUIRE_UNMETERED) setRequiredNetworkType(NetworkType.UNMETERED)
-                else setRequiredNetworkType(NetworkType.CONNECTED)
+                setRequiredNetworkType(NetworkType.CONNECTED)
                 if (AuConfig.AU_REQUIRE_CHARGING) setRequiresCharging(true)
             }.build()
             val req = OneTimeWorkRequestBuilder<ConstellationWorker>()
                 .setConstraints(constraints)
                 .setInitialDelay(30, TimeUnit.SECONDS)
                 .build()
+            // REPLACE (not KEEP): this kick is what a toggle-ON tap re-arms with.
+            // KEEP kept whatever was already sitting there — which, with the old
+            // UNMETERED constraint, was a permanently blocked instance — so every
+            // tap and every launch was a silent no-op. That is why the toggle
+            // looked dead. REPLACE drops the stale one and enqueues this one.
             WorkManager.getInstance(context).enqueueUniqueWork(
-                "$WORK_NAME-now", ExistingWorkPolicy.KEEP, req,
+                "$WORK_NAME-now", ExistingWorkPolicy.REPLACE, req,
             )
         }
     }
