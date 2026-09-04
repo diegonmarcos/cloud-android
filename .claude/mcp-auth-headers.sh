@@ -57,22 +57,32 @@ if [ -n "${AUTHELIA_TOKEN_URL:-}" ] \
    && [ -n "${AUTHELIA_OIDC_CLIENT_ID:-}" ] \
    && [ -n "${AUTHELIA_OIDC_CLIENT_SECRET:-}" ]; then
     # -u, not a POST body: keeps the secret out of the process list.
-    _minted=$(curl -s --max-time 10 -X POST "$AUTHELIA_TOKEN_URL" \
+    _resp=$(curl -s --max-time 10 -X POST "$AUTHELIA_TOKEN_URL" \
         -u "$AUTHELIA_OIDC_CLIENT_ID:$AUTHELIA_OIDC_CLIENT_SECRET" \
-        -d 'grant_type=client_credentials&scope=authelia.bearer.authz' 2>/dev/null \
-        | node -e '
-            let s = "";
-            process.stdin.on("data", d => s += d).on("end", () => {
-              try { process.stdout.write(JSON.parse(s).access_token || ""); }
-              catch { process.stdout.write(""); }
-            });
-          ' 2>/dev/null) || _minted=""
+        -d 'grant_type=client_credentials&scope=authelia.bearer.authz' 2>/dev/null) || _resp=""
+    _minted=$(printf '%s' "$_resp" | node -e '
+        let s = "";
+        process.stdin.on("data", d => s += d).on("end", () => {
+          try { process.stdout.write(JSON.parse(s).access_token || ""); }
+          catch { process.stdout.write(""); }
+        });
+      ' 2>/dev/null) || _minted=""
     if [ -n "$_minted" ]; then
         node -e 'process.stdout.write(JSON.stringify({Authorization:"Bearer "+process.argv[1]}))' "$_minted" 2>/dev/null \
             || printf '%s\n' '{}'
         exit 0
     fi
+    # SAY WHY. "mint failed" with no cause is the same silence this file was
+    # written to end — the server's own error_description names it (bad client,
+    # unsupported grant, wrong scope) and costs one line to surface. The OAuth
+    # error body carries no secret: the credentials went out in the Authorization
+    # header, and what comes back is a code and a sentence.
     echo "mcp-auth-headers: client_credentials mint failed for $AUTHELIA_OIDC_CLIENT_ID — trying the vault sources." >&2
+    if [ -n "$_resp" ]; then
+        printf 'mcp-auth-headers:   server said: %.300s\n' "$_resp" >&2
+    else
+        echo "mcp-auth-headers:   no response from $AUTHELIA_TOKEN_URL (network or timeout)" >&2
+    fi
 fi
 
 # Source 3+: a vault checkout on disk. Tried in order; first readable wins.
