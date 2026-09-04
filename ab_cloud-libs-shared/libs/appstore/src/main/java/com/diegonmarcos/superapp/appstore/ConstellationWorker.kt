@@ -52,27 +52,36 @@ class ConstellationWorker(appCtx: Context, params: WorkerParameters) :
             return@withContext Result.success()
         }
         try {
-            val apps = Fleet.parse(BuildConfig.CONSTELLATION_FLEET_B64)
-            // Auto-update ON ⇒ actually INSTALL available updates for the whole
-            // fleet (Mode.UPDATES = don't auto-install apps the user never chose).
-            // Silent when 'install unknown apps' is granted; otherwise each
-            // install posts a tap-to-confirm notification (PackageInstallerReceiver).
-            // Fleet.status catches its own per-app errors so one bad image can't
-            // throw here (the old 'forever looping' bug); always return success.
-            // Capped: this pass runs unattended, so every install it starts
-            // leaves a tap-to-install notification holding a PackageInstaller
-            // session until the user answers it. Whatever it does not take is
-            // picked up by the next pass. build.json::release.auto_update
-            // .max_installs_per_pass drives the number.
-            // Same rule as UpdateWorker: the cap only guards against pending
-            // PackageInstaller sessions, and a shell install opens none.
-            val silent = Fleet.silentCapable(applicationContext)
-            val acted = Fleet.installAll(
-                applicationContext, apps, Fleet.Mode.UPDATES,
-                limit = if (silent) Int.MAX_VALUE else AuConfig.AU_MAX_PER_PASS,
-            )
-            Log.i(TAG, "auto-update: acted on $acted app(s)" + if (silent) " (silent, uncapped)" else " (capped, prompting)")
-            if (acted > 0) notifyUpdates(applicationContext, acted)
+            val fleet = Fleet.parse(BuildConfig.CONSTELLATION_FLEET_B64)
+            // Auto-update ON ⇒ fully unattended: install everything the fleet
+            // needs, APPS AND LIBS, drawing nothing on screen. Fleet.autoPass
+            // owns the mode (Mode.AUTO — updates for apps, updates AND missing
+            // for libs, which is why the 36 lib entries were invisible before)
+            // and owns the session cap, so this worker and UpdateWorker can no
+            // longer disagree about either depending on who won the race.
+            // Fleet.status catches its own per-app errors so one bad image
+            // can't throw here (the old 'forever looping' bug).
+            val pass = Fleet.autoPass(applicationContext, fleet, owner = TAG)
+            // SILENT IS NOT QUIET. pass.reason always says what happened and,
+            // when nothing happened, which of the three reasons it was:
+            // nothing to do / no session slots / no privileged channel. The
+            // old line was "acted on 0 app(s)" for all three, which reads
+            // identically to the feature being broken.
+            Log.i(TAG, "auto-update: ${pass.reason}")
+            if (pass.acted > 0)
+                notify(applicationContext, NOTIF_ID,
+                    "${pass.acted} constellation update${if (pass.acted == 1) "" else "s"} installed",
+                    "Tap to open the Constellation AppStore")
+            // "Cannot install unattended" has to be visible to the USER, not
+            // just to logcat — otherwise a phone with no privileged channel is
+            // indistinguishable from a phone with nothing to update.
+            if (!pass.silent && pass.considered > 0)
+                notify(applicationContext, NOTIF_ID_NO_CHANNEL,
+                    "Auto-update needs confirmation",
+                    "${pass.considered} update(s) waiting. No privileged install " +
+                    "channel, so each one asks first.")
+            else
+                cancel(applicationContext, NOTIF_ID_NO_CHANNEL)
         } catch (t: Throwable) {
             Log.w(TAG, "fleet auto-update failed: ${t.message}")
         }
@@ -87,7 +96,14 @@ class ConstellationWorker(appCtx: Context, params: WorkerParameters) :
         return !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
     }
 
-    private fun notifyUpdates(ctx: Context, n: Int) {
+    private fun cancel(ctx: Context, id: Int) {
+        (ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).cancel(id)
+    }
+
+    /** One tap-to-open-Constellation notification. [id] separates the "work
+     *  happened" one from the "work cannot happen unattended" one so neither
+     *  can overwrite the other. */
+    private fun notify(ctx: Context, id: Int, title: String, text: String) {
         val nm = ctx.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
             nm.createNotificationChannel(
@@ -106,17 +122,17 @@ class ConstellationWorker(appCtx: Context, params: WorkerParameters) :
             AppStoreHost.launchExtras.forEach { (k, v) -> open.putExtra(k, v) }
             var flags = PendingIntent.FLAG_UPDATE_CURRENT
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) flags = flags or PendingIntent.FLAG_IMMUTABLE
-            PendingIntent.getActivity(ctx, NOTIF_ID, open, flags)
+            PendingIntent.getActivity(ctx, id, open, flags)
         }
         val notif = Notification.Builder(ctx, CHANNEL)
-            .setContentTitle("$n constellation update${if (n == 1) "" else "s"} available")
-            .setContentText("Tap to open the Constellation AppStore")
+            .setContentTitle(title)
+            .setContentText(text)
             .setSmallIcon(AppStoreHost.notificationIcon)
             .setColor(0xFF0A0A0A.toInt())
             .apply { if (pi != null) setContentIntent(pi) }
             .setAutoCancel(true)
             .build()
-        nm.notify(NOTIF_ID, notif)
+        nm.notify(id, notif)
     }
 
     companion object {
@@ -124,6 +140,7 @@ class ConstellationWorker(appCtx: Context, params: WorkerParameters) :
         private const val WORK_NAME = "superapp-constellation-check"
         private const val CHANNEL = "constellation"
         private const val NOTIF_ID = 0xC10E
+        private const val NOTIF_ID_NO_CHANNEL = 0xC10F
 
         /** Schedule the periodic fleet check. Idempotent. Call from App.onCreate. */
         fun start(context: Context) {

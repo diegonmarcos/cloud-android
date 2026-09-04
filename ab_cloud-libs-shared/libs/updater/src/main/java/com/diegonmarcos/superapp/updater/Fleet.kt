@@ -315,10 +315,48 @@ object Fleet {
 
 
     /** Which apps installAll acts on. UPDATES = only apps ALREADY installed
-     *  that have a newer image ("Update all" + background auto-update — never
-     *  touches apps the user hasn't installed). MISSING = only not-yet-installed
-     *  apps ("Install all"). ALL = both. */
-    enum class Mode { UPDATES, MISSING, ALL }
+     *  that have a newer image ("Update all" — never touches apps the user
+     *  hasn't installed). MISSING = only not-yet-installed apps ("Install
+     *  all"). ALL = both.
+     *
+     *  AUTO = what the unattended background pass wants, and the reason libs
+     *  used to be invisible to it. It is UPDATES for `kind == "app"` and ALL
+     *  for `kind == "lib"`. Both workers used to pass UPDATES, which drops
+     *  every [State.Missing] — and a lib is Missing on any device that never
+     *  installed it, which is most of them, so all 36 lib entries were skipped
+     *  on every pass forever.
+     *
+     *  Treating a missing lib as installable is not a loosening of the
+     *  "never auto-install what the user didn't choose" rule; it is that rule
+     *  applied correctly. A lib APK (ab_cloud-libs-shared/lib-apks, one
+     *  product flavor per module, applicationId com.diegonmarcos.cloudlib.*)
+     *  has no launcher entry and no UI: it is a dependency payload that apps
+     *  reach through AIDL behind a signature-level permission. The user never
+     *  chose it and never can — the app that needs it did. */
+    enum class Mode { UPDATES, MISSING, ALL, AUTO }
+
+    /**
+     * What one pass actually did, and — when it did nothing — WHY.
+     *
+     * installAll used to return a bare Int, so "everything is up to date",
+     * "the PackageInstaller session budget is exhausted", "there is no
+     * privileged channel so I refuse to spam you with 40 dialogs" and "another
+     * batch holds the lease" were all the same observable event: `acted on 0
+     * app(s)`. That is indistinguishable from the feature being broken, which
+     * is exactly how it was read. [reason] is a one-line, always-logged
+     * explanation; [silent] and [channel] say whether the pass could act
+     * without user interaction at all.
+     */
+    data class Pass(
+        val acted: Int,
+        /** Entries that needed work before any cap was applied. */
+        val considered: Int,
+        /** Entries this pass was actually allowed to attempt. */
+        val batched: Int,
+        val silent: Boolean,
+        val channel: String?,
+        val reason: String,
+    )
 
     /**
      * Install/update fleet apps, filtered by [mode] (see [Mode]). Sequential
@@ -364,23 +402,104 @@ object Fleet {
     /** Name of the live shell channel, for status lines. */
     fun silentChannelName(ctx: Context): String? = activeShellChannel(ctx)?.name()
 
-    private val batchRunning = java.util.concurrent.atomic.AtomicBoolean(false)
+    /**
+     * The batch lease: WHO holds the single-flight slot, and SINCE WHEN.
+     *
+     * This was an AtomicBoolean with neither an owner nor a bound. A
+     * foreground "Update all" that finished its downloads and then sat on
+     * unanswered PackageInstaller prompts kept the flag set for as long as the
+     * user ignored the notifications, and every auto pass in between took the
+     * `return 0` at the top and logged nothing a human would act on. The
+     * feature was starvable by doing nothing, indefinitely.
+     *
+     * The lease fixes both halves: it names the holder, so the skip line says
+     * who is holding it, and it expires, so a stale holder is taken over
+     * instead of winning forever. Identity CAS on the Lease instance means the
+     * taken-over owner's release is a harmless no-op rather than a slot it
+     * hands back while someone else is using it.
+     */
+    private class Lease(val owner: String, val startedAt: Long)
+
+    private val lease = java.util.concurrent.atomic.AtomicReference<Lease?>(null)
+
+    /** A real batch is N downloads plus N sequential installs. 30 minutes is
+     *  far past the slowest honest one on a bad network and far short of
+     *  "the user left the prompts unanswered until tomorrow". */
+    private const val BATCH_STALE_MS = 30L * 60L * 1000L
+
+    private fun acquireLease(owner: String): Lease? {
+        while (true) {
+            val mine = Lease(owner, android.os.SystemClock.elapsedRealtime())
+            val held = lease.get()
+            if (held == null) {
+                if (lease.compareAndSet(null, mine)) return mine
+                continue
+            }
+            val ageMs = mine.startedAt - held.startedAt
+            if (ageMs < BATCH_STALE_MS) return null
+            if (lease.compareAndSet(held, mine)) {
+                Log.w(TAG, "batch lease held by '${held.owner}' for ${ageMs / 1000}s — past " +
+                           "the ${BATCH_STALE_MS / 1000}s stale bound, so '$owner' is taking " +
+                           "it over rather than being starved by it")
+                return mine
+            }
+        }
+    }
+
+    private fun releaseLease(mine: Lease) { lease.compareAndSet(mine, null) }
 
     fun installAll(
         ctx: Context,
         apps: List<App>,
         mode: Mode = Mode.ALL,
         limit: Int = Int.MAX_VALUE,
-    ): Int {
-        if (!batchRunning.compareAndSet(false, true)) {
-            Log.i(TAG, "installAll($mode): a batch is already running — this trigger " +
-                       "is already being served, skipping")
-            return 0
+    ): Int = runBatch(ctx, apps, mode, limit, owner = "installAll($mode)").acted
+
+    /**
+     * THE unattended entry point. Both periodic workers call this and nothing
+     * else, so the pass they run is one machine with two triggers instead of
+     * two callers that each re-derived the mode and the cap and disagreed
+     * about them (whichever worker won the lease race used to decide whether
+     * three apps or the whole fleet installed).
+     *
+     * Silent here means no visible progress: [UpdateProgress.quiet] is held
+     * for the duration so nothing is drawn over whatever the user is doing.
+     * Every event still goes to logcat under [TAG], ungated.
+     */
+    fun autoPass(ctx: Context, apps: List<App>, owner: String): Pass {
+        // The cap exists for ONE reason: a SessionInstall leaves a
+        // tap-to-confirm notification holding a PackageInstaller session until
+        // the user answers it, and Android refuses new sessions past 50 per
+        // UID. A shell install opens no session and shows nothing, so with a
+        // privileged channel live there is nothing to cap.
+        val limit = if (silentCapable(ctx)) Int.MAX_VALUE else BuildConfig.AU_MAX_PER_PASS
+        UpdateProgress.quiet = true
+        return try {
+            runBatch(ctx, apps, Mode.AUTO, limit, owner)
+        } finally {
+            UpdateProgress.quiet = false
+        }
+    }
+
+    private fun runBatch(
+        ctx: Context,
+        apps: List<App>,
+        mode: Mode,
+        limit: Int,
+        owner: String,
+    ): Pass {
+        val mine = acquireLease(owner)
+        if (mine == null) {
+            val holder = lease.get()?.owner ?: "?"
+            Log.i(TAG, "$owner: batch '$holder' is already in flight — this trigger is " +
+                       "already being served, skipping")
+            return Pass(0, 0, 0, silentCapable(ctx), silentChannelName(ctx),
+                "skipped: batch '$holder' already in flight")
         }
         return try {
             installAllLocked(ctx, apps, mode, limit)
         } finally {
-            batchRunning.set(false)
+            releaseLease(mine)
         }
     }
 
@@ -389,17 +508,39 @@ object Fleet {
         apps: List<App>,
         mode: Mode,
         limit: Int,
-    ): Int {
+    ): Pass {
         // Decide the work-list FIRST (status checks, no overlay yet) so the
         // batch header can show a correct "N/total" — otherwise the overlay's
         // bar just resets 0→100 per app with no context (scrambled-progress bug).
+        val silent = silentCapable(ctx)
+        val channel = silentChannelName(ctx)
         val todo = apps.filter { app ->
             if (app.blocked) return@filter false
-            when (status(ctx, app)) {
+            val state = status(ctx, app)
+            val take = when (state) {
                 is State.UpdateAvailable -> mode != Mode.MISSING
-                is State.Missing -> mode != Mode.UPDATES
+                // AUTO installs a MISSING lib but never a missing app. See
+                // [Mode.AUTO]: a lib has no launcher entry and is reached over
+                // AIDL by whichever app needs it, so "the user never chose it"
+                // is not a reason to skip it — it is the reason it exists.
+                is State.Missing ->
+                    mode == Mode.MISSING || mode == Mode.ALL ||
+                        (mode == Mode.AUTO && app.kind == "lib")
                 else -> false
             }
+            // Always-on, ungated: a silent pass must still be fully readable
+            // with `logcat -s Fleet`. Ids, packages and digests only — nothing
+            // here is a secret, and no URL or token is ever printed.
+            if (take) Log.i(TAG, "$mode selects ${app.kind} ${app.id} (${app.pkg}): " +
+                                 describe(state))
+            take
+        }
+        Log.i(TAG, "$mode scanned ${apps.size} fleet entries → ${todo.size} need work " +
+                   "(unattended-capable: $silent" +
+                   (if (channel != null) " via $channel" else ", no privileged channel") + ")")
+        if (todo.isEmpty()) {
+            return Pass(0, 0, 0, silent, channel,
+                "nothing to do — all ${apps.size} fleet entries are current")
         }
         // Cap the batch. [limit] is Int.MAX_VALUE for user-initiated "Update
         // all"/"Install all" - those run in the foreground, the system dialog
@@ -410,8 +551,22 @@ object Fleet {
         // user answers it. Unbounded over a 40-entry fleet that is 40 sessions
         // from one pass, and Android refuses new ones past 50 with "Too many
         // active sessions for UID".
+        val slots = UpdateInstaller(ctx).freeSessionSlots()
         val batch = if (limit >= todo.size) todo
-                    else todo.take(minOf(limit, UpdateInstaller(ctx).freeSessionSlots()))
+                    else todo.take(minOf(limit, slots))
+        // THE SILENT ZERO. take(0) used to return an empty batch and the pass
+        // reported "acted on 0 app(s)" — the same line it prints when there is
+        // genuinely nothing to do. These are opposite situations: one is
+        // healthy, the other is a stuck queue that only the user can unstick,
+        // and they were indistinguishable from outside.
+        if (batch.isEmpty()) {
+            return Pass(0, todo.size, 0, silent, channel,
+                "CANNOT ACT: ${todo.size} update(s) waiting but 0 installable right now — " +
+                "no privileged shell channel, and PackageInstaller session headroom is " +
+                "$slots. Every unanswered tap-to-install notification holds a session " +
+                "against the 50-per-UID cap, so answer or dismiss the pending ones, or " +
+                "bring up the embedded adb / Shizuku channel for truly unattended installs")
+        }
         // Never a silent cap: the rest are picked up by the next pass, and a
         // log line alone reads as "3 needed it" instead of "3 of N could run
         // now" — this note rides along on every beginBatch label below so the
@@ -442,7 +597,8 @@ object Fleet {
             if (UpdateProgress.cancelRequested) {
                 Log.i(TAG, "installAll cancelled by user during download")
                 UpdateProgress.update(UpdateProgress.State.Cancelled)
-                return 0
+                return Pass(0, todo.size, batch.size, silent, channel,
+                    "cancelled by the user during download")
             }
             UpdateProgress.beginBatch("↓ ${app.label}$capNote", i + 1, batch.size)
             try {
@@ -451,7 +607,8 @@ object Fleet {
                 Log.i(TAG, "download ${app.label} cancelled")
                 UpdateProgress.update(UpdateProgress.State.Cancelled)
                 UpdateProgress.endBatch()
-                return 0
+                return Pass(0, todo.size, batch.size, silent, channel,
+                    "cancelled by the user while downloading ${app.label}")
             } catch (t: Throwable) {
                 // One dead image must not cost the other nine their update.
                 Log.w(TAG, "installAll download ${app.label}: ${t.message}")
@@ -459,7 +616,9 @@ object Fleet {
         }
         if (staged.isEmpty()) {
             UpdateProgress.endBatch()
-            return 0
+            return Pass(0, todo.size, batch.size, silent, channel,
+                "no install attempted: all ${batch.size} download(s) failed — see the " +
+                "per-entry 'installAll download' warnings above for the reason")
         }
 
         // ── PHASE 2: install, strictly one at a time ────────────────────────
@@ -470,7 +629,8 @@ object Fleet {
             if (UpdateProgress.cancelRequested) {
                 Log.i(TAG, "installAll cancelled by user after $acted install(s)")
                 UpdateProgress.update(UpdateProgress.State.Cancelled)
-                return acted
+                return Pass(acted, todo.size, batch.size, silent, channel,
+                    "cancelled by the user after $acted install(s)")
             }
             UpdateProgress.beginBatch("${app.label}$capNote", i + 1, staged.size)
             try {
@@ -481,6 +641,8 @@ object Fleet {
                 // per-row install buttons, which never came through here.
                 commit(ctx, app, apk)
                 acted++
+                Log.i(TAG, "installed ${app.kind} ${app.id} (${app.pkg}) " +
+                           "[${i + 1}/${staged.size}] via ${if (silent) channel else "PackageInstaller"}")
             } catch (t: Throwable) {
                 // The APK stays in the cache, so a retry reuses it - the whole
                 // reason downloads are content-addressed.
@@ -490,7 +652,23 @@ object Fleet {
         // Clear the batch context; the async install commits still drive the
         // overlay to Done/Failed via PackageInstallerReceiver.
         UpdateProgress.endBatch()
-        return acted
+        val deferred = todo.size - batch.size
+        return Pass(acted, todo.size, batch.size, silent, channel,
+            "installed $acted of ${staged.size} staged (${todo.size} needed work" +
+            (if (deferred > 0) ", $deferred deferred to the next pass" else "") + ") " +
+            (if (silent) "silently via $channel"
+             else "via PackageInstaller — each one PROMPTS, because no privileged " +
+                  "shell channel is available"))
+    }
+
+    /** One-line, log-safe rendering of a [State]. No URLs, no tokens. */
+    private fun describe(s: State): String = when (s) {
+        is State.UpdateAvailable ->
+            "update ${s.versionName ?: "?"} → ${s.remoteDigest12} (${s.bytes} bytes)"
+        is State.Missing -> "not installed (${s.bytes} bytes)"
+        is State.Installed -> "current ${s.versionName} (code ${s.versionCode}, ${s.sha12})"
+        is State.Blocked -> "blocked"
+        is State.Error -> "check failed: ${s.message}"
     }
 
     /** Uninstall [pkg] via PackageInstaller (system confirm dialog). */

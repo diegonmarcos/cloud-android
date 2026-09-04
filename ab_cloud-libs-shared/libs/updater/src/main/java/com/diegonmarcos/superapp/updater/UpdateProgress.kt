@@ -73,12 +73,25 @@ object UpdateProgress {
     @Volatile var batchLabel: String? = null
         private set
 
+    /**
+     * Unattended passes set this for their duration.
+     *
+     * "Silent" means NO VISIBLE PROGRESS: no overlay, no bar, no dialog. It
+     * does NOT mean quiet — the pipeline keeps writing [state] and keeps
+     * logging every event to logcat exactly as before, so a silent pass is
+     * still fully readable with `logcat -s Fleet`. Only the listener (the
+     * Activity's overlay) is left undriven, because an auto-update that pops a
+     * progress bar over whatever the user is doing is not unattended.
+     */
+    @Volatile var quiet: Boolean = false
+
     /** Set before each app in a batch; total==1 ⇒ no prefix (single install). */
     fun beginBatch(label: String, index: Int, total: Int) {
+        if (quiet) return
         batchLabel = if (total > 1) "$label · $index/$total" else null
     }
 
-    fun endBatch() { batchLabel = null }
+    fun endBatch() { if (quiet) return; batchLabel = null }
 
     private var listener: ((State) -> Unit)? = null
 
@@ -90,7 +103,7 @@ object UpdateProgress {
 
     fun update(next: State) {
         state = next
-        listener?.invoke(next)
+        if (!quiet) listener?.invoke(next)
     }
 
     fun reset() { batchLabel = null; update(State.Idle) }

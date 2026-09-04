@@ -10,6 +10,37 @@ def keyboardMediaB64 = groovy.json.JsonOutput.toJson(buildJson.keyboard_media ?:
 def giphyApiKey      = (System.getenv('GIPHY_API_KEY') ?: '').toString()
 def defaultLocales   = (buildJson.default_locales ?: []).join(',')
 
+// Version code: minutes since 2026-01-01 UTC over a 3,000,000 base.
+//
+// This used to be build.json's version_code plus GITHUB_RUN_NUMBER, which is
+// per-WORKFLOW. Every app here ships from its own ship-*.yml with its own
+// independent counter, so the moment an app was built by a different workflow
+// than the one that produced the installed APK -- or a workflow was re-created,
+// or a dispatch cancelled a push-triggered run via the concurrency group -- the
+// number handed out was SMALLER than the last published one and Android refused
+// the update with "Update version code 190 is older than current 192". A build
+// counter can only be monotonic for the one counter that issued it.
+//
+// Wall clock only ever moves forward and is identical for every workflow, every
+// runner and every trigger, so this cannot go backwards again. Same encoding as
+// ac_cloud-mail and ab_cloud-libs-shared/lib-apks, so the whole fleet is
+// comparable: ~3.35M in Sep 2026, far above any version code in the field and
+// inside the 2^31 limit for centuries. COMMS_BUILD_TIMESTAMP is honoured when
+// CI provides one so the code matches the release tag; otherwise build time.
+def codeFinal = { ->
+    def base  = java.time.LocalDateTime.of(2026, 1, 1, 0, 0)
+    def built = java.time.LocalDateTime.now(java.time.ZoneOffset.UTC)
+    def stamp = System.getenv('COMMS_BUILD_TIMESTAMP')
+    if (stamp) {
+        try {
+            built = java.time.LocalDateTime.parse(stamp,
+                java.time.format.DateTimeFormatter.ofPattern('yyyyMMdd.HHmmss'))
+        } catch (ignored) { }
+    }
+    long mins = java.time.Duration.between(base, built).toMinutes()
+    return mins > 0 ? (int) (3000000L + mins) : 3000000
+}()
+
 android {
     namespace 'com.diegonmarcos.cloudkeyboard'
     compileSdk 36
@@ -18,7 +49,10 @@ android {
         applicationId buildJson.android.application_id
         minSdk 26
         targetSdk 35
-        versionCode buildJson.android.version_code
+        // NOT build.json::android.version_code: a bare static number never
+        // decreases, but it never INCREASES either, so this APK could not be
+        // updated in the field at all. Wall clock, like the rest of the fleet.
+        versionCode codeFinal
         versionName buildJson.android.version_name
         buildConfigField "String", "MEDIA_CONFIG_B64", "\"${keyboardMediaB64}\""
         buildConfigField "String", "GIPHY_API_KEY",   "\"${giphyApiKey}\""

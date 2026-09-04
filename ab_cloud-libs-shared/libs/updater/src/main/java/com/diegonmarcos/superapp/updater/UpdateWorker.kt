@@ -110,15 +110,17 @@ class UpdateWorker(
             // nothing and only stops the fleet from ever catching up — three
             // apps per six hours against a fifty-entry fleet is why
             // "auto-update on" never finished.
-            val silent = Fleet.silentCapable(applicationContext)
-            val limit = if (silent) Int.MAX_VALUE else BuildConfig.AU_MAX_PER_PASS
-            val n = Fleet.installAll(
-                applicationContext, fleet, Fleet.Mode.UPDATES, limit = limit,
-            )
-            Log.i("Updater/Worker",
-                "fleet auto-update: acted on $n app(s) " +
-                if (silent) "(silent via ${Fleet.silentChannelName(applicationContext)}, uncapped)"
-                else "(no shell channel — capped at ${BuildConfig.AU_MAX_PER_PASS}, each install prompts)")
+            // That whole decision now lives in Fleet.autoPass, which both
+            // unattended workers call. It also carries the mode: Mode.AUTO
+            // (apps: updates only; libs: updates AND missing), because
+            // Mode.UPDATES dropped every State.Missing and a lib is Missing on
+            // any device that never installed one — all 36 lib entries were
+            // skipped on every pass.
+            val pass = Fleet.autoPass(applicationContext, fleet, owner = "Updater/Worker")
+            // Silent means nothing is DRAWN, never that nothing is logged, and
+            // never a bare "acted on 0" that hides which of the three
+            // do-nothing reasons applied.
+            Log.i("Updater/Worker", "fleet auto-update: ${pass.reason}")
         }.onFailure { Log.w("Updater/Worker", "fleet auto-update failed: ${it.message}", it) }
     }
 
