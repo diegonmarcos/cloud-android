@@ -21,6 +21,7 @@ import com.diegonmarcos.superapp.floatingnav.FloatingNavService
 import com.diegonmarcos.superapp.health.HealthConnectGateway
 import com.diegonmarcos.superapp.health.HealthMetrics
 import com.diegonmarcos.superapp.system.PermAskTracker
+import com.diegonmarcos.superapp.system.PrivilegedGrants
 import com.diegonmarcos.superapp.system.ScreenLocker
 import kotlinx.coroutines.launch
 import com.diegonmarcos.superapp.adbdebug.EmbeddedAdbChannel
@@ -29,8 +30,6 @@ import com.diegonmarcos.superapp.adbdebug.ShellChannel
 import com.diegonmarcos.superapp.adbdebug.LocalHotspot
 import com.diegonmarcos.superapp.adbdebug.WifiDirect
 import com.diegonmarcos.superapp.adbdebug.WirelessDebugging
-import android.util.Base64
-import org.json.JSONArray
 import android.content.pm.PackageManager
 
 /** Permissions page — runtime perms, special access, Health Connect,
@@ -97,12 +96,17 @@ class PermissionsFragment : Fragment() {
 
         var hcGrantBtn: TextView? = null
         val perms = parseRuntimePermissions()
-        val priv = parsePrivilegedPermissions()
-        val plane: ShellChannel? = listOf<ShellChannel>(EmbeddedAdbChannel, ShizukuShellChannel).firstOrNull { it.isReady(ctxAny()) }
+        // includeGranted=true: this screen must show the REAL state of every
+        // fleet package × development permission, granted or not. Showing only
+        // the outstanding ones makes a fully-granted plane look like an empty
+        // section — indistinguishable from the bug where READ_LOGS silently
+        // vanished because its build.json entry had no `apps` array.
+        val priv = PrivilegedGrants.resolve(ctxAny(), includeGranted = true)
+        val plane: ShellChannel? = shellPlane()
 
         // ── Tally ─────────────────────────────────────────────────────────
         val runtimeMissing = perms.filter { (_, perm) -> ctxAny().checkSelfPermission(perm) != PackageManager.PERMISSION_GRANTED }
-        val privMissing = priv.filter { !it.granted(ctxAny()) }
+        val privMissing = priv.filter { !PrivilegedGrants.isGranted(ctxAny(), it) }
         val pages = buildPageItems(ctxAny())
         val pagesMissing = pages.count { it.granted == false }
         col.addView(small(ctx, "${perms.size - runtimeMissing.size + priv.size - privMissing.size} granted here · " +
@@ -113,7 +117,7 @@ class PermissionsFragment : Fragment() {
         col.addView(permButtonRow(ctx,
             permButton(ctx, "GRANT ALL reachable (${runtimeMissing.size + (if (plane != null) privMissing.size else 0)})", null) {
                 if (runtimeMissing.isNotEmpty()) requestAllPermissions(runtimeMissing.map { it.second }.toTypedArray())
-                if (plane != null) for (pp in privMissing) pp.grant(plane, ctxAny())
+                if (plane != null) for (pp in privMissing) grantPrivileged(plane, pp)
                 if (runtimeMissing.isEmpty()) rebuildFragment()
             },
         ))
@@ -126,9 +130,9 @@ class PermissionsFragment : Fragment() {
         col.addView(small(ctx, "Privileged perms — signature perms Android never asks for. Granted by the privileged plane (embedded adb / Shizuku) via pm grant; persist across reboots + updates." +
             (if (plane == null) " ⚠ No shell channel ready — pair the embedded adb under Dev tools (once, ever) to enable these buttons." else " Channel: ${plane.name()}")))
         for (pp in priv) {
-            val g = pp.granted(ctxAny())
+            val g = PrivilegedGrants.isGranted(ctxAny(), pp)
             permRow(ctx, col, "${pp.label} → ${pp.pkg.substringAfterLast('.')}", g, "", if (g) "OK" else if (plane != null) "Grant" else "needs plane") {
-                if (plane != null) pp.grant(plane, ctxAny()) else Toast.makeText(ctxAny(), "Pair the embedded adb first (Dev tools)", Toast.LENGTH_LONG).show()
+                if (plane != null) grantPrivileged(plane, pp) else Toast.makeText(ctxAny(), "Pair the embedded adb first (Dev tools)", Toast.LENGTH_LONG).show()
             }
         }
 
@@ -211,7 +215,12 @@ class PermissionsFragment : Fragment() {
             permRow(ctx, col, it.label, it.granted, it.state, "Open", it.open)
         if (!ScreenLocker.isAccessibilityEnabled(ctxAny())) col.addView(small(ctx,
             "Accessibility on Samsung: 'Open App Info' → ⋮ → 'Allow restricted settings', then reopen Accessibility and enable Cloud SuperApp."))
-        if (!specialAccessDumpGranted(ctxAny())) {
+        // Only offer the manual `adb shell pm grant` when there is NO channel.
+        // With the plane up the app grants DUMP itself (it is development-
+        // protected, so PrivilegedGrants picks it up), and telling the user to
+        // go find a PC for something already handled is advice that is simply
+        // false — the kind that trains people to ignore the whole screen.
+        if (plane == null && !specialAccessDumpGranted(ctxAny())) {
             col.addView(actionButton(ctx, "Copy DUMP grant command for adb") {
                 copy(ctxAny(), "adb shell pm grant ${ctxAny().packageName} android.permission.DUMP")
                 Toast.makeText(ctxAny(), "Copied — paste into a shell with adb access", Toast.LENGTH_LONG).show()
@@ -530,21 +539,29 @@ class PermissionsFragment : Fragment() {
         setTextColor(0xFF7C3AED.toInt()); setPadding(0, dp(8), 0, dp(1))
     }
 
-    /** build.json::ui.permissions.privileged[] — one entry per (perm, app). */
-    private class PrivPerm(val label: String, val perm: String, val pkg: String) {
-        fun granted(ctx: Context) = ctx.packageManager.checkPermission(perm, pkg) == PackageManager.PERMISSION_GRANTED
-        fun grant(plane: ShellChannel, ctx: Context) {
-            val out = plane.exec(ctx, "pm grant $pkg $perm 2>&1 && echo OK")
-            Toast.makeText(ctx, "pm grant ${pkg.substringAfterLast('.')} ${perm.substringAfterLast('.')}: ${out?.trim()?.take(60) ?: "no output"}", Toast.LENGTH_SHORT).show()
-        }
+    /**
+     * The privileged (package, permission) rows — resolved by PrivilegedGrants,
+     * the same call PrivilegedPlaneWorker makes, so what this screen lists is
+     * exactly what the plane grants.
+     *
+     * The local PrivPerm class this replaced built its rows by iterating each
+     * build.json entry's `apps` array, so an entry with no `apps` array (i.e.
+     * one that had gone dynamic) produced ZERO rows and dropped off the screen
+     * without a trace. Never re-derive the target list here.
+     *
+     * Grant goes through PrivilegedGrants.grant, which also sets the app-op for
+     * appop-backed permissions — `pm grant` alone reports success there while
+     * access stays denied.
+     */
+    private fun grantPrivileged(plane: ShellChannel, t: PrivilegedGrants.Target) {
+        val out = PrivilegedGrants.grant(ctxAny(), t) { cmd -> plane.exec(ctxAny(), cmd) }
+        Toast.makeText(ctxAny(), "grant ${t.pkg.substringAfterLast('.')} ${t.perm.substringAfterLast('.')}: " +
+            (out?.trim()?.take(60) ?: "no output"), Toast.LENGTH_SHORT).show()
     }
-    private fun parsePrivilegedPermissions(): List<PrivPerm> = runCatching {
-        val arr = JSONArray(String(Base64.decode(BuildConfig.UI_PERMISSIONS_PRIVILEGED_B64, Base64.DEFAULT)))
-        (0 until arr.length()).flatMap { i ->
-            val e = arr.getJSONObject(i); val apps = e.optJSONArray("apps")
-            (0 until (apps?.length() ?: 0)).map { j -> PrivPerm(e.optString("label"), e.optString("perm"), apps!!.getString(j)) }
-        }
-    }.getOrDefault(emptyList())
+
+    /** The one channel-availability check for this screen; null = no shell. */
+    private fun shellPlane(): ShellChannel? =
+        listOf<ShellChannel>(EmbeddedAdbChannel, ShizukuShellChannel).firstOrNull { it.isReady(ctxAny()) }
 
     /** A thing only a system page can grant: state + the page that opens it. */
     private class PageItem(val label: String, val granted: Boolean?, val state: String, val open: () -> Unit)
@@ -908,8 +925,13 @@ class PermissionsFragment : Fragment() {
         androidx.core.content.ContextCompat.checkSelfPermission(ctx, "android.permission.DUMP") ==
             android.content.pm.PackageManager.PERMISSION_GRANTED
 
+    // "needs one-time adb pm grant" was printed unconditionally, which stopped
+    // being true the moment the embedded plane could grant DUMP itself. Read
+    // the live channel state instead of asserting a workflow.
     private fun specialAccessDump(ctx: Context): String =
-        if (specialAccessDumpGranted(ctx)) "✓ Granted (adb)" else "◯ Not granted — needs one-time adb pm grant"
+        if (specialAccessDumpGranted(ctx)) "✓ Granted"
+        else if (shellPlane() != null) "◯ Not granted — grantable here (privileged plane up)"
+        else "◯ Not granted — needs one-time adb pm grant"
 
     private fun specialAccessManageStorage(): String = try {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R)

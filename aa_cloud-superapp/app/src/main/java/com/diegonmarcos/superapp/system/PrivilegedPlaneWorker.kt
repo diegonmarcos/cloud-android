@@ -4,15 +4,10 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.provider.Settings
-import android.util.Base64
 import android.util.Log
 import androidx.work.Worker
 import androidx.work.WorkerParameters
-import com.diegonmarcos.superapp.BuildConfig
 import com.diegonmarcos.superapp.adbdebug.EmbeddedAdbChannel
-import com.diegonmarcos.superapp.updater.Fleet
-import com.diegonmarcos.superapp.updater.BuildConfig as UpdaterBuildConfig
-import org.json.JSONArray
 
 /**
  * Makes the privileged plane self-healing across reboots with no Shizuku.
@@ -70,67 +65,33 @@ class PrivilegedPlaneWorker(ctx: Context, params: WorkerParameters) : Worker(ctx
         }.onFailure { Log.w(TAG, "adb_wifi_enabled write failed: ${it.message}") }
     }
 
-    /** Data-driven: build.json::ui.permissions.privileged[] (B64 in BuildConfig) -> pm grant. */
-    private fun selfGrant(ctx: Context) {
-        val json = runCatching { String(Base64.decode(BuildConfig.UI_PERMISSIONS_PRIVILEGED_B64, Base64.DEFAULT)) }
-            .getOrNull() ?: return
-        val list = runCatching { JSONArray(json) }.getOrNull() ?: return
-        val touched = linkedSetOf(ctx.packageName)
-        for (i in 0 until list.length()) {
-            val e = list.optJSONObject(i) ?: continue
-            val perm = e.optString("perm"); if (perm.isEmpty()) continue
-            // An explicit `apps` array stays an OVERRIDE: it is the only way to
-            // narrow a grant deliberately (WRITE_SECURE_SETTINGS must NOT go to
-            // the whole fleet). Absent/empty means "resolve it, don't guess".
-            val targets = explicitApps(e.optJSONArray("apps")).ifEmpty { resolveTargets(ctx, perm) }
-            Log.i(TAG, "$perm targets: ${targets.joinToString()}")
-            for (pkg in targets) {
-                val out = EmbeddedAdbChannel.exec(ctx, "pm grant $pkg $perm 2>&1 && echo OK")
-                Log.i(TAG, "pm grant $pkg $perm -> ${out?.trim()?.take(120)}")
-            }
-            touched.addAll(targets)
-        }
-        batteryWhitelistFleet(ctx, touched)
-    }
-
-    /** The `apps` override, verbatim. Empty when the key is absent or empty. */
-    private fun explicitApps(arr: JSONArray?): List<String> {
-        if (arr == null) return emptyList()
-        return (0 until arr.length()).mapNotNull { arr.optString(it).takeIf { s -> s.isNotEmpty() } }
-    }
-
     /**
-     * Dynamic targets = FLEET ∩ packages whose OWN manifest requests `perm`.
-     * Both halves are load-bearing:
+     * Grant everything PrivilegedGrants resolves off the running platform.
      *
-     *  - The manifest filter, because `pm grant` is a SILENT no-op (worse: an
-     *    error we would have to read) for a package that never declared the
-     *    permission. Widening a hand-written list blindly buys nothing.
-     *  - The fleet filter, because these are signature|privileged|development
-     *    permissions; they must never leak to a third-party app that happens to
-     *    request them.
+     * All of the "which package, which permission" reasoning lives in
+     * PrivilegedGrants so the Permissions screen shows exactly what this grants
+     * — they drifted apart once already and a permission disappeared from the
+     * UI while still being granted here.
      *
-     * This replaced a hardcoded list that had gone stale and stayed stale:
-     * READ_LOGS named only mail + superapp while FOUR fleet manifests declare it
-     * (superapp, mail, nix-on-droid, termux), so nix-on-droid and termux kept
-     * re-showing the "allow access to all device logs?" dialog on every boot and
-     * nothing in the logs said why. Derived beats hardcoded — it cannot go stale
-     * when an app is added, and it cannot over-grant.
-     *
-     * Fleet source is the same one the Constellation AppStore uses:
-     * Fleet.parse(BuildConfig.CONSTELLATION_FLEET_B64), auto-scanned from every
-     * app's build.json by data/regen.sh. `altId` is included because a resigned
-     * stock upstream APK is installed under its original package name.
+     * Contract preserved verbatim: idempotent (no prefs, no state — re-running
+     * simply re-grants), never throws, and degrades silently when the channel
+     * is down (exec returns null → logged, loop continues).
      */
-    private fun resolveTargets(ctx: Context, perm: String): List<String> {
-        val fleet = runCatching { Fleet.parse(UpdaterBuildConfig.CONSTELLATION_FLEET_B64) }
-            .getOrDefault(emptyList())
-            .flatMapTo(linkedSetOf(ctx.packageName)) { listOfNotNull(it.pkg, it.altId) }
-        return runCatching {
-            ctx.packageManager.getInstalledPackages(PackageManager.GET_PERMISSIONS)
-                .filter { it.requestedPermissions?.contains(perm) == true }
-                .map { it.packageName }
-        }.getOrDefault(emptyList()).filter { it in fleet }
+    private fun selfGrant(ctx: Context) {
+        val targets = PrivilegedGrants.resolve(ctx)
+        Log.i(TAG, "privileged targets (${targets.size}): " +
+            targets.joinToString { "${it.pkg}/${it.perm.substringAfterLast('.')}" })
+        for (t in targets) {
+            val out = PrivilegedGrants.grant(ctx, t) { cmd -> EmbeddedAdbChannel.exec(ctx, cmd) }
+            Log.i(TAG, "grant ${t.pkg} ${t.perm} -> ${out?.trim()?.take(160) ?: "no output (channel down?)"}")
+        }
+        // Whitelist the WHOLE fleet, NOT the resolved targets. resolve() skips
+        // permissions that are already granted, so on the steady-state boot —
+        // every grant already done — the target list is EMPTY and deriving the
+        // whitelist from it would silently drop mail (and everything else) off
+        // the deviceidle whitelist. That is the exact regression the comment on
+        // batteryWhitelistFleet warns about, one step further along.
+        batteryWhitelistFleet(ctx, PrivilegedGrants.fleetPackages(ctx, installedOnly = true))
     }
 
     /**
