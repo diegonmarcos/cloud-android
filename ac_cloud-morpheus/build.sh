@@ -538,7 +538,7 @@ step_oras_pull() {
     "https://$registry/v2/$repo/manifests/$tag")"
   digest="$(jq -r '.layers[0].digest' <<<"$manifest")"
   size="$(jq -r '.layers[0].size' <<<"$manifest")"
-  asset_title="$(jq -r '.layers[0].annotations["org.opencontainers.image.title"] // "Cloud-Morpheus.apk"' <<<"$manifest")"
+  asset_title="$(jq -r '.layers[0].annotations["org.opencontainers.image.title"] // "C3-Morpheus.apk"' <<<"$manifest")"
   [ -n "$digest" ] && [ "$digest" != "null" ] || { errlog "manifest has no layers"; exit 1; }
 
   local out="$DIST_DIR/$asset_title"

@@ -61,15 +61,15 @@
   "release": {
     "_doc": "Per-APK distribution, the same data-driven block every app here has. build.sh oras-push and gh-release read it; the workflow hardcodes no registry or tag. This block is ALSO what makes the app discoverable: aa_cloud-superapp/data/regen.sh admits a sibling on .android.application_id + .release.ghcr, so registering in the constellation is a property of the app rather than a list to edit by hand. {sha} -> git short sha, {version_name} -> android.version_name.",
     "artifact": {
-      "debug": "Cloud-Morpheus.apk",
-      "release": "Cloud-Morpheus-release.apk"
+      "debug": "C3-Morpheus.apk",
+      "release": "C3-Morpheus-release.apk"
     },
     "ghcr": {
       "_doc": "Login with GITHUB_TOKEN, never a PAT: a PAT creates an ACCOUNT-owned package that is born private and cannot be patched afterwards, because visibility is decided at CREATION and inherited silently forever. GITHUB_TOKEN creates the package FOR THE REPOSITORY and it takes the repository's visibility. This is a NEW package, so it gets exactly one chance to be created correctly.",
       "enabled": true,
       "registry": "ghcr.io",
       "namespace": "diegonmarcos",
-      "image": "cloud-morpheus",
+      "image": "c3-morpheus",
       "media_type": "application/vnd.android.package-archive",
       "tags": [
         "latest",
@@ -85,11 +85,11 @@
       "max_installs_per_pass": 3
     },
     "gh_release": {
-      "_doc": "rolling_tag is canonical: one release the ship workflow overwrites on every main push, so /releases/latest/download/Cloud-Morpheus.apk is a stable URL.",
+      "_doc": "rolling_tag is canonical: one release the ship workflow overwrites on every main push, so /releases/latest/download/C3-Morpheus.apk is a stable URL.",
       "enabled": true,
       "rolling_tag": "latest",
       "tag_pattern": "ac_cloud-morpheus-v*",
-      "asset_name": "Cloud-Morpheus.apk"
+      "asset_name": "C3-Morpheus.apk"
     },
     "variants": [
       {
@@ -102,8 +102,8 @@
           "arm64-v8a",
           "armeabi-v7a"
         ],
-        "artifact_debug": "Cloud-Morpheus.apk",
-        "gh_asset": "Cloud-Morpheus.apk",
+        "artifact_debug": "C3-Morpheus.apk",
+        "gh_asset": "C3-Morpheus.apk",
         "ghcr_tag_suffix": "",
         "update_tag": "latest"
       },
@@ -116,8 +116,8 @@
           "x86_64",
           "x86"
         ],
-        "artifact_debug": "Cloud-Morpheus-x86_64.apk",
-        "gh_asset": "Cloud-Morpheus-x86_64.apk",
+        "artifact_debug": "C3-Morpheus-x86_64.apk",
+        "gh_asset": "C3-Morpheus-x86_64.apk",
         "ghcr_tag_suffix": "-x86_64",
         "update_tag": "latest-x86_64"
       }
