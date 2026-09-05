@@ -90,6 +90,13 @@ class PackageInstallerReceiver : BroadcastReceiver() {
         val verb = if (isUninstall) "Uninstall" else "Install"
         Log.i(TAG, "status=$status msg=$message pkg=$pkg op=${if (isUninstall) "uninstall" else "install"}")
 
+        // Install results arrive asynchronously, and the last few can land
+        // AFTER Fleet.autoPass has cleared UpdateProgress.quiet in its finally.
+        // Those late callbacks were the second way a background pass reached
+        // the screen: an overlay flashing "Done" for an app the user never
+        // asked about. The persisted pass flag outlives the field precisely so
+        // this edge is covered.
+        val unattended = runCatching { AutoUpdatePrefs.unattendedPass(context) }.getOrDefault(false)
         when (status) {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
                 @Suppress("DEPRECATION")
@@ -136,7 +143,7 @@ class PackageInstallerReceiver : BroadcastReceiver() {
                 // Resolve the install overlay (it sat on "Installing…" while the
                 // system installer was up). MainActivity auto-dismisses on Done.
                 // Uninstall never raised the overlay, so leave it alone.
-                if (!isUninstall) UpdateProgress.update(UpdateProgress.State.Done)
+                if (!isUninstall && !unattended) UpdateProgress.update(UpdateProgress.State.Done)
                 surface(context, "${verb}ed ✓", "$appName ${verb.lowercase()}ed successfully.",
                     severity = NotificationStore.Sev.INFO)
             }
@@ -158,7 +165,11 @@ class PackageInstallerReceiver : BroadcastReceiver() {
                 // this is where INSTALL_PARSE_FAILED_NOT_APK lands, and the
                 // Diagnose screen can only describe the right app and the right
                 // file if it is told which they were.
-                if (!isUninstall) UpdateProgress.update(UpdateProgress.State.Failed(
+                // A failure in an unattended pass still surfaces — as an ERROR
+                // notification from surface() below, which the in-app feed and
+                // the Diagnose screen both read. What it must not do is seize
+                // the screen for work the user never started.
+                if (!isUninstall && !unattended) UpdateProgress.update(UpdateProgress.State.Failed(
                     listOfNotNull(
                         message.ifEmpty { label },
                         legacyName?.let { "code: $it" },

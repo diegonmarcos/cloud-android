@@ -97,8 +97,18 @@ object UpdateProgress {
 
     fun setListener(l: ((State) -> Unit)?) {
         listener = l
-        // Replay current state so a late subscriber catches up.
-        if (l != null) l(state)
+        // Replay current state so a late subscriber catches up — but honour
+        // [quiet], exactly as update() does.
+        //
+        // THIS WAS THE HOLE. update() has always refused to drive the overlay
+        // during an unattended pass, so the pass itself was silent; but the
+        // replay below was not gated, and an Activity re-subscribes on every
+        // onResume. So a background pass stayed invisible right up until the
+        // user opened the app for any reason, at which point the current
+        // non-Idle state was replayed straight into a full-screen overlay —
+        // once per return to the app, for work nobody asked to watch. The
+        // gate has to be on BOTH paths or it is not a gate.
+        if (l != null && !quiet) l(state)
     }
 
     fun update(next: State) {
