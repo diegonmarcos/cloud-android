@@ -221,7 +221,60 @@ class DaguFragment : Fragment() {
             })
         }
         row.addView(text)
+        row.addView(runButton(ctx, d))
         return row
+    }
+
+    /**
+     * Per-row "Run" button — dispatches the DAG through
+     * [DaguClient.startDag] (POST /api/v1/dags/{fileName}/start).
+     *
+     * The outcome is ALWAYS shown. Success reports the run id Dagu
+     * handed back, which is the proof the run really was created rather
+     * than the request merely not having thrown. Failure shows the
+     * server's own message. There is no branch on which this button can
+     * complete silently — the only quiet path would be the fragment
+     * being gone, and then there is no UI left to talk to anyway.
+     */
+    private fun runButton(ctx: Context, d: DaguDag): View {
+        val btn = Button(ctx).apply {
+            text = "Run"
+            textSize = 12f
+            isAllCaps = false
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { leftMargin = dp(ctx, 8) }
+        }
+        btn.setOnClickListener {
+            // Disable immediately so a double-tap cannot queue two runs.
+            btn.isEnabled = false
+            btn.text = "Starting…"
+            val client = DaguClient(prefs.serverUrl, prefs.bearerToken)
+            Thread {
+                val result = runCatching { client.startDag(d.fileName) }
+                root.post {
+                    btn.isEnabled = true
+                    btn.text = "Run"
+                    result.onSuccess { runId ->
+                        Toast.makeText(
+                            ctx,
+                            "Started ${d.displayLabel} · run ${runId.take(8)}",
+                            Toast.LENGTH_LONG,
+                        ).show()
+                        // Re-fetch so the row's dot flips to "running".
+                        loadAndRender(ctx)
+                    }.onFailure { e ->
+                        Toast.makeText(
+                            ctx,
+                            "Start failed — ${d.displayLabel}: ${e.message}",
+                            Toast.LENGTH_LONG,
+                        ).show()
+                    }
+                }
+            }.start()
+        }
+        return btn
     }
 
     /** Dagu status int → row dot colour. Lifted from Dagu's own

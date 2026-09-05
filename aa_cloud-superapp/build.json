@@ -2794,6 +2794,7 @@
             "label": "Dagu",
             "icon": "ic_robot",
             "hidden": true,
+            "dagu_default_server": "https://workflows.diegonmarcos.com",
             "_doc": "Target of the `Dagu events` tile and of the Infra RSS stack's `Dagu · Workflow runs` link. SectionPages routes c3/dagu to OpsPages.fragmentForDagu() (the native DAG list), but the page was undeclared, so both entry points landed on the C3 section instead. hidden: it is reached by tile, not from the section's child list."
           },
           {

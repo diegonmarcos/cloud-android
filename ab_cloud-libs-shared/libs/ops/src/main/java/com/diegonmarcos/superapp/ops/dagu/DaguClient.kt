@@ -29,35 +29,66 @@ import java.net.URL
 class DaguClient(private val serverUrl: String, private val token: String) {
 
     /** GET /api/v1/dags — list every registered DAG with its last
-     *  run summary. Dagu wraps the array in `{"DAGs": [...]}`. */
+     *  run summary.
+     *
+     *  Schema note: Dagu renamed this payload between versions. The
+     *  deployed server answers with the lower-case shape
+     *  `{"dags":[{"dag":{...},"fileName":...,"latestDAGRun":{...}}]}`,
+     *  while older builds answered `{"DAGs":[{"Config":{...},
+     *  "Status":{...}}]}`. Both are probed, lower-case first, so the
+     *  page keeps rendering across a server upgrade in either
+     *  direction. */
     fun listDags(): DaguDagList {
         val body = getJson("/api/v1/dags")
         val root = JSONObject(body)
-        val arr = root.optJSONArray("DAGs") ?: return DaguDagList(emptyList())
+        val arr = root.optJSONArray("dags")
+            ?: root.optJSONArray("DAGs")
+            ?: return DaguDagList(emptyList())
         val out = mutableListOf<DaguDag>()
         for (i in 0 until arr.length()) {
             val o = arr.optJSONObject(i) ?: continue
-            // Dagu's DAG payload nests config + status at the top level.
-            // We probe both `Config` and `DAG` because the schema has
-            // varied across versions; one of the two is always present.
-            val cfg = o.optJSONObject("Config") ?: o.optJSONObject("DAG") ?: o
-            val name = cfg.optString("Name").ifBlank { o.optString("name") }
+            // Config block: `dag` (current) / `Config` / `DAG` (legacy),
+            // else the entry itself for the flattest historical shape.
+            val cfg = o.optJSONObject("dag")
+                ?: o.optJSONObject("Config")
+                ?: o.optJSONObject("DAG")
+                ?: o
+            val name = cfg.optString("name")
+                .ifBlank { cfg.optString("Name") }
+                .ifBlank { o.optString("fileName") }
+            // `fileName` is the path segment the start endpoint takes.
+            // Fall back to the name when the server omits it.
+            val fileName = o.optString("fileName").ifBlank { name }
             val label = cfg.optString("displayName").ifBlank { name }
-            val desc = cfg.optString("Description")
+            val desc = cfg.optString("description")
+                .ifBlank { cfg.optString("Description") }
+            // Current schema: schedule is an array of
+            // {"expression":"*/10 * * * *","kind":"cron"} objects.
+            // Legacy: a bare "Schedule" string, or an array of strings.
             val schedule = cfg.optString("Schedule").ifBlank {
-                cfg.optJSONArray("schedule")?.optString(0).orEmpty()
+                val sched = cfg.optJSONArray("schedule")
+                when {
+                    sched == null -> ""
+                    sched.optJSONObject(0) != null ->
+                        sched.optJSONObject(0)!!.optString("expression")
+                    else -> sched.optString(0).orEmpty()
+                }
             }
-            val statusObj = o.optJSONObject("Status")
+            val statusObj = o.optJSONObject("latestDAGRun")
+                ?: o.optJSONObject("Status")
                 ?: o.optJSONObject("status")
             val lastRun = statusObj?.let { s ->
                 DaguRun(
-                    status = s.optInt("Status"),
-                    finishedAtMs = parseEpochMs(s.optString("FinishedAt")),
-                    startedAtMs = parseEpochMs(s.optString("StartedAt")),
+                    status = if (s.has("status")) s.optInt("status") else s.optInt("Status"),
+                    finishedAtMs = parseEpochMs(
+                        s.optString("finishedAt").ifBlank { s.optString("FinishedAt") }),
+                    startedAtMs = parseEpochMs(
+                        s.optString("startedAt").ifBlank { s.optString("StartedAt") }),
                 )
             }
             out += DaguDag(
                 name = name,
+                fileName = fileName,
                 displayLabel = label,
                 description = desc,
                 schedule = schedule,
@@ -65,6 +96,41 @@ class DaguClient(private val serverUrl: String, private val token: String) {
             )
         }
         return DaguDagList(out)
+    }
+
+    /**
+     * POST /api/v1/dags/{fileName}/start — create a DAG-run from the
+     * DAG definition and start executing it. This is the same call the
+     * Dagu web UI's "Start" button makes.
+     *
+     * Success is NOT "no exception was thrown". Dagu documents 200 with
+     * a body whose `dagRunId` is a REQUIRED property, so a response is
+     * only accepted when the status is 2xx *and* a non-blank `dagRunId`
+     * came back. Anything else — 4xx/5xx, an HTML error page from the
+     * Caddy edge, a 200 with an empty body because a proxy swallowed
+     * the upstream — raises [IOException] carrying the status code and
+     * the server's own message, so the caller has something concrete to
+     * show the user.
+     *
+     * 409 specifically means the DAG is already running under singleton
+     * mode; the message is surfaced verbatim rather than translated,
+     * because Dagu's wording is already the clearest explanation.
+     *
+     * Blocking; call from a background thread. Returns the new run id.
+     */
+    fun startDag(fileName: String): String {
+        if (fileName.isBlank()) throw IOException("Cannot start a DAG with no name.")
+        // The endpoint declares its request body required, so an empty
+        // JSON object is sent even though every property is optional.
+        val body = postJson("/api/v1/dags/${encodePathSegment(fileName)}/start", "{}")
+        val runId = runCatching { JSONObject(body).optString("dagRunId") }
+            .getOrDefault("")
+        if (runId.isBlank()) {
+            throw IOException(
+                "Dagu accepted the request but returned no dagRunId — " +
+                    "the run did NOT start. Body: ${body.take(200)}")
+        }
+        return runId
     }
 
     // ─────────────────────────── internals ───────────────────────────
@@ -80,6 +146,33 @@ class DaguClient(private val serverUrl: String, private val token: String) {
             return conn.inputStream.bufferedReader().readText()
         } finally { conn.disconnect() }
     }
+
+    /** POST a JSON body and return the response body. Shares [open] —
+     *  and therefore the exact same bearer-token auth — with [getJson];
+     *  there is deliberately one HTTP path and one auth path in this
+     *  class. Non-2xx raises [IOException] with the server's own error
+     *  text appended, which is what the UI shows the user. */
+    private fun postJson(path: String, json: String): String {
+        val conn = open("POST", path)
+        try {
+            conn.doOutput = true
+            conn.setRequestProperty("Content-Type", "application/json")
+            conn.outputStream.use { it.write(json.toByteArray(Charsets.UTF_8)) }
+            val code = conn.responseCode
+            if (code !in 200..299) {
+                val err = conn.errorStream?.bufferedReader()?.readText().orEmpty()
+                throw IOException("POST $path failed: HTTP $code · ${err.take(300)}")
+            }
+            return conn.inputStream.bufferedReader().readText()
+        } finally { conn.disconnect() }
+    }
+
+    /** DAG names are plain identifiers today, but they are user data
+     *  from a YAML filename, so they are percent-encoded before being
+     *  spliced into the URL. `+` is corrected to `%20` because
+     *  URLEncoder targets form bodies, not path segments. */
+    private fun encodePathSegment(raw: String): String =
+        java.net.URLEncoder.encode(raw, "UTF-8").replace("+", "%20")
 
     private fun open(method: String, path: String): HttpURLConnection {
         val base = serverUrl.trimEnd('/')

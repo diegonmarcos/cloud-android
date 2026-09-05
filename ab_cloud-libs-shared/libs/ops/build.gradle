@@ -3,7 +3,7 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
-// Inject build.json::ui.sections[c3].pages[dagu-events].dagu_default_server
+// Inject build.json::ui.sections[c3].pages[dagu].dagu_default_server
 // into BuildConfig so the Dagu login form pre-fills the server URL
 // without any caller passing it in. Data-driven — change the default
 // in build.json, get a rebuilt BuildConfig.DAGU_DEFAULT_SERVER on the
@@ -19,7 +19,7 @@ plugins {
 def buildJson = new groovy.json.JsonSlurper().parse(file("${rootDir}/build.json"))
 if (buildJson.ui == null) buildJson = new groovy.json.JsonSlurper().parse(file('../../build.json'))
 def c3Section = buildJson.ui.sections.find { it.id == 'c3' }
-def daguPage = c3Section?.pages?.find { it.id == 'dagu-events' }
+def daguPage = c3Section?.pages?.find { it.id == 'dagu' }
 def daguServer = daguPage?.dagu_default_server ?: ''
 
 android {

@@ -278,6 +278,14 @@
             "id": "logs",
             "label": "Logs",
             "icon": "ic_p_logs"
+          },
+          {
+            "id": "dagu",
+            "label": "Dagu",
+            "icon": "ic_robot",
+            "hidden": true,
+            "dagu_default_server": "https://workflows.diegonmarcos.com",
+            "_doc": "Fallback copy of the superapp's hidden c3/dagu page. libs/ops/build.gradle reads ui.sections[c3].pages[dagu].dagu_default_server to fill BuildConfig.DAGU_DEFAULT_SERVER, and falls back to THIS file when the consuming app's build.json declares no ui block (the lib-apks standalone build path). Without this entry that path emits an empty default server and the Dagu login form opens blank."
           }
         ]
       },

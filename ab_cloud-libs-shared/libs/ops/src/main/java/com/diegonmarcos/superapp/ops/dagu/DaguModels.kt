@@ -24,6 +24,12 @@ data class DaguRun(
 data class DaguDag(
     /** DAG identifier (filename minus the .yaml extension on disk). */
     val name: String,
+    /** The `fileName` path segment Dagu addresses this DAG by. It is
+     *  what `POST /api/v1/dags/{fileName}/start` needs, and it is NOT
+     *  always equal to [name] (a DAG can override its display name
+     *  while the file keeps its own identity), so it is carried
+     *  separately rather than reconstructed from [name]. */
+    val fileName: String,
     /** Optional human-friendly display title; falls back to name. */
     val displayLabel: String,
     /** Free-form description from the DAG YAML — surfaced as a row
