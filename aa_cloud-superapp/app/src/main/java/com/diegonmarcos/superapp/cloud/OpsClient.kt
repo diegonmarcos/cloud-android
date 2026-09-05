@@ -2,6 +2,7 @@ package com.diegonmarcos.superapp.cloud
 
 import android.util.Log
 import com.diegonmarcos.superapp.BuildConfig
+import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -51,12 +52,46 @@ object OpsClient {
         post("/vms/$vm/services/$service/$action", bearer, "service $service: $action")
 
     /**
+     * Trigger a GitHub Actions `workflow_dispatch` run.
+     *
+     * The GitHub token is NOT in this app, deliberately. GitHub only accepts a
+     * repo-scoped PAT for workflow_dispatch, and an APK is an unzippable
+     * archive — a token shipped inside one is a published token. So the app
+     * calls c3-infra-api's POST /workflows/dispatch with the Authelia bearer
+     * it already holds, and the server, which is where fleet secrets already
+     * live, holds the PAT and makes the GitHub call.
+     *
+     * Success requires the proxy to answer `{"ok":true}`. A 2xx alone is not
+     * enough: the route reports GitHub refusing the dispatch inside its own
+     * response, so accepting any 2xx would turn a refused run into a green
+     * toast.
+     */
+    fun dispatchWorkflow(repo: String, workflow: String, ref: String, bearer: String): Outcome {
+        val payload = JSONObject()
+            .put("repo", repo)
+            .put("workflow", workflow)
+            .put("ref", ref)
+            .toString()
+        val outcome = post("/workflows/dispatch", bearer, "dispatch $workflow ($repo@$ref)", payload)
+        if (outcome is Outcome.Failed) return outcome
+        val body = (outcome as Outcome.Ok).message
+        // The proxy answers 501 when it has no GITHUB_TOKEN and 502 when
+        // GitHub refuses, both of which land in Failed above. This last check
+        // catches the remaining case: a 2xx whose body did not confirm.
+        if (!body.contains("\"ok\":true")) {
+            return fail(Kind.SERVER,
+                "The dispatch proxy answered 2xx but did not confirm the run started.\n$body")
+        }
+        return Outcome.Ok("✓ dispatched $workflow on $ref")
+    }
+
+    /**
      * Blocking POST. Call from a background thread.
      *
-     * No body is sent: every one of these routes is addressed entirely by its
-     * path, so an empty POST is the whole request.
+     * [json] is null for the container/service routes: they are addressed
+     * entirely by their path, so an empty POST is the whole request.
      */
-    private fun post(path: String, bearer: String, what: String): Outcome {
+    private fun post(path: String, bearer: String, what: String, json: String? = null): Outcome {
         val base = BuildConfig.UI_C3_OPS_BASE_URL.trimEnd('/')
         if (base.isEmpty()) {
             return fail(Kind.NOT_CONFIGURED,
@@ -86,7 +121,9 @@ object OpsClient {
                 setRequestProperty("Authorization", "Bearer $bearer")
                 setRequestProperty("User-Agent", "Cloud-SuperApp-C3Ops/1")
             }
-            conn.outputStream.use { it.write(ByteArray(0)) }
+            conn.outputStream.use {
+                it.write(json?.toByteArray(Charsets.UTF_8) ?: ByteArray(0))
+            }
             code = conn.responseCode
             val stream = if (code in 200..299) conn.inputStream else conn.errorStream
             body = stream?.bufferedReader()?.use { it.readText() }.orEmpty()

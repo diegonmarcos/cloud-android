@@ -39,6 +39,11 @@ object GitHubFeed {
         val conclusion: String,
         val htmlUrl: String,
         val tsMillis: Long,
+        /** Workflow file name (".github/workflows/ship.yml" → "ship.yml").
+         *  GitHub's dispatch endpoint is addressed by this file name, so it
+         *  is what lets a row offer a re-run trigger. Empty when the run
+         *  payload carried no path. */
+        val workflowFile: String = "",
     )
 
     suspend fun commits(ctx: Context, owner: String, repo: String, perPage: Int = 5): List<Commit> {
@@ -80,6 +85,7 @@ object GitHubFeed {
                     conclusion    = o.optString("conclusion", ""),
                     htmlUrl       = o.optString("html_url", ""),
                     tsMillis      = parseIso8601(o.optString("created_at", "")),
+                    workflowFile  = o.optString("path", "").substringAfterLast('/'),
                 )
             }
         }.getOrDefault(emptyList())

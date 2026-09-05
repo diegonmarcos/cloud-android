@@ -39,6 +39,7 @@ import com.google.android.material.card.MaterialCardView
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Stack-render variant of an aggregator section. When an aggregator
@@ -468,6 +469,11 @@ class AggregatorStackFragment : Fragment(),
                         meta     = "${r.name} · $statusLabel · ${GitHubFeed.ago(now - r.tsMillis)}",
                         url      = r.htmlUrl,
                         severity = sev,
+                        // Only rows whose run identified its workflow file can
+                        // be re-dispatched — GitHub addresses the dispatch
+                        // endpoint by that file name.
+                        action   = r.workflowFile.takeIf { it.isNotBlank() }
+                            ?.let { ghaTriggerRow(ctx, ref, it) },
                     ))
                 }
             }
@@ -501,7 +507,7 @@ class AggregatorStackFragment : Fragment(),
         }
 
     private fun githubRow(ctx: android.content.Context, title: String, meta: String,
-                          url: String, severity: String): View {
+                          url: String, severity: String, action: View? = null): View {
         val row = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             val pad = dp(8); setPadding(pad, pad, pad, pad)
@@ -538,7 +544,71 @@ class AggregatorStackFragment : Fragment(),
             setTextAppearance(android.R.style.TextAppearance_Material_Caption)
             setPadding(0, dp(2), 0, 0)
         })
+        if (action != null) row.addView(action)
         return row
+    }
+
+    /**
+     * "Re-run" control for one GitHub Actions workflow row.
+     *
+     * Dispatch goes through c3-infra-api (POST /workflows/dispatch) with the
+     * Authelia bearer this device already stores, NOT with a GitHub token: a
+     * PAT with actions:write shipped inside the APK would be extractable by
+     * anyone who unzips it. The server holds the PAT.
+     *
+     * Every outcome is displayed in place — dispatched, refused by GitHub,
+     * proxy not configured, or no token on the device. The control never
+     * finishes without saying what happened.
+     */
+    private fun ghaTriggerRow(ctx: android.content.Context, ref: Sections.RepoRef,
+                              workflowFile: String): View {
+        val box = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, dp(6), 0, 0)
+        }
+        val status = android.widget.TextView(ctx).apply {
+            setTextColor(0x88FFFFFF.toInt())
+            setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+            setPadding(dp(8), 0, 0, 0)
+            layoutParams = LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        val btn = android.widget.Button(ctx).apply {
+            text = "Re-run"
+            isAllCaps = false
+            setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+        }
+        btn.setOnClickListener {
+            btn.isEnabled = false
+            status.text = "Dispatching $workflowFile…"
+            val bearer = runCatching {
+                com.diegonmarcos.superapp.ops.dagu.DaguPrefs(ctx).bearerToken
+            }.getOrDefault("")
+            viewLifecycleOwner.lifecycleScope.launch {
+                val outcome = withContext(kotlinx.coroutines.Dispatchers.IO) {
+                    com.diegonmarcos.superapp.cloud.OpsClient.dispatchWorkflow(
+                        repo = "${ref.owner}/${ref.repo}",
+                        workflow = workflowFile,
+                        ref = "main",
+                        bearer = bearer,
+                    )
+                }
+                btn.isEnabled = true
+                when (outcome) {
+                    is com.diegonmarcos.superapp.cloud.OpsClient.Outcome.Ok -> {
+                        status.setTextColor(0xFF7BE38B.toInt())
+                        status.text = outcome.message
+                    }
+                    is com.diegonmarcos.superapp.cloud.OpsClient.Outcome.Failed -> {
+                        status.setTextColor(0xFFFF8888.toInt())
+                        status.text = "${outcome.kind}: ${outcome.message}"
+                    }
+                }
+            }
+        }
+        box.addView(btn)
+        box.addView(status)
+        return box
     }
 
     /** Embed the in-app NotificationStore feed inline as a stack-panel
