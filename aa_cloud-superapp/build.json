@@ -2570,7 +2570,7 @@
             "icon": "ic_p_c3_workflows",
             "facet": true,
             "mode": "admin",
-            "_doc": "What the cloud is DOING — GHA + Dagu workflow runs, the workflow pages, and per-repo commit history. A facet renders this section's own stack_observability; `facet` needs no `is_aggregator` on the section, only a stack_<page id> to read."
+            "_doc": "What the cloud is DOING — GHA + Dagu workflow runs, the full Dagu workflow inventory, the reports the cloud produces, the workflow pages, and per-repo commit history. Reports moved here from Topology: Topology is what the fleet IS, and a report is output, not structure. A facet renders this section's own stack_observability; `facet` needs no `is_aggregator` on the section, only a stack_<page id> to read."
           },
           {
             "id": "topology",
@@ -2578,7 +2578,7 @@
             "icon": "ic_p_c3_stack",
             "facet": true,
             "mode": "admin",
-            "_doc": "What the cloud IS — the container/stack dashboard that used to be the whole of Cloud ▸ C3, carried down one level unchanged."
+            "_doc": "What the cloud IS — the container/stack dashboard that used to be the whole of Cloud ▸ C3, carried down one level unchanged. Reports are NOT here any more: they are output rather than structure, so the reports tile now lives in stack_observability. page:c3/reports itself is unchanged and still routes the same way."
           },
           {
             "id": "reports",
@@ -2634,10 +2634,10 @@
         ],
         "stack_observability": [
           {
-            "_doc": "The C3 pages that answer 'what is the cloud DOING'. Every one still resolves: page:c3/workflows (declarations · schedule), page:c3/gha, page:c3/dagu (native DaguFragment), page:c3/logs (per-VM).",
+            "_doc": "The C3 pages that answer 'what is the cloud DOING'. Every one still resolves: page:c3/workflows (declarations · schedule), page:c3/gha, page:c3/dagu (native DaguFragment), page:c3/logs (per-VM), page:c3/reports. The reports tile arrived from stack_topology byte-identical — same id, same icon, same target; only its host page changed.",
             "kind": "tile_row",
             "title": "Workflows · declarations",
-            "subtitle": "GHA · Dagu · logs per VM",
+            "subtitle": "GHA · Dagu · logs per VM · reports",
             "tiles": [
               {
                 "id": "workflows",
@@ -2662,6 +2662,12 @@
                 "label": "Logs",
                 "icon": "ic_p_logs",
                 "target": "page:c3/logs"
+              },
+              {
+                "id": "reports",
+                "label": "Reports",
+                "icon": "ic_p_c3_reports",
+                "target": "page:c3/reports"
               }
             ]
           },
@@ -2689,27 +2695,58 @@
             ]
           },
           {
-            "_doc": "Recent commits from the watched repos — separate from GHA so workflows news and code news don't conflate. Same cache.",
+            "_doc": "Recent commits from the whole cloud + front family — separate from GHA so workflows news and code news don't conflate. THIS ARRAY IS THE REPO SET: AggregatorStackFragment.renderRepos iterates Sections.StackPanel.repos and nothing else, so adding a repo is a data edit here, never a Kotlin edit. The list is every repo of the two families that GitHub actually answers 200 for, verified against api.github.com/repos/diegonmarcos/<name>. DELIBERATELY EXCLUDED, so nobody re-adds them: `cloud-android` and `cloud-unix` answer 301 and redirect to `cloud-u-android` and `cloud-infra-desktop` respectively — they are rename-aliases of repos already listed, and adding them would duplicate every commit; `cloud-mykonsole-dtk` answers 404, the upstream is gone and only the gitea mirror still remembers it; `front` (the ~30-project web monorepo) answers 404 too — it has no GitHub remote at all, and diegonmarcos.github.io is the published front site, which is why THAT is the front entry rather than `front`. Rate limit: this panel plus gha_runs share GitHub's 60-requests-per-hour anonymous quota, so GitHubFeed caches for 15 minutes, staggers the fan-out, and reports an exhausted quota as `rate limited` rather than as an empty repo.",
             "kind": "repos",
             "title": "Repos · Commits",
-            "subtitle": "Latest 3 commits per repo",
+            "subtitle": "Latest 3 commits per repo · cloud + front family",
             "repos": [
               {
                 "owner": "diegonmarcos",
-                "repo": "cloud-u-android",
-                "label": "android"
+                "repo": "cloud-infra",
+                "label": "cloud-infra"
               },
               {
                 "owner": "diegonmarcos",
-                "repo": "cloud-infra",
-                "label": "cloud"
+                "repo": "cloud-infra-desktop",
+                "label": "cloud-infra-desktop"
+              },
+              {
+                "owner": "diegonmarcos",
+                "repo": "cloud-u-android",
+                "label": "cloud-u-android"
+              },
+              {
+                "owner": "diegonmarcos",
+                "repo": "cloud-u-containers",
+                "label": "cloud-u-containers"
+              },
+              {
+                "owner": "diegonmarcos",
+                "repo": "cloud-u-linux",
+                "label": "cloud-u-linux"
+              },
+              {
+                "owner": "diegonmarcos",
+                "repo": "front-assets-cdn",
+                "label": "front-assets-cdn"
+              },
+              {
+                "owner": "diegonmarcos",
+                "repo": "front-data",
+                "label": "front-data"
               },
               {
                 "owner": "diegonmarcos",
                 "repo": "diegonmarcos.github.io",
-                "label": "front"
+                "label": "front · site"
               }
             ]
+          },
+          {
+            "_doc": "EVERY workflow Dagu has registered, listed in place. Before this the page carried only the deeplink below, so the answer to 'what workflows does the cloud declare' was one tap away instead of on the page — that, not a cap, is why the panel looked short. Nothing is paginated or filtered away: GET /api/v1/dags answers the complete set in one response (pagination.totalPages == 1, totalRecords == 35 as of this commit), which matches the 34 enabled .yaml in cloud-u-containers/infra-obs_dagu/src/dags plus the one under dags/gha — sync_cloud-data.yaml.disabled is disabled and correctly absent. AggregatorStackFragment.renderDaguDags drives DaguClient.listDags() against DaguPrefs.serverUrl, so it shares the server and the bearer token with the native page:c3/dagu list rather than inventing a second config. A DAG that has never run renders as its own `never run` state — Dagu status 0 — and is NEVER drawn green and never drawn blank.",
+            "kind": "dagu_dags",
+            "title": "Dagu · Workflows",
+            "subtitle": "Every registered DAG · last run status"
           },
           {
             "kind": "open_link",
@@ -2721,10 +2758,10 @@
         ],
         "stack_topology": [
           {
-            "_doc": "The C3 pages that answer 'what the cloud IS'. These six were declared in the old Cloud ▸ C3 tiles_c3 index and never once drawn, because that page declared a stack beside them and a stack always wins. Targets unchanged.",
+            "_doc": "The C3 pages that answer 'what the cloud IS'. These were declared in the old Cloud ▸ C3 tiles_c3 index and never once drawn, because that page declared a stack beside them and a stack always wins. Targets unchanged. The reports tile left this row for stack_observability — reports are what the cloud PRODUCES, not part of its shape.",
             "kind": "tile_row",
             "title": "Topology · inventory",
-            "subtitle": "Health · stack · VMs · mesh · reports",
+            "subtitle": "Health · stack · VMs · mesh",
             "tiles": [
               {
                 "id": "c3-health",
@@ -2749,12 +2786,6 @@
                 "label": "VMs",
                 "icon": "ic_p_c3_vms",
                 "target": "page:c3/vms"
-              },
-              {
-                "id": "reports",
-                "label": "Reports",
-                "icon": "ic_p_c3_reports",
-                "target": "page:c3/reports"
               },
               {
                 "id": "drive-conn",

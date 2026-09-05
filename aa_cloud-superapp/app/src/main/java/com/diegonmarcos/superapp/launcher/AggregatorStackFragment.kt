@@ -56,6 +56,7 @@ import kotlinx.coroutines.withContext
  *   tile_row                  → inline mini-tile row (deep links into sections)
  *   mail_accounts             → per-account list with read/unread placeholders
  *   chat_matrix /chat_mattermost  → server list, tap → opens the chat section
+ *   dagu_dags                 → every DAG registered on the Dagu server
  *   open_link                 → single tappable row that opens a URL
  *   placeholder               → empty hint card
  *
@@ -374,6 +375,7 @@ class AggregatorStackFragment : Fragment(),
         "notification_center" -> refreshable(body) { renderNotificationCenter(ctx, body, panel) }
         "repos"              -> renderRepos(ctx, body, panel)
         "gha_runs"           -> renderGhaRuns(ctx, body, panel)
+        "dagu_dags"          -> renderDaguDags(ctx, body)
         "stats"              -> renderStats(ctx, body, panel)
         "cloud_dashboard"    -> renderCloudDashboard(ctx, body, panel)
         else                 -> renderPlaceholder(ctx, body, panel)
@@ -401,17 +403,24 @@ class AggregatorStackFragment : Fragment(),
         body.addView(loading)
         viewLifecycleOwner.lifecycleScope.launch {
             val now = System.currentTimeMillis()
-            val results = panel.repos.map { ref ->
-                async { ref to GitHubFeed.commits(ctx, ref.owner, ref.repo, 3) }
+            val results = panel.repos.mapIndexed { i, ref ->
+                // Stagger the fan-out: the family is a dozen repos now and
+                // the anonymous GitHub quota is 60/h, so they trickle rather
+                // than arrive as one simultaneous burst.
+                async { kotlinx.coroutines.delay(i * GitHubFeed.STAGGER_MS)
+                        ref to GitHubFeed.commits(ctx, ref.owner, ref.repo, 3) }
             }.awaitAll()
             body.removeView(loading)
-            for ((ref, commits) in results) {
+            for ((ref, feed) in results) {
                 body.addView(repoHeader(ctx, "${ref.label} (commits)", "${ref.owner}/${ref.repo}"))
-                if (commits.isEmpty()) {
-                    body.addView(emptyRow(ctx, "(no recent commits — API rate-limited or repo unreachable)"))
+                if (feed.items.isEmpty()) {
+                    body.addView(emptyRow(ctx, feedEmptyLabel(feed.status, "commits")))
                     continue
                 }
-                for (c in commits) {
+                if (feed.status != GitHubFeed.Status.OK) {
+                    body.addView(emptyRow(ctx, feedStaleLabel(feed.status)))
+                }
+                for (c in feed.items) {
                     body.addView(githubRow(
                         ctx,
                         title    = c.message,
@@ -444,17 +453,21 @@ class AggregatorStackFragment : Fragment(),
         body.addView(loading)
         viewLifecycleOwner.lifecycleScope.launch {
             val now = System.currentTimeMillis()
-            val results = panel.repos.map { ref ->
-                async { ref to GitHubFeed.runs(ctx, ref.owner, ref.repo, 3) }
+            val results = panel.repos.mapIndexed { i, ref ->
+                async { kotlinx.coroutines.delay(i * GitHubFeed.STAGGER_MS)
+                        ref to GitHubFeed.runs(ctx, ref.owner, ref.repo, 3) }
             }.awaitAll()
             body.removeView(loading)
-            for ((ref, runs) in results) {
+            for ((ref, feed) in results) {
                 body.addView(repoHeader(ctx, "${ref.label} (workflow runs)", "${ref.owner}/${ref.repo}"))
-                if (runs.isEmpty()) {
-                    body.addView(emptyRow(ctx, "(no workflow runs — repo may have no Actions enabled)"))
+                if (feed.items.isEmpty()) {
+                    body.addView(emptyRow(ctx, feedEmptyLabel(feed.status, "workflow runs")))
                     continue
                 }
-                for (r in runs) {
+                if (feed.status != GitHubFeed.Status.OK) {
+                    body.addView(emptyRow(ctx, feedStaleLabel(feed.status)))
+                }
+                for (r in feed.items) {
                     val sev = when (r.conclusion) {
                         "success" -> "info"
                         "failure", "timed_out", "cancelled" -> "error"
@@ -476,6 +489,117 @@ class AggregatorStackFragment : Fragment(),
                 }
             }
         }
+    }
+
+    /** What an EMPTY GitHub feed actually means. "no commits" is only
+     *  said when GitHub answered and had nothing — a spent quota says
+     *  "rate limited" in as many words, because rendering a 403 as an
+     *  empty repo is the exact silent failure this panel used to have. */
+    private fun feedEmptyLabel(status: GitHubFeed.Status, noun: String): String = when (status) {
+        GitHubFeed.Status.RATE_LIMITED ->
+            "(rate limited — GitHub's anonymous 60 requests/hour quota is spent; retry in a few minutes)"
+        GitHubFeed.Status.UNREACHABLE ->
+            "(unreachable — GitHub did not answer; check the network)"
+        GitHubFeed.Status.OK -> "(no recent $noun)"
+    }
+
+    /** Shown ABOVE rows that came from cache because the live fetch
+     *  failed, so cached data is never passed off as current. */
+    private fun feedStaleLabel(status: GitHubFeed.Status): String = when (status) {
+        GitHubFeed.Status.RATE_LIMITED -> "(rate limited — showing the last cached rows)"
+        else                           -> "(offline — showing the last cached rows)"
+    }
+
+    // ── kind=dagu_dags ─────────────────────────────────────────────────
+    //
+    /** Every DAG registered on the Dagu server, listed in place.
+     *
+     *  GET /api/v1/dags returns the COMPLETE set in a single response —
+     *  the deployed server reports pagination.totalPages == 1 — so there
+     *  is no page to walk, no cap applied here, and no filter: whatever
+     *  Dagu has loaded is what gets drawn, one row each.
+     *
+     *  Server + bearer token come from [DaguPrefs], the same store the
+     *  native page:c3/dagu list uses, so there is one Dagu config on the
+     *  device rather than two that can disagree.
+     *
+     *  A DAG that has never run is its OWN state: severity "idle", the
+     *  words "never run", and no timestamp. It is never green and never
+     *  blank, so "declared but never scheduled" cannot be mistaken for
+     *  "ran fine" or for a rendering gap. */
+    private fun renderDaguDags(ctx: android.content.Context, body: LinearLayout) {
+        val loading = android.widget.TextView(ctx).apply {
+            text = "Loading Dagu workflows…"
+            setTextColor(0x88FFFFFF.toInt())
+            setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+            setPadding(0, dp(8), 0, dp(8))
+        }
+        body.addView(loading)
+        viewLifecycleOwner.lifecycleScope.launch {
+            val prefs = com.diegonmarcos.superapp.ops.dagu.DaguPrefs(ctx)
+            val outcome = withContext(kotlinx.coroutines.Dispatchers.IO) {
+                runCatching {
+                    com.diegonmarcos.superapp.ops.dagu.DaguClient(
+                        prefs.serverUrl, prefs.bearerToken).listDags()
+                }
+            }
+            body.removeView(loading)
+            outcome.onFailure { e ->
+                body.addView(emptyRow(ctx,
+                    "(Dagu unreachable — ${e.message ?: "no response"}. " +
+                        "If the token expired, sign in again on the Dagu page.)"))
+            }
+            outcome.onSuccess { resp ->
+                if (resp.dags.isEmpty()) {
+                    body.addView(emptyRow(ctx, "(no DAGs registered on ${prefs.serverUrl})"))
+                    return@onSuccess
+                }
+                val now = System.currentTimeMillis()
+                // Most recently finished first; never-run DAGs sink to the
+                // bottom, where their "never run" state reads as a group.
+                for (d in resp.dags.sortedByDescending { it.lastRun?.finishedAtMs ?: 0L }) {
+                    val code     = d.lastRun?.status ?: 0
+                    val finished = d.lastRun?.finishedAtMs ?: 0L
+                    val meta     = buildString {
+                        append(daguStatusLabel(code))
+                        if (finished > 0L) append(" · ${GitHubFeed.ago(now - finished)}")
+                        if (d.schedule.isNotBlank()) append(" · ⏰ ${d.schedule}")
+                    }
+                    body.addView(githubRow(
+                        ctx,
+                        title    = d.displayLabel,
+                        meta     = meta,
+                        url      = "page:c3/dagu",
+                        severity = daguSeverity(code),
+                    ))
+                }
+                body.addView(emptyRow(ctx, "${resp.dags.size} workflows registered"))
+            }
+        }
+    }
+
+    /** Dagu run-status code → words. Codes are Dagu's own: 0 not started,
+     *  1 running, 2 failed, 3 cancelled, 4 succeeded, 6 partially
+     *  succeeded, 7 queued. 0 is spelled out as "never run" rather than
+     *  left blank. */
+    private fun daguStatusLabel(code: Int): String = when (code) {
+        0    -> "never run"
+        1    -> "running"
+        2    -> "failed"
+        3    -> "cancelled"
+        4    -> "succeeded"
+        6    -> "partially succeeded"
+        7    -> "queued"
+        else -> "status $code"
+    }
+
+    /** Never-run maps to "idle", NOT to the default row colour, so it is
+     *  visibly its own thing next to a failure and next to a success. */
+    private fun daguSeverity(code: Int): String = when (code) {
+        0          -> "idle"
+        2, 3       -> "error"
+        1, 6, 7    -> "warn"
+        else       -> "info"
     }
 
     private fun repoHeader(ctx: android.content.Context, title: String, sub: String): View {
@@ -517,6 +641,11 @@ class AggregatorStackFragment : Fragment(),
             setBackgroundColor(when (severity) {
                 "error" -> 0x55B91C1C.toInt()
                 "warn"  -> 0x55D97706.toInt()
+                // "idle" = declared but never run. Deliberately a neutral
+                // dim wash: not the success colour, not a failure colour,
+                // and not the plain default row either, so "never ran" is
+                // legible as its own state at a glance.
+                "idle"  -> 0x22FFFFFF
                 else    -> 0x331A0033
             })
             isClickable = true
