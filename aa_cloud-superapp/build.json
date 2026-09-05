@@ -2553,6 +2553,8 @@
       {
         "id": "c3",
         "label": "C3",
+        "parent": "cloud",
+        "_doc_parent": "Back from the C3 tab strip ROOT lands on Cloud, not Home. navigateUpToParent() consults parent only when the back stack is empty, which is exactly the strip-root case — without this, that press fell through to goHome(). Distinct from the tab-restore fix in LauncherNavController (activeTabBySection), which governs returning from a SUBPAGE to the tab it was opened from.",
         "icon": "ic_settings",
         "module": "libs:ops",
         "supports_accounts": false,
