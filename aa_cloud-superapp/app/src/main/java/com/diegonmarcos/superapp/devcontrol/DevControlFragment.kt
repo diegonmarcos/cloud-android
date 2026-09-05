@@ -34,6 +34,7 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.diegonmarcos.superapp.BuildConfig
+import com.diegonmarcos.superapp.adbdebug.WirelessDebugging
 import com.diegonmarcos.superapp.updater.BuildConfig as UpdBuildConfig
 import com.diegonmarcos.superapp.updater.AbiUpdateTag
 import com.diegonmarcos.superapp.updater.BuildAge
@@ -511,6 +512,16 @@ class DevControlFragment : Fragment() {
             // its own address here, next to them, plus the button that uses it.
             it.addView(small(ctx, getString(R.string.about_install_header)))
             renderDirectInstall(ctx, it)
+            // Wireless Debugging, next to the install button rather than only in
+            // "Dev Control API" twenty sections below. Same audience, same
+            // moment: the channel that makes an install silent is the switch
+            // someone reaching for the recovery install most often needs, and a
+            // control that far down the page is one the user reports as absent.
+            // Status is read here (unprivileged); the OS toggle has no API, so
+            // the button is the Developer-options deep link, as everywhere else.
+            row(ctx, it, "Wireless debugging",
+                if (WirelessDebugging.isOn(ctxAny())) "ON" else "OFF")
+            it.addView(actionButton(ctx, "Open Wireless Debugging", GRAY) { openWirelessDebuggingSettings() })
             // The consolidated cloud-data config that feeds the mesh.
             it.addView(small(ctx, "Config source:"))
             row(ctx, it, "Consolidated", BuildConfig.UI_CONSOLIDATED_CONFIG.ifBlank { "—" })

@@ -19,6 +19,7 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import com.diegonmarcos.superapp.adbdebug.PackageVerifier
 import com.diegonmarcos.superapp.adbdebug.ShellAccess
+import com.diegonmarcos.superapp.adbdebug.WirelessDebugging
 import com.diegonmarcos.superapp.updater.Advisory
 import com.diegonmarcos.superapp.updater.AutoUpdatePrefs
 import com.diegonmarcos.superapp.updater.BootstrapInstall
@@ -315,6 +316,45 @@ class ConstellationFragment : Fragment() {
             else "Play Protect prompts on every install. Turning it off needs the " +
                  "embedded adb channel (or Shizuku, if you run it); it is device-wide " +
                  "and survives uninstall."))
+
+        // Row 4 - Wireless Debugging, the switch every silent install above
+        // ultimately rests on: the embedded adb channel talks to the adbd this
+        // starts. It was reachable only from Permissions, which is the wrong
+        // screen - the moment you notice you need it is the moment an install
+        // here just failed. Same honesty rule as Play Protect: [WirelessDebugging]
+        // re-reads the setting, so the label is the device's answer, not ours.
+        // Reading is unprivileged; the write may be refused, and the OS exposes
+        // no action for the Wireless-Debugging sub-screen, so "Open" deep-links
+        // to Developer options, where it lives.
+        val wd = WirelessDebugging.isOn(ctx)
+        headerControls.addView(buttonRow(ctx,
+            btn(ctx, "Wireless debugging: " + (if (wd) "ON" else "OFF"),
+                if (wd) 0xFF2F855A.toInt() else 0xFF4A4A55.toInt()) {
+                Toast.makeText(ctx, "Asking the shell channel...", Toast.LENGTH_SHORT).show()
+                thread(name = "wireless-debug-toggle") {
+                    // busy = an install batch holds the lease; cutting the
+                    // channel underneath one strands a half-finished install.
+                    val st = com.diegonmarcos.superapp.updater.UpdateProgress.state
+                    val busy = com.diegonmarcos.superapp.updater.UpdateProgress.batchLabel != null ||
+                        st is com.diegonmarcos.superapp.updater.UpdateProgress.State.Downloading ||
+                        st is com.diegonmarcos.superapp.updater.UpdateProgress.State.Installing
+                    val r = WirelessDebugging.set(ctx, !wd, busy = busy)
+                    headerControls.post {
+                        Toast.makeText(ctx,
+                            (if (r.ok) "Wireless debugging " + (if (r.on) "ON" else "OFF") + " via " + r.channel
+                             else "NOT changed (" + r.channel + ") - still " + (if (r.on) "ON" else "OFF")) +
+                                "\n" + r.detail,
+                            Toast.LENGTH_LONG).show()
+                        renderHeader(ctx)
+                    }
+                }
+            },
+            btn(ctx, "Open ↗", 0xFF2A2A33.toInt()) { openDeveloperOptions(ctx) },
+        ))
+        headerControls.addView(caption(ctx,
+            if (wd) "adbd is listening - the embedded channel can install without a tap."
+            else "Off: no embedded adb channel. 'Direct' on any row still installs, " +
+                 "through the system confirmation sheet."))
     }
 
     // ── one COLLAPSED row per app; the full card is one tap away ─────────────
@@ -782,6 +822,15 @@ class ConstellationFragment : Fragment() {
     private fun openApp(ctx: Context, pkg: String) {
         val i = ctx.packageManager.getLaunchIntentForPackage(pkg)
         if (i != null) startActivity(i) else Toast.makeText(ctx, "Not installed", Toast.LENGTH_SHORT).show()
+    }
+
+    /** Developer options — where the OS keeps Wireless Debugging. No public
+     *  action targets the sub-screen itself, so this is the closest honest
+     *  landing; falls back to top-level Settings if an OEM locks it away. */
+    private fun openDeveloperOptions(ctx: Context) {
+        val dev = Intent(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
+        if (dev.resolveActivity(ctx.packageManager) != null) { startActivity(dev); return }
+        startActivity(Intent(Settings.ACTION_SETTINGS))
     }
 
     private fun openUnknownAppSources(ctx: Context) {
