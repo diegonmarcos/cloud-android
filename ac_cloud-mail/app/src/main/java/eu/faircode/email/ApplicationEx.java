@@ -314,6 +314,10 @@ public class ApplicationEx extends Application
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O)
             NotificationHelper.createNotificationChannels(this);
 
+        // comms: read-only notification diagnostics on the loopback debug server,
+        // GET /api/mail/notifications -- see NotificationDebug.
+        NotificationDebug.register(this);
+
         DB.setupViewInvalidation(this);
 
         // https://issuetracker.google.com/issues/341313071
