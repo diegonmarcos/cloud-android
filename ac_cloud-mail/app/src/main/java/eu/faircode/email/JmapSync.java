@@ -95,6 +95,16 @@ public class JmapSync {
     // before it is dropped instead of wedging the folder's queue forever.
     private static final int OP_RETRY_MAX = 10;
 
+    // Wall-clock budget for the PHASE 0 operation drain (see run()). Ops used to
+    // be drained only in phase 2, after every folder had reconciled, pruned and
+    // backfilled -- a pass this file's own comments measured at 50+ minutes. A
+    // pass that is cut short (connection drop, poll restart, service stop) never
+    // reached phase 2 at all, so user intent -- "I read this" -- never left the
+    // phone. Phase 0 guarantees the queue moves EVERY pass; the budget keeps it
+    // from re-creating the starvation that motivated moving it to the end, and
+    // whatever does not fit is picked up by phase 2 or the next pass.
+    private static final long OP_DRAIN_BUDGET_MS = 30 * 1000L;
+
     // Max ids folded into ONE coalesced Email/set (see processOperations).
     // Stalwart's maxObjectsInSet defaults to 500; 200 mirrors JmapService's
     // JMAP_PAGE_SIZE and keeps a wide margin under it.
@@ -380,6 +390,12 @@ public class JmapSync {
         // one role folder is seen as "already stored" by the next.
         Map<String, Long> accountHave = buildAccountHave(db, account.id);
 
+        // PHASE 0: get the user's own queued intent to the server FIRST, under a
+        // budget. See OP_DRAIN_BUDGET_MS for why this can no longer live only at
+        // the end of the pass.
+        drainOperations(context, account, mailboxToFolder, folderById, jmap,
+                android.os.SystemClock.elapsedRealtime() + OP_DRAIN_BUDGET_MS);
+
         // 2) Messages — per synchronized (role) folder, insert any not stored.
         String backfillKey = "comms_jmap_backfill_0064";
         boolean backfilled = prefs.getBoolean(backfillKey, false);
@@ -466,14 +482,68 @@ public class JmapSync {
         if (!backfilled)
             prefs.edit().putBoolean(backfillKey, true).apply();
 
-        // 3) PHASE 2: drain pending operations, one folder at a time, only
-        // after every folder above has reconciled. A deep backlog here can no
-        // longer starve the visible read/unread state.
-        for (Map.Entry<Long, String> e : folderToMailbox.entrySet()) {
-            EntityFolder folder = db.folder().getFolder(e.getKey());
-            if (folder == null || !folder.synchronize)
+        // 3) PHASE 2: drain whatever phase 0 did not have budget for, now that
+        // the visible reconcile is done. Unbudgeted: there is nothing left to
+        // starve.
+        drainOperations(context, account, mailboxToFolder, folderById, jmap, 0);
+    }
+
+    /**
+     * comms: run every queued operation for the account.
+     *
+     * Iterates the folders the OP QUEUE names, not the server mailbox map. The
+     * previous loop walked folderToMailbox and skipped `!folder.synchronize`,
+     * which stranded operations permanently: collapseDuplicates() de-syncs every
+     * non-role folder, folders that leave the server are de-synced at :323, and
+     * a local-only folder was never in the map to begin with. An op on any of
+     * those was never executed, never failed, and therefore never aged out via
+     * OP_RETRY_MAX -- it simply sat there. Measured on-device 2026-09-05: the
+     * foreground notification read "400 operaciones pendientes" and did not move
+     * for four minutes, meaning mail the user had read on the phone was still
+     * unread for every other client.
+     *
+     * @param deadline SystemClock.elapsedRealtime() cutoff, or 0 for no limit.
+     */
+    private static void drainOperations(Context context, EntityAccount account,
+                                        Map<String, Long> mailboxToFolder,
+                                        Map<Long, EntityFolder> folderById,
+                                        JmapService jmap, long deadline) {
+        DB db = DB.getInstance(context);
+        List<Long> folders = db.operation().getOperationFolders(account.id);
+        if (folders == null)
+            return;
+
+        for (Long fid : folders) {
+            if (deadline > 0 && android.os.SystemClock.elapsedRealtime() > deadline)
+                break;
+
+            EntityFolder folder = db.folder().getFolder(fid);
+            if (folder == null) {
+                // Orphan: the folder row is gone, so nothing can ever run these.
+                // Dropping them is the only way the queue reaches zero.
+                int orphans = db.operation().deleteOperationsByFolder(fid);
+                if (orphans > 0)
+                    EntityLog.log(context, "JMAP dropped " + orphans
+                            + " operation(s) for missing folder=" + fid);
                 continue;
-            processOperations(context, account, folder, e.getValue(), mailboxToFolder, folderById, jmap);
+            }
+
+            try {
+                // May be null for a de-synced or server-gone folder. The
+                // per-message ops (SEEN/FLAG/MOVE/DELETE/KEYWORD/BODY) address
+                // mail by Email.id and do not need it; the folder-level ones
+                // are skipped inside processOperations.
+                String mailboxId = mailboxForFolder(mailboxToFolder, folder.id);
+                processOperations(context, account, folder, mailboxId,
+                        mailboxToFolder, folderById, jmap, deadline);
+            } catch (Throwable ex) {
+                // One folder must not abort the drain -- the old call site was
+                // unguarded, so a single throw meant every later folder's queue
+                // sat untouched for the whole pass.
+                Log.w(folder.name + " JMAP ops", ex);
+                EntityLog.log(context, "JMAP " + folder.name + " ops skipped: "
+                        + ex.getClass().getSimpleName());
+            }
         }
     }
 
@@ -864,7 +934,7 @@ public class JmapSync {
     private static void processOperations(Context context, EntityAccount account, EntityFolder folder,
                                           String mailboxId, Map<String, Long> mailboxToFolder,
                                           Map<Long, EntityFolder> folderById,
-                                          JmapService jmap) throws Exception {
+                                          JmapService jmap, long deadline) throws Exception {
         DB db = DB.getInstance(context);
         List<EntityOperation> ops = db.operation().getOperationsByFolder(folder.id);
         if (ops == null)
@@ -878,6 +948,11 @@ public class JmapSync {
         SetBatch batch = null;
 
         for (EntityOperation op : ops) {
+            // Budget check between ops only: never mid-batch, and the tail
+            // flush below still sends whatever is already buffered.
+            if (deadline > 0 && android.os.SystemClock.elapsedRealtime() > deadline)
+                break;
+
             EntityMessage message = (op.message == null ? null : db.message().getMessage(op.message));
             SetBatch shape = describeBatch(op, message, mailboxToFolder);
 
@@ -930,9 +1005,16 @@ public class JmapSync {
                             jmap.deleteMessages(ids);
                         break;
                     case EntityOperation.UNREAD:
-                        onUnread(context, folder, mailboxId, jmap);
+                        // mailboxId is null for a de-synced or server-gone
+                        // folder; there is no server mailbox to mark. Falling
+                        // through to the delete below is deliberate -- leaving
+                        // it queued is exactly the strand that jammed 400 ops.
+                        if (mailboxId != null)
+                            onUnread(context, folder, mailboxId, jmap);
                         break;
                     case EntityOperation.SYNC:
+                        if (mailboxId == null)
+                            break;
                         // A queued SYNC just means "sync this folder now" instead
                         // of waiting for the next poll -- run the same pass run()
                         // does per folder. Account-wide dedup map rebuilt here

@@ -317,6 +317,8 @@ public class ApplicationEx extends Application
         // comms: read-only notification diagnostics on the loopback debug server,
         // GET /api/mail/notifications -- see NotificationDebug.
         NotificationDebug.register(this);
+        // GET /api/jmap/sync -- see JmapDebug.
+        JmapDebug.register(this);
 
         DB.setupViewInvalidation(this);
 

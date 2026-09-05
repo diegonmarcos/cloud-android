@@ -125,6 +125,19 @@ public interface DaoOperation {
     @Query("SELECT * FROM operation WHERE folder = :folder ORDER BY id")
     List<EntityOperation> getOperationsByFolder(long folder);
 
+    // comms: every folder that actually HAS a queued operation, whatever its
+    // synchronize flag or server state. The JMAP drain iterates this instead of
+    // the server mailbox map, because iterating the map stranded ops forever:
+    // collapseDuplicates() de-syncs every non-role folder, and the drain skipped
+    // `!folder.synchronize`, so those ops were never run, never errored, never
+    // tries-incremented and so never reaped by OP_RETRY_MAX either. Measured
+    // on-device 2026-09-05: 400 pending, frozen -- mail read on the phone never
+    // became read on the server. Ordered so a pass is deterministic.
+    @Query("SELECT DISTINCT folder FROM operation" +
+            " WHERE account = :account AND folder IS NOT NULL" +
+            " ORDER BY folder")
+    List<Long> getOperationFolders(long account);
+
     @Query("SELECT * FROM operation WHERE id = :id")
     EntityOperation getOperation(long id);
 
@@ -184,4 +197,10 @@ public interface DaoOperation {
 
     @Query("DELETE FROM operation WHERE folder = :folder AND name = :name")
     int deleteOperations(long folder, String name);
+
+    // comms: reap operations whose folder row no longer exists. Nothing can ever
+    // execute these, so without this they keep the pending count above zero for
+    // good. See JmapSync.drainOperations.
+    @Query("DELETE FROM operation WHERE folder = :folder")
+    int deleteOperationsByFolder(long folder);
 }
