@@ -74,6 +74,27 @@ class AggregatorStackFragment : Fragment(),
     private data class PanelRefs(val body: View, val chevron: View)
     private val panelRefs = mutableListOf<PanelRefs>()
 
+    // ── filters_<page> toggle row state ────────────────────────────────
+    //
+    // Panels are built ONCE. The Source toggle hides and shows whole cards,
+    // and the By/Show toggles rebuild only the two notification bodies. The
+    // stack is never rebuilt wholesale, because that would re-run
+    // [embedChild], whose fixed host ids are still claimed by the already
+    // attached child fragments — the rss and news panels would come back
+    // blank while looking like they had simply loaded nothing.
+    private val originCards   = mutableListOf<Pair<String, View>>()
+    private val bodyRefreshers = mutableListOf<() -> Unit>()
+    /** The vertical column holding the cards — where the "everything is
+     *  filtered out" note is appended. */
+    private var cardColumn: LinearLayout? = null
+    private var filterPage = ""
+    private var sortMode   = "time"
+    private var showMode   = "all"
+    /** Start of this visit's unread window: the ts of the PREVIOUS visit.
+     *  Captured before the watermark is advanced so toggling Show back and
+     *  forth within one visit keeps answering the same question. */
+    private var visitSeenAt = 0L
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, s: Bundle?): View {
         val ctx = inflater.context
         val scroll = ScrollView(ctx).apply {
@@ -93,6 +114,7 @@ class AggregatorStackFragment : Fragment(),
             setPadding(pad, pad, pad, pad)
         }
         scroll.addView(column)
+        cardColumn = column
 
         val sec = Sections.byId(sectionId)
         if (sec == null) {
@@ -105,12 +127,126 @@ class AggregatorStackFragment : Fragment(),
             return scroll
         }
         panelRefs.clear()
+        originCards.clear()
+        bodyRefreshers.clear()
         nextEmbedIdx = 0
-        for (panel in panels) column.addView(
-            if (panel.kind == "section_title") sectionTitleView(ctx, panel.title)
-            else buildPanel(ctx, inflater, panel)
-        )
+
+        // Toggle row, when this page declares one. Reading the watermark
+        // BEFORE advancing it is what makes Show=Unread mean "since you were
+        // last here" rather than "since a moment ago", which would always be
+        // empty.
+        val filters = Sections.stackFiltersFor(sec, mode)
+        if (filters.isNotEmpty()) {
+            filterPage  = mode
+            visitSeenAt = StackFilters.lastSeen(ctx, filterPage)
+            StackFilters.markSeen(ctx, filterPage, System.currentTimeMillis())
+            sortMode = selection(ctx, filters, "sort", sortMode)
+            showMode = selection(ctx, filters, "show", showMode)
+            column.addView(filterRow(ctx, filters))
+        }
+
+        for (panel in panels) {
+            val view = if (panel.kind == "section_title") sectionTitleView(ctx, panel.title)
+                       else buildPanel(ctx, inflater, panel)
+            if (panel.origin.isNotBlank()) originCards += panel.origin to view
+            column.addView(view)
+        }
+        if (filters.isNotEmpty()) applySource(ctx, filters)
         return scroll
+    }
+
+    /** Current choice for the filter with [id], or [fallback] if the page
+     *  does not declare that filter at all. */
+    private fun selection(
+        ctx: android.content.Context,
+        filters: List<Sections.StackFilter>,
+        id: String,
+        fallback: String,
+    ): String = filters.firstOrNull { it.id == id }
+        ?.let { StackFilters.selected(ctx, filterPage, it) } ?: fallback
+
+    /** The declared toggles, one horizontal button row each. Same idiom as
+     *  the other button rows in the app (plain Buttons, weight 1f, in a
+     *  horizontal LinearLayout); the current option is the opaque one. */
+    private fun filterRow(
+        ctx: android.content.Context,
+        filters: List<Sections.StackFilter>,
+    ): View {
+        val host = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, 0, 0, dp(6))
+        }
+        for (filter in filters) {
+            host.addView(caption(ctx, filter.label))
+            val row = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
+            val buttons = mutableMapOf<String, android.widget.Button>()
+            fun paint() {
+                val active = StackFilters.selected(ctx, filterPage, filter)
+                for ((id, b) in buttons) b.alpha = if (id == active) 1f else 0.45f
+            }
+            for (option in filter.options) {
+                val b = android.widget.Button(ctx).apply {
+                    text = option.label
+                    layoutParams = LinearLayout.LayoutParams(
+                        0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f,
+                    )
+                    setOnClickListener {
+                        StackFilters.select(ctx, filterPage, filter.id, option.id)
+                        paint()
+                        onFilterChanged(ctx, filters)
+                    }
+                }
+                buttons[option.id] = b
+                row.addView(b)
+            }
+            paint()
+            host.addView(row)
+        }
+        return host
+    }
+
+    /** Re-apply every toggle after one of them changed. */
+    private fun onFilterChanged(
+        ctx: android.content.Context,
+        filters: List<Sections.StackFilter>,
+    ) {
+        sortMode = selection(ctx, filters, "sort", sortMode)
+        showMode = selection(ctx, filters, "show", showMode)
+        for (refresh in bodyRefreshers) refresh()
+        applySource(ctx, filters)
+    }
+
+    /**
+     * Cloud vs Phone. The rule is the PANEL's declared `origin`, i.e. which
+     * stream the notification arrived on — not a list of phone package names,
+     * which would start going stale the day it was written. Everything the
+     * notification listener captures is by construction from an app installed
+     * on this device; everything in the ntfy catalog, the in-app SuperApp feed
+     * and the news list is by construction from off it.
+     *
+     * A panel with no declared origin is never hidden.
+     */
+    private fun applySource(
+        ctx: android.content.Context,
+        filters: List<Sections.StackFilter>,
+    ) {
+        val want = selection(ctx, filters, "source", "both")
+        for ((origin, card) in originCards) card.isVisible = want == "both" || origin == want
+        // Every classified card hidden means the toggle did it, not a dead
+        // page — say so, because an empty screen with no reason reads as
+        // broken and teaches the user to stop opening it.
+        val column = cardColumn ?: return
+        val allHidden = originCards.isNotEmpty() && originCards.none { it.second.isVisible }
+        val existing = column.findViewWithTag<View>(SOURCE_EMPTY_TAG)
+        if (existing != null) existing.isVisible = allHidden
+        else if (allHidden) {
+            val label = filters.firstOrNull { it.id == "source" }
+                ?.options?.firstOrNull { it.id == want }?.label ?: want
+            column.addView(emptyHint(
+                ctx,
+                "No panel on this page carries $label notifications. Switch Source back to Both.",
+            ).apply { tag = SOURCE_EMPTY_TAG })
+        }
     }
 
     /** Called by MainActivity when the user re-taps the bottom-nav slot
@@ -235,8 +371,8 @@ class AggregatorStackFragment : Fragment(),
         "chat_matrix"        -> renderChatPlaceholder(ctx, body, "Matrix", "page:chat/matrix")
         "chat_mattermost"    -> renderChatPlaceholder(ctx, body, "Mattermost", "page:chat/mattermost")
         "open_link"          -> renderOpenLink(ctx, body, panel)
-        "notifications"      -> renderNotifications(ctx, body)
-        "phone_notifications" -> renderPhoneNotifications(ctx, body)
+        "notifications"      -> refreshable(body) { renderNotifications(ctx, body) }
+        "phone_notifications" -> refreshable(body) { renderPhoneNotifications(ctx, body) }
         "repos"              -> renderRepos(ctx, body, panel)
         "gha_runs"           -> renderGhaRuns(ctx, body, panel)
         "stats"              -> renderStats(ctx, body, panel)
@@ -418,10 +554,12 @@ class AggregatorStackFragment : Fragment(),
             (ctx.getSystemService(android.content.Context.NOTIFICATION_SERVICE)
                 as? android.app.NotificationManager)?.cancelAll()
         }
-        val entries = NotificationStore.all(ctx)
+        val stored  = NotificationStore.all(ctx)
+        val entries = arrange(stored, { it.ts }, { it.source })
         if (entries.isEmpty()) {
             body.addView(android.widget.TextView(ctx).apply {
-                text = "No notifications yet.\n\nProducers wired: Updater (version-bump on launch), Crash (uncaught exceptions)."
+                text = if (stored.isNotEmpty()) filteredAwayNote(stored.size)
+                       else "No notifications yet.\n\nProducers wired: Updater (version-bump on launch), Crash (uncaught exceptions)."
                 setTextColor(0x99FFFFFF.toInt())
                 setTextAppearance(android.R.style.TextAppearance_Material_Caption)
                 setPadding(0, dp(8), 0, dp(8))
@@ -503,10 +641,12 @@ class AggregatorStackFragment : Fragment(),
             })
             return
         }
-        val entries = PhoneNotificationStore.all(ctx)
+        val stored  = PhoneNotificationStore.all(ctx)
+        val entries = arrange(stored, { e -> e.ts }, { e -> e.appLabel.ifBlank { e.packageName } })
         if (entries.isEmpty()) {
             body.addView(android.widget.TextView(ctx).apply {
-                text = "Notification Access granted — no phone notifications captured yet. They will land here as apps post them."
+                text = if (stored.isNotEmpty()) filteredAwayNote(stored.size)
+                       else "Notification Access granted — no phone notifications captured yet. They will land here as apps post them."
                 setTextColor(0x99FFFFFF.toInt())
                 setTextAppearance(android.R.style.TextAppearance_Material_Caption)
                 setPadding(0, dp(8), 0, dp(8))
@@ -1023,6 +1163,47 @@ class AggregatorStackFragment : Fragment(),
         return row
     }
 
+    // ── By / Show toggles, applied to a notification list ──────────────
+
+    /**
+     * Registers [render] so the By/Show toggles can rebuild THIS body in
+     * place, and runs it once now. Only bodies made of plain views may be
+     * registered: re-running a body that calls [embedChild] would allocate
+     * the next fixed host id while the previous child fragment still holds
+     * the old one, and the panel would render empty.
+     */
+    private fun refreshable(body: LinearLayout, render: () -> Unit) {
+        bodyRefreshers += { body.removeAllViews(); render() }
+        render()
+    }
+
+    /**
+     * Applies Show then By to either notification store. [stamp] is the
+     * entry's timestamp; [group] is the name By=App groups on — the in-app
+     * feed's producer, the phone feed's app label.
+     *
+     * Show=Unread is `ts > last visit`, NOT a per-entry read flag: neither
+     * store has one, and a filter over a field nothing writes would render
+     * an empty list forever. By=App still orders newest-first inside each
+     * app, so switching sort never buries a fresh notification.
+     */
+    private fun <T> arrange(items: List<T>, stamp: (T) -> Long, group: (T) -> String): List<T> {
+        val shown = if (showMode == "unread") items.filter { stamp(it) > visitSeenAt } else items
+        return if (sortMode == "app")
+            shown.sortedWith(
+                compareBy(String.CASE_INSENSITIVE_ORDER) { item: T -> group(item) }
+                    .thenByDescending { item: T -> stamp(item) }
+            )
+        else shown.sortedByDescending { item -> stamp(item) }
+    }
+
+    /** Why a non-empty store still rendered nothing. Only Show=Unread can do
+     *  this — sorting never removes a row — so the message can name the cause
+     *  instead of shrugging. */
+    private fun filteredAwayNote(total: Int): String =
+        "Nothing new since your last visit. All $total entries are older, " +
+        "and Show is set to Unread — switch it to All to see them."
+
     private fun caption(ctx: android.content.Context, text: String): TextView =
         TextView(ctx).apply {
             this.text = text
@@ -1070,6 +1251,9 @@ class AggregatorStackFragment : Fragment(),
         private const val ARG_SECTION_ID = "section_id"
         private const val ARG_LABEL      = "label"
         private const val ARG_MODE       = "mode"
+        /** Marks the "Source hid everything" note so it is reused, not
+         *  appended once per toggle tap. */
+        private const val SOURCE_EMPTY_TAG = "stack_source_empty"
 
         fun newInstance(sectionId: String, label: String, mode: String): AggregatorStackFragment =
             AggregatorStackFragment().apply {

@@ -399,12 +399,12 @@
           "target": "page:communication/msgs"
         },
         {
-          "label": "Inboxes My-RSS",
+          "label": "Inboxes Apps RSS",
           "icon": "ic_p_sol_personal",
           "target": "page:communication/my-rss"
         },
         {
-          "label": "Inboxes Cloud-RSS",
+          "label": "Inboxes Infra RSS",
           "icon": "ic_p_sol_cloud",
           "target": "page:communication/cloud-rss"
         },
@@ -1074,19 +1074,20 @@
           },
           {
             "id": "my-rss",
-            "label": "My-RSS",
+            "_doc_label": "Renamed My-RSS → Apps RSS (and Cloud-RSS → Infra RSS) on request. ONLY the label moved: the id `my-rss` is the data key for stack_my-rss / filters_my-rss and the target of `page:communication/my-rss`, so renaming it would silently break the navigation and back-stack lookups that resolve those targets.",
+            "label": "Apps RSS",
             "icon": "ic_p_sol_personal",
             "facet": true
           },
           {
             "id": "cloud-rss",
-            "label": "Cloud-RSS",
+            "label": "Infra RSS",
             "icon": "ic_p_sol_cloud",
             "facet": true
           }
         ],
         "tabs": true,
-        "_doc_pages": "Inboxes = what ARRIVES. Msgs is conversation, My-RSS is this phone's own notifications, Cloud-RSS is the infrastructure's. Each page owns a stack_<page id> list below — the page id IS the data key, so the three tabs are three independent pages rather than one list shown three times.",
+        "_doc_pages": "Inboxes = what ARRIVES. Msgs is conversation, Apps RSS is this phone's own notifications, Infra RSS is the infrastructure's. Each page owns a stack_<page id> list below — the page id IS the data key, so the three tabs are three independent pages rather than one list shown three times.",
         "stack_msgs": [
           {
             "kind": "mail_accounts",
@@ -1167,12 +1168,45 @@
             "target": "extapp:cloud-chat"
           }
         ],
-        "_doc_stack_my-rss": "My-RSS is the PERSONAL inbox, Cloud-RSS the full channel browser. Both render the same ntfy card (kind=rss) over the same catalog in ui.ntfy — the only difference is the `scopes` filter: My-RSS takes advisory + user, Cloud-RSS omits `scopes` and therefore takes all three. There is no second topic list anywhere; a topic added to ui.ntfy.channels lands on the right page by its prefix on the next build, and an unknown prefix falls to the catch-all scope (Cloud channels) under its raw name rather than disappearing. Advisories stay pinned first here for the same reason they are on Cloud-RSS: a stranded phone is told to look at exactly this card.",
+        "_doc_stack_my-rss": "Apps RSS is the PERSONAL inbox, Infra RSS the full channel browser. Both render the same ntfy card (kind=rss) over the same catalog in ui.ntfy — the only difference is the `scopes` filter: Apps RSS takes advisory + user, Infra RSS omits `scopes` and therefore takes all three. There is no second topic list anywhere; a topic added to ui.ntfy.channels lands on the right page by its prefix on the next build, and an unknown prefix falls to the catch-all scope (Cloud channels) under its raw name rather than disappearing. Advisories stay pinned first here for the same reason they are on Infra RSS: a stranded phone is told to look at exactly this card.",
+        "_doc_filters_my-rss": "The three toggles above the Apps RSS stack. Declared here, not in Kotlin: the OPTION SET and the LABELS are data, only the three filter IDS (sort|source|show) are a contract the fragment implements. Drop an option or rename `Both` with a JSON edit. `default` is what a phone shows before the user has ever touched the row; the choice is then remembered per page in SharedPreferences (committed, not applied — this app is the launcher and Android restarts it many times an hour, so a queued write is a setting that silently reverts). SOURCE works off each panel's `origin` below rather than any package list: a stream is Phone or Cloud by WHERE IT COMES FROM, which cannot go stale, whereas a list of phone package names starts rotting the day it is written. SHOW is All vs Unread and NOT All vs Dismissed: neither NotificationStore nor PhoneNotificationStore records a dismissed flag — PhoneNotificationStore deliberately keeps entries the system already dismissed, and the in-app panel calls cancelAll() on open, so a Dismissed filter would read a field nothing writes and render an eternally empty list. Unread is real because it needs no new field at all: it is `ts > last visit`, and both stores already carry ts.",
+        "filters_my-rss": [
+          {
+            "id": "sort",
+            "label": "By",
+            "default": "time",
+            "options": [
+              { "id": "time", "label": "Time" },
+              { "id": "app",  "label": "App" }
+            ]
+          },
+          {
+            "id": "source",
+            "label": "Source",
+            "default": "both",
+            "options": [
+              { "id": "both",  "label": "Both" },
+              { "id": "cloud", "label": "Cloud" },
+              { "id": "phone", "label": "Phone" }
+            ]
+          },
+          {
+            "id": "show",
+            "label": "Show",
+            "default": "all",
+            "options": [
+              { "id": "all",    "label": "All" },
+              { "id": "unread", "label": "Unread" }
+            ]
+          }
+        ],
+        "_doc_origin_my-rss": "`origin` is the Cloud-vs-Phone classifier, and it is a property of the STREAM, not of any individual notification. Everything captured by the notification listener is by construction from an app installed on this device (phone); everything in the ntfy catalog, the in-app SuperApp feed and the curated news list is by construction from off-device (cloud). A panel with no `origin` is never hidden by the Source toggle — an unclassified card stays visible rather than disappearing, the same fail-visible rule ui.ntfy.scopes uses for an unknown prefix.",
         "stack_my-rss": [
           {
             "kind": "rss",
             "title": "ntfy · my channels",
             "subtitle": "Advisories and this phone's channels",
+            "origin": "cloud",
             "scopes": [
               "advisory",
               "user"
@@ -1181,17 +1215,20 @@
           {
             "kind": "notifications",
             "title": "Cloud-SuperApp Notifications",
-            "subtitle": "In-app feed (Updater + Crash producers)"
+            "subtitle": "In-app feed (Updater + Crash producers)",
+            "origin": "cloud"
           },
           {
             "kind": "phone_notifications",
             "title": "Phone Notifications",
-            "subtitle": "Live system notifications (last 50, dedupe by key — requires Notification Access)"
+            "subtitle": "Live system notifications (last 50, dedupe by key — requires Notification Access)",
+            "origin": "phone"
           },
           {
             "kind": "news_feeds",
             "title": "News & RSS",
-            "subtitle": "Curated open channels (not ntfy)"
+            "subtitle": "Curated open channels (not ntfy)",
+            "origin": "cloud"
           }
         ],
         "stack_cloud-rss": [
@@ -2633,7 +2670,7 @@
             "label": "Mesh",
             "icon": "ic_wg",
             "hidden": true,
-            "_doc": "Target of the two `WG mesh` tiles (Inboxes ▸ Cloud-RSS and Cloud ▸ C3). SectionPages.factoryFor has mapped wg/status to C3MeshFragment all along, but the page was never declared here, so pageFragment fell through to SectionFragment.forSection and the tiles opened the WireGuard config screen instead of the mesh. hidden: the section's own child list stays the single `config` page it has always shown."
+            "_doc": "Target of the two `WG mesh` tiles (Inboxes ▸ Infra RSS and Cloud ▸ C3). SectionPages.factoryFor has mapped wg/status to C3MeshFragment all along, but the page was never declared here, so pageFragment fell through to SectionFragment.forSection and the tiles opened the WireGuard config screen instead of the mesh. hidden: the section's own child list stays the single `config` page it has always shown."
           }
         ]
       },
@@ -2729,7 +2766,7 @@
             "label": "Dagu",
             "icon": "ic_robot",
             "hidden": true,
-            "_doc": "Target of the `Dagu events` tile and of the Cloud-RSS stack's `Dagu · Workflow runs` link. SectionPages routes c3/dagu to OpsPages.fragmentForDagu() (the native DAG list), but the page was undeclared, so both entry points landed on the C3 section instead. hidden: it is reached by tile, not from the section's child list."
+            "_doc": "Target of the `Dagu events` tile and of the Infra RSS stack's `Dagu · Workflow runs` link. SectionPages routes c3/dagu to OpsPages.fragmentForDagu() (the native DAG list), but the page was undeclared, so both entry points landed on the C3 section instead. hidden: it is reached by tile, not from the section's child list."
           },
           {
             "id": "gha",

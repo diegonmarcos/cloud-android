@@ -71,7 +71,7 @@ class RssFeedFragment : Fragment(R.layout.fragment_rss_feed) {
         // an unrecognised prefix falls to the LAST scope rather than being
         // dropped — a new channel shows up in the wrong bucket, never in none.
         //
-        // A page may show only SOME scopes (My-RSS is the personal inbox, not
+        // A page may show only SOME scopes (Apps RSS is the personal inbox, not
         // the whole registry). Classification still runs against the FULL scope
         // list so the catch-all last scope keeps working — filtering happens
         // after, on display, never on the rule. An unknown topic therefore
@@ -92,7 +92,35 @@ class RssFeedFragment : Fragment(R.layout.fragment_rss_feed) {
         renderAdvisories(container)
 
         for ((scope, scopeTopics) in byScope) {
-            if (scopeTopics.isEmpty()) continue
+            // A scope this page ASKED for and that matched nothing gets a
+            // header and a reason rather than silence. The `user` scope
+            // matches zero of the registry's topics today — no me_/my_/phone_
+            // channel exists upstream yet — and a section that simply is not
+            // drawn is indistinguishable from a broken page. Scopes the page
+            // never asked for stay hidden, as before.
+            if (scopeTopics.isEmpty()) {
+                if (wanted.isEmpty()) continue
+                container.addView(TextView(requireContext()).apply {
+                    text = scope.label
+                    setTextAppearance(android.R.style.TextAppearance_Material_Title)
+                    setTextColor(resources.getColor(R.color.cloud_primary, requireContext().theme))
+                    setPadding(
+                        (10 * resources.displayMetrics.density).toInt(),
+                        (18 * resources.displayMetrics.density).toInt(),
+                        0, 0,
+                    )
+                })
+                container.addView(TextView(requireContext()).apply {
+                    text = getString(R.string.rss_scope_empty, scope.label)
+                    setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+                    alpha = 0.7f
+                    setPadding(
+                        (10 * resources.displayMetrics.density).toInt(), 0,
+                        (10 * resources.displayMetrics.density).toInt(), 0,
+                    )
+                })
+                continue
+            }
             container.addView(TextView(requireContext()).apply {
                 text = scope.label
                 setTextAppearance(android.R.style.TextAppearance_Material_Title)
@@ -230,8 +258,8 @@ class RssFeedFragment : Fragment(R.layout.fragment_rss_feed) {
 
         /**
          * [scopeIds] restricts the page to those `ui.ntfy.scopes` ids; empty
-         * shows every scope. This is the ONLY difference between Cloud-RSS
-         * (the full channel browser) and My-RSS (the personal inbox): one
+         * shows every scope. This is the ONLY difference between Infra RSS
+         * (the full channel browser) and Apps RSS (the personal inbox): one
          * catalog, one grouping rule, two filters over it. A subset declared
          * here would have been a second channel list that goes stale the day
          * a topic is added — so it is declared in build.json instead.

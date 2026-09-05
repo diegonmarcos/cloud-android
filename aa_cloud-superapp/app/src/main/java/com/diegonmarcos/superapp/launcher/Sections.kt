@@ -97,6 +97,9 @@ object Sections {
         val stackAdmin:  List<StackPanel> = emptyList(),
         /** EVERY `stack_<page>` list, keyed by the suffix. See [tilesByPage]. */
         val stackByPage: Map<String, List<StackPanel>> = emptyMap(),
+        /** EVERY `filters_<page>` toggle row, keyed by the suffix. Same
+         *  page-id-is-the-data-key contract as [stackByPage]. */
+        val filtersByPage: Map<String, List<StackFilter>> = emptyMap(),
         // long_press is gone: the fan menu now renders [pages] directly, so a
         // section declares its children ONCE. See LauncherToolbarFx.
     ) {
@@ -145,11 +148,34 @@ object Sections {
          *  → `groups: [providers, mcpapi]`). */
         val dashGroupIds: List<String> = emptyList(),
         /** Used by kind=rss — which `ui.ntfy.scopes` ids this card shows.
-         *  Empty means every scope, so Cloud-RSS stays the full browser
-         *  while My-RSS declares its personal subset here instead of
+         *  Empty means every scope, so Infra RSS stays the full browser
+         *  while Apps RSS declares its personal subset here instead of
          *  carrying a second copy of the channel list (FIRE RULE #6). */
         val scopes: List<String> = emptyList(),
+        /** Which side of a page's Cloud/Phone split this panel's stream sits
+         *  on. A property of the SOURCE, not of any single notification:
+         *  everything the notification listener captures is from an app on
+         *  this device, everything in the ntfy catalog / in-app feed / news
+         *  list is from off it. Blank means unclassified, and unclassified
+         *  panels are never hidden — the same fail-visible rule [NtfyScopes]
+         *  applies to an unknown topic prefix. */
+        val origin: String = "",
     )
+
+    /** One toggle in a page's `filters_<page id>` row. The filter IDS are the
+     *  contract [AggregatorStackFragment] implements (sort|source|show); the
+     *  labels, the option set and the default are data, so dropping an option
+     *  is a build.json edit. An unknown id parses fine and is simply never
+     *  read — a stray filter is inert, not a crash. */
+    data class StackFilter(
+        val id: String,
+        val label: String,
+        val default: String,
+        val options: List<FilterOption>,
+    )
+
+    /** One choice inside a [StackFilter]. */
+    data class FilterOption(val id: String, val label: String)
 
     /** One label/value line in a kind=stats dashboard card. */
     data class StatRow(val label: String, val value: String)
@@ -645,7 +671,36 @@ object Sections {
                         rows            = rowsList,
                         dashGroupIds    = dashGroupIds,
                         scopes          = scopeIds,
+                        origin          = p.optString("origin", ""),
                     ))
+                }
+                return out
+            }
+
+            /** sections[].filters_<page>[*] = {id, label, default, options:[…]} */
+            fun parseFilters(arrName: String): List<StackFilter> {
+                val fa = o.optJSONArray(arrName) ?: return emptyList()
+                val out = mutableListOf<StackFilter>()
+                for (j in 0 until fa.length()) {
+                    val f = fa.optJSONObject(j) ?: continue
+                    val id = f.optString("id", "")
+                    if (id.isBlank()) continue
+                    val oa = f.optJSONArray("options")
+                    val opts = mutableListOf<FilterOption>()
+                    for (k in 0 until (oa?.length() ?: 0)) {
+                        val op = oa!!.optJSONObject(k) ?: continue
+                        val oid = op.optString("id", "")
+                        if (oid.isNotBlank()) opts += FilterOption(oid, op.optString("label", oid))
+                    }
+                    // A toggle with fewer than two choices is not a toggle;
+                    // rendering it would be a button that does nothing.
+                    if (opts.size < 2) continue
+                    out += StackFilter(
+                        id      = id,
+                        label   = f.optString("label", id),
+                        default = f.optString("default", opts.first().id),
+                        options = opts,
+                    )
                 }
                 return out
             }
@@ -676,6 +731,7 @@ object Sections {
                     stackApps       = parseStack("stack_apps"),
                     stackAdmin      = parseStack("stack_admin"),
                     stackByPage     = parseByPage("stack_") { parseStack(it) },
+                    filtersByPage   = parseByPage("filters_") { parseFilters(it) },
                 )
             )
         }
@@ -807,6 +863,17 @@ object Sections {
             } else listOf(panel)
         }
     }
+
+    /** The toggle row for the given mode, or none.
+     *
+     *  Deliberately WITHOUT [aggregatorStackFor]'s blind first-page fallback:
+     *  a page that declares no filters must show no filter row. Falling back
+     *  would hand Apps RSS's Cloud/Phone toggle to Infra RSS, where every panel
+     *  is cloud and the Phone option would empty the screen for no reason. */
+    fun stackFiltersFor(sec: Section, mode: String): List<StackFilter> =
+        sec.filtersByPage[mode]
+            ?: sec.pages.firstOrNull { it.mode == mode }?.let { sec.filtersByPage[it.id] }
+            ?: emptyList()
 
     /** True iff THIS PAGE declares a stack — i.e. render
      *  [AggregatorStackFragment] instead of the default tile grid.

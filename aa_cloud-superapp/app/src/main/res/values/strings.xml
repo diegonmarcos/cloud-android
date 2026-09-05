@@ -68,6 +68,7 @@
     <string name="rss_group_other">Other</string>
     <string name="rss_advisory_loading">Checking for advisories…</string>
     <string name="rss_advisory_empty">No advisories — nothing to fix right now</string>
+    <string name="rss_scope_empty">No %1$s channels exist yet — this section is empty by design, not broken. It fills in as soon as a topic with a matching prefix is published to the registry.</string>
     <string name="rss_advisory_status">%1$d advisory message(s)</string>
     <string name="rss_advisory_install">Tap to install directly</string>
     <string name="about_install_header">Install / repair:</string>
