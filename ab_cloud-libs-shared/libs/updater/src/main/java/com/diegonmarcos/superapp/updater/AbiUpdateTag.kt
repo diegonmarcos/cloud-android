@@ -33,6 +33,31 @@ object AbiUpdateTag {
         return fallback
     }
 
+    /**
+     * Same rule, applied to any per-ABI lookup table rather than the baked tag
+     * string — used by [Fleet.App.abiReleaseUrl] to pick a GitHub Release asset.
+     *
+     * This exists so there is exactly ONE ABI selection rule in the updater.
+     * The GHCR path was already ABI-aware through [current], but the Release
+     * path used a single flat asset name (always the arm64 one), so an x86_64
+     * device that fell back from GHCR to the release download silently fetched
+     * an arm64 APK and failed with INSTALL_FAILED_NO_MATCHING_ABIS — or 404ed.
+     * One ABI dimension was handled and the other was not.
+     *
+     * Map iteration order is irrelevant: the device ABI list is the outer loop,
+     * exactly as in [resolve], so native ABIs still beat translated ones.
+     */
+    fun resolveFrom(deviceAbis: Array<String>, map: Map<String, String>, fallback: String): String {
+        for (abi in deviceAbis) {
+            map[abi]?.takeIf { it.isNotBlank() }?.let { return it }
+        }
+        return fallback
+    }
+
+    /** Live per-ABI lookup for the running device. */
+    fun currentFrom(map: Map<String, String>, fallback: String): String =
+        resolveFrom(Build.SUPPORTED_ABIS, map, fallback)
+
     /** Live resolution for the running device using baked BuildConfig. */
     fun current(): String = resolve(
         Build.SUPPORTED_ABIS,

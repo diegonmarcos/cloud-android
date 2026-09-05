@@ -430,7 +430,10 @@ class ConstellationFragment : Fragment() {
             setOnClickListener { runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } }
         }
         val links = LinearLayout(ctx).apply { orientation = LinearLayout.HORIZONTAL }
-        if (app.releaseUrl.isNotEmpty()) links.addView(linkChip("APK↗", app.releaseUrl))
+        // The chip must offer the SAME bytes the updater would install, so it
+        // uses the per-ABI asset too — handing an x86_64 user the arm64 APK is
+        // the manual version of the bug Fleet.App.abiReleaseUrl fixes.
+        if (app.releaseUrl.isNotEmpty()) links.addView(linkChip("APK↗", app.abiReleaseUrl))
         if (app.repoUrl.isNotEmpty())    links.addView(linkChip("GH↗",  app.repoUrl))
         if (app.ghcrPage.isNotEmpty())   links.addView(linkChip("PKG↗", app.ghcrPage))
         if (links.childCount > 0) into.addView(links)

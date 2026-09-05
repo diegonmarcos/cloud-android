@@ -54,7 +54,10 @@ internal object ReleaseSource : ApkSource {
         if (app.releaseUrl.isBlank()) return null
         return runCatching {
             val target = File(ctx.cacheDir, "fleet-${app.id}-release.apk")
-            val conn = (java.net.URL(app.releaseUrl).openConnection() as java.net.HttpURLConnection)
+            // abiReleaseUrl, not releaseUrl: the release asset name is per-ABI
+            // (see Fleet.App.assets), and this source is tried FIRST, so a flat
+            // arm64 name here is what put an arm64 APK on an x86_64 device.
+            val conn = (java.net.URL(app.abiReleaseUrl).openConnection() as java.net.HttpURLConnection)
             conn.instanceFollowRedirects = true
             conn.connectTimeout = 15_000
             conn.readTimeout = 60_000

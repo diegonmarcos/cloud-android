@@ -49,6 +49,19 @@ object Fleet {
         val image: String,
         val tag: String,
         val asset: String,
+        // Per-ABI release asset names, keyed by ABI, from each app's
+        // build.json::release.variants[] via data/regen.sh. Empty for an app
+        // that publishes a single universal APK — those keep [asset] alone.
+        //
+        // THE ABI DIMENSION USED TO STOP HALF WAY. [remoteLayer] already picked
+        // the right GHCR tag for the device (`latest` vs `latest-x86_64`), but
+        // the GitHub Release path had exactly one flat [asset] — always the
+        // arm64 one, because that is the first variant in build.json. Release
+        // wins over registry in [status], so an x86_64 device took the arm64
+        // APK from the release and either 404ed or hit
+        // INSTALL_FAILED_NO_MATCHING_ABIS. One path was ABI-aware and the other
+        // silently served the wrong architecture.
+        val assets: Map<String, String>,
         val releaseUrl: String,
         val repoUrl: String,
         val ghcrPage: String,
@@ -57,7 +70,26 @@ object Fleet {
         // AIDL bound services instead of UI. Data-driven from each app's
         // build.json::release.kind; splits the Constellation page's Apps/Libs tabs.
         val kind: String,
-    )
+    ) {
+        /**
+         * [releaseUrl] with its asset filename swapped for THIS device's ABI
+         * variant — the URL every release download, HEAD probe and sidecar
+         * fetch must use.
+         *
+         * Selection is [AbiUpdateTag]'s rule, not a second one: walk
+         * Build.SUPPORTED_ABIS in order and take the first ABI present in
+         * [assets]. Falls back to [releaseUrl] verbatim whenever there is no
+         * map, no match, or nothing to swap — an arm64 device that works today
+         * must keep working byte for byte.
+         */
+        val abiReleaseUrl: String get() {
+            if (releaseUrl.isBlank() || asset.isBlank() || assets.isEmpty()) return releaseUrl
+            if (!releaseUrl.endsWith("/$asset")) return releaseUrl
+            val picked = AbiUpdateTag.currentFrom(assets, asset)
+            return if (picked == asset) releaseUrl
+                   else releaseUrl.removeSuffix(asset) + picked
+        }
+    }
 
     /** Live state of one app on this device vs. its GHCR image. */
     sealed class State(
@@ -92,6 +124,11 @@ object Fleet {
                     image = o.getString("image"),
                     tag = o.optString("tag", "latest"),
                     asset = o.optString("asset", ""),
+                    assets = o.optJSONObject("assets")?.let { m ->
+                        m.keys().asSequence()
+                            .mapNotNull { k -> m.optString(k).takeIf { it.isNotEmpty() }?.let { k to it } }
+                            .toMap()
+                    } ?: emptyMap(),
                     releaseUrl = o.optString("release_url", ""),
                     repoUrl = o.optString("repo_url", ""),
                     ghcrPage = o.optString("ghcr_page", ""),
@@ -203,7 +240,7 @@ object Fleet {
     private fun releaseStatus(app: App, installed: Installed?): State? {
         if (app.releaseUrl.isBlank()) return null
         val size = runCatching {
-            val c = (java.net.URL(app.releaseUrl).openConnection() as java.net.HttpURLConnection)
+            val c = (java.net.URL(app.abiReleaseUrl).openConnection() as java.net.HttpURLConnection)
             c.requestMethod = "HEAD"
             c.instanceFollowRedirects = true
             c.connectTimeout = 10_000
@@ -237,7 +274,7 @@ object Fleet {
      * or malformed sidecar must degrade to the old behaviour, not to an error.
      */
     private fun releaseSha256(app: App): String? = runCatching {
-        val c = (java.net.URL(app.releaseUrl + ".sha256").openConnection()
+        val c = (java.net.URL(app.abiReleaseUrl + ".sha256").openConnection()
                 as java.net.HttpURLConnection)
         c.instanceFollowRedirects = true
         c.connectTimeout = 10_000

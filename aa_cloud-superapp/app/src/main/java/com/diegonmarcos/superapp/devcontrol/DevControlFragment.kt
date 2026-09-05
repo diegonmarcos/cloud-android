@@ -36,7 +36,6 @@ import androidx.lifecycle.lifecycleScope
 import com.diegonmarcos.superapp.BuildConfig
 import com.diegonmarcos.superapp.adbdebug.WirelessDebugging
 import com.diegonmarcos.superapp.updater.BuildConfig as UpdBuildConfig
-import com.diegonmarcos.superapp.updater.AbiUpdateTag
 import com.diegonmarcos.superapp.updater.BuildAge
 import com.diegonmarcos.superapp.updater.Fleet
 import com.wireguard.android.backend.Tunnel
@@ -1952,13 +1951,19 @@ class DevControlFragment : Fragment() {
         val me = Fleet.parse(UpdBuildConfig.CONSTELLATION_FLEET_B64)
             .firstOrNull { it.pkg == BuildConfig.APPLICATION_ID }
 
-        // "latest" → "", "latest-x86_64" → "-x86_64". The tag already encodes
-        // the device's ABI choice, so reusing it keeps one decision in one place.
-        val suffix = AbiUpdateTag.current().removePrefix("latest")
-        val asset = (me?.asset ?: "Cloud-SuperApp.apk").replace(Regex("\\.apk$"), "$suffix.apk")
-        val base = me?.releaseUrl?.substringBeforeLast('/')
-            ?: "https://github.com/diegonmarcos/cloud-u-android/releases/download/latest"
-        val apkUrl = "$base/$asset"
+        // Fleet.App.abiReleaseUrl already answers this, so ask it.
+        //
+        // This used to DERIVE the filename: take the GHCR tag suffix and splice
+        // it into the asset name ("Cloud-SuperApp.apk" + "-x86_64"). That is a
+        // guess about how release assets are named, and it was a second ABI
+        // mechanism sitting beside the real one — it happened to agree for this
+        // app only because the naming convention happened to match. The asset
+        // names are DATA (build.json::release.variants[].gh_asset, which is also
+        // what CI publishes under), so the resolver reads them instead of
+        // reconstructing them, and a variant whose asset does not follow the tag
+        // convention can no longer produce a confidently-wrong URL.
+        val apkUrl = me?.abiReleaseUrl?.takeIf { it.isNotBlank() }
+            ?: "https://github.com/diegonmarcos/cloud-u-android/releases/download/latest/Cloud-SuperApp.apk"
 
         row(ctx, host, "APK", apkUrl)
         // The sidecar is what makes the URL trustworthy rather than merely

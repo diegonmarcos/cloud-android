@@ -15,7 +15,13 @@
       "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/aa_cloud-superapp",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-superapp",
       "blocked": false,
-      "kind": "app"
+      "kind": "app",
+      "assets": {
+        "arm64-v8a": "Cloud-SuperApp.apk",
+        "armeabi-v7a": "Cloud-SuperApp.apk",
+        "x86_64": "Cloud-SuperApp-x86_64.apk",
+        "x86": "Cloud-SuperApp-x86_64.apk"
+      }
     },
     {
       "id": "browser",
@@ -31,7 +37,13 @@
       "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ac_cloud-browser",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-browser",
       "blocked": false,
-      "kind": "app"
+      "kind": "app",
+      "assets": {
+        "arm64-v8a": "Cloud-Browser.apk",
+        "armeabi-v7a": "Cloud-Browser.apk",
+        "x86_64": "Cloud-Browser-x86_64.apk",
+        "x86": "Cloud-Browser-x86_64.apk"
+      }
     },
     {
       "id": "calendar",
@@ -47,7 +59,13 @@
       "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ac_cloud-calendar",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-calendar",
       "blocked": false,
-      "kind": "app"
+      "kind": "app",
+      "assets": {
+        "arm64-v8a": "Cloud-Calendar.apk",
+        "armeabi-v7a": "Cloud-Calendar.apk",
+        "x86_64": "Cloud-Calendar-x86_64.apk",
+        "x86": "Cloud-Calendar-x86_64.apk"
+      }
     },
     {
       "id": "camera",
@@ -95,7 +113,13 @@
       "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ac_cloud-contacts",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-contacts",
       "blocked": false,
-      "kind": "app"
+      "kind": "app",
+      "assets": {
+        "arm64-v8a": "Cloud-Contacts.apk",
+        "armeabi-v7a": "Cloud-Contacts.apk",
+        "x86_64": "Cloud-Contacts-x86_64.apk",
+        "x86": "Cloud-Contacts-x86_64.apk"
+      }
     },
     {
       "id": "dialer",
@@ -191,7 +215,13 @@
       "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ac_cloud-me",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-me",
       "blocked": false,
-      "kind": "app"
+      "kind": "app",
+      "assets": {
+        "arm64-v8a": "Cloud-Me.apk",
+        "armeabi-v7a": "Cloud-Me.apk",
+        "x86_64": "Cloud-Me-x86_64.apk",
+        "x86": "Cloud-Me-x86_64.apk"
+      }
     },
     {
       "id": "media-center",
@@ -207,7 +237,11 @@
       "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ac_cloud-media-center",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-media-center",
       "blocked": false,
-      "kind": "app"
+      "kind": "app",
+      "assets": {
+        "arm64-v8a": "cloud-media-center.apk",
+        "x86_64": "cloud-media-center-x86_64.apk"
+      }
     },
     {
       "id": "nav",
@@ -223,7 +257,13 @@
       "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ac_cloud-nav",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-nav",
       "blocked": false,
-      "kind": "app"
+      "kind": "app",
+      "assets": {
+        "arm64-v8a": "Cloud-Nav.apk",
+        "armeabi-v7a": "Cloud-Nav.apk",
+        "x86_64": "Cloud-Nav-x86_64.apk",
+        "x86": "Cloud-Nav-x86_64.apk"
+      }
     },
     {
       "id": "news",
@@ -239,7 +279,13 @@
       "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ac_cloud-news",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-news",
       "blocked": false,
-      "kind": "app"
+      "kind": "app",
+      "assets": {
+        "arm64-v8a": "Cloud-News.apk",
+        "armeabi-v7a": "Cloud-News.apk",
+        "x86_64": "Cloud-News-x86_64.apk",
+        "x86": "Cloud-News-x86_64.apk"
+      }
     },
     {
       "id": "nix-on-droid",
@@ -255,7 +301,13 @@
       "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ac_cloud-nix-on-droid",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-nixdroid",
       "blocked": false,
-      "kind": "app"
+      "kind": "app",
+      "assets": {
+        "arm64-v8a": "cloud-nixdroid.apk",
+        "armeabi-v7a": "cloud-nixdroid.apk",
+        "x86_64": "cloud-nixdroid-x86_64.apk",
+        "x86": "cloud-nixdroid-x86_64.apk"
+      }
     },
     {
       "id": "sheets",
@@ -271,7 +323,10 @@
       "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ac_cloud-sheets",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-sheets",
       "blocked": false,
-      "kind": "app"
+      "kind": "app",
+      "assets": {
+        "arm64-v8a": "Cloud-Sheets.apk"
+      }
     },
     {
       "id": "termux",
@@ -287,7 +342,13 @@
       "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ac_cloud-termux",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-terminal",
       "blocked": false,
-      "kind": "app"
+      "kind": "app",
+      "assets": {
+        "arm64-v8a": "cloud-terminal.apk",
+        "armeabi-v7a": "cloud-terminal.apk",
+        "x86_64": "cloud-terminal-x86_64.apk",
+        "x86": "cloud-terminal-x86_64.apk"
+      }
     },
     {
       "id": "vault",
@@ -303,7 +364,13 @@
       "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ac_cloud-vault",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-vault",
       "blocked": false,
-      "kind": "app"
+      "kind": "app",
+      "assets": {
+        "arm64-v8a": "Cloud-Vault.apk",
+        "armeabi-v7a": "Cloud-Vault.apk",
+        "x86_64": "Cloud-Vault-x86_64.apk",
+        "x86": "Cloud-Vault-x86_64.apk"
+      }
     },
     {
       "id": "wallet",
@@ -319,7 +386,13 @@
       "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ac_cloud-wallet",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-wallet",
       "blocked": false,
-      "kind": "app"
+      "kind": "app",
+      "assets": {
+        "arm64-v8a": "Cloud-Wallet.apk",
+        "armeabi-v7a": "Cloud-Wallet.apk",
+        "x86_64": "Cloud-Wallet-x86_64.apk",
+        "x86": "Cloud-Wallet-x86_64.apk"
+      }
     },
     {
       "id": "watchdog",
@@ -335,7 +408,13 @@
       "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ac_cloud-watchdog",
       "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-watchdog",
       "blocked": false,
-      "kind": "app"
+      "kind": "app",
+      "assets": {
+        "arm64-v8a": "Cloud-Watchdog.apk",
+        "armeabi-v7a": "Cloud-Watchdog.apk",
+        "x86_64": "Cloud-Watchdog-x86_64.apk",
+        "x86": "Cloud-Watchdog-x86_64.apk"
+      }
     },
     {
       "id": "keyboard-engines",

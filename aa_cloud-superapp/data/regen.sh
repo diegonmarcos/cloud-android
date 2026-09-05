@@ -50,6 +50,29 @@ regen_constellation() {
     local tree="https://github.com/diegonmarcos/cloud-u-android/tree/main"
     local pkg="https://github.com/diegonmarcos/cloud-u-android/pkgs/container"
 
+    # ── Per-ABI release assets: { "<abi>": "<gh_asset>", … } ──────────────────
+    # A fleet entry carried ONE flat `asset`/`release_url`, taken from
+    # release.gh_release.asset_name — which is the arm64 name, because arm64 is
+    # the default publish. The updater's GHCR path was already ABI-aware (the
+    # `latest-x86_64` tag comes from these same variants), but the GitHub
+    # Release path was not, so an x86_64 device that took the release channel —
+    # which is tried FIRST — downloaded the arm64 APK and failed with
+    # INSTALL_FAILED_NO_MATCHING_ABIS, or 404ed. Half the ABI dimension was
+    # described and the other half was silently wrong.
+    #
+    # Keyed by supported_abis (falling back to abis, then to the variant id for
+    # older entries that only carry one) because supported_abis is EXACTLY the
+    # key set AbiUpdateTag matches Build.SUPPORTED_ABIS against for the tag —
+    # two lookups keyed differently would be two rules again.
+    # `asset` is left untouched: it is the fallback and the dedup key.
+    local variant_assets='
+        [ (.release.variants // [])[]
+          | . as $v
+          | ($v.supported_abis // $v.abis // [$v.id])[]?
+          | select(type == "string" and . != "")
+          | { key: ., value: ($v.gh_asset // "") } ]
+        | map(select(.value != "")) | from_entries'
+
     # Scan EVERY sibling repo's build.json, not just ac_cloud-*/. Membership is a
     # property of the DATA, not of the directory name: a dir self-registers as a
     # top-level app (.android.application_id + .release.ghcr), a multi-lib repo
@@ -145,7 +168,8 @@ regen_constellation() {
             apps="$(jq --argjson acc "$apps" --arg id "$id" --arg dir "$reldir" \
                        --arg rel "$rel" --arg tree "$tree" --arg pkg "$pkg" '
                 ($rel + "/latest/download/" + .release.gh_release.asset_name) as $url
-                | $acc + [ { id: $id,
+                | ('"$variant_assets"') as $assets
+                | $acc + [ ( { id: $id,
                              label: (.name // $id),
                              package: .android.application_id,
                              alt_id: null,
@@ -158,7 +182,8 @@ regen_constellation() {
                              repo_url: ($tree + "/" + $dir),
                              ghcr_page: ($pkg + "/" + .release.ghcr.image),
                              blocked: false,
-                             kind: (.release.kind // "app") } ]' "$bj")"
+                             kind: (.release.kind // "app") }
+                             + (if ($assets | length) > 0 then { assets: $assets } else {} end) ) ]' "$bj")"
         elif jq -e '(.forks // {}) | to_entries
                     | map(select(.key != "_doc" and (.value|type=="object")))
                     | length > 0' "$bj" >/dev/null 2>&1; then
@@ -173,7 +198,8 @@ regen_constellation() {
                 | ( .forks | to_entries
                     | map(select(.key != "_doc" and (.value|type=="object")))
                     | .[0].value ) as $f
-                | $acc + [ { id: $id,
+                | ('"$variant_assets"') as $assets
+                | $acc + [ ( { id: $id,
                              label: ($f.label // $id),
                              package: $f.app_id,
                              alt_id: ($f.alt_id // null),
@@ -206,7 +232,8 @@ regen_constellation() {
                              repo_url: ($tree + "/" + $dir),
                              ghcr_page: ($pkg + "/" + $f.image),
                              blocked: ($f.blocked_on != null),
-                             kind: (.release.kind // "app") } ]' "$bj")"
+                             kind: (.release.kind // "app") }
+                             + (if ($assets | length) > 0 then { assets: $assets } else {} end) ) ]' "$bj")"
         fi
     done
 
