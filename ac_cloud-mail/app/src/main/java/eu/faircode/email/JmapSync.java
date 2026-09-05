@@ -169,7 +169,21 @@ public class JmapSync {
                 iservice.connect(account);
                 db.account().setAccountConnected(account.id, new Date().getTime());
                 db.account().setAccountError(account.id, null);
-                if (sync)
+                // A transient start (periodic-poll mode, global sync off, or an
+                // on-demand account) arrives with sync=false and is TRIGGERED by
+                // queued operations -- the account only "shouldRun" while its
+                // operation count is above zero. Gating the pass on sync alone
+                // therefore deadlocked periodic-poll mode for JMAP: the poll
+                // alarm's SYNC operations (and any user SEEN/FLAG/MOVE) were
+                // never drained, so the count never reached zero, the account
+                // never stopped, and ServiceSynchronize never quit -- keeping
+                // the "Monitoring" notification alive forever while JMAP mail
+                // silently stopped syncing. Run the full pass whenever there is
+                // queued work: phase 0/2 drains the operations (the poll's
+                // per-folder SYNC operations fetch the new mail), and once the
+                // queue is empty the live account-state observer stops this
+                // monitor and lets the service quit until the next poll alarm.
+                if (sync || db.operation().getOperationCount(account.id) > 0)
                     run(context, account, iservice);
                 db.account().setAccountState(account.id, "connected");
                 connected = true;
@@ -182,6 +196,29 @@ public class JmapSync {
                 EntityLog.log(context, EntityLog.Type.Account, account, "JMAP " + account.name + " " + detail);
                 db.account().setAccountError(account.id, detail);
                 db.account().setAccountState(account.id, null);
+                // Periodic-poll parity with the IMAP monitor's "Cancel
+                // transient sync operations" block: a transient account only
+                // stops (and lets the service quit) when its operation count
+                // reaches zero, so during a server outage the poll alarm's
+                // queued SYNC operations would pin this loop -- and the
+                // "Monitoring" notification -- until the server came back.
+                // Drop the SYNC operations on failure; the next poll alarm
+                // queues fresh ones anyway. User-intent operations
+                // (SEEN/FLAG/MOVE/...) are deliberately kept queued: they must
+                // eventually reach the server.
+                if (account.isTransient(context)) {
+                    List<EntityOperation> syncs =
+                            db.operation().getOperations(account.id, EntityOperation.SYNC);
+                    if (syncs != null && !syncs.isEmpty()) {
+                        for (EntityOperation op : syncs) {
+                            if (op.folder != null)
+                                db.folder().setFolderSyncState(op.folder, null);
+                            db.operation().deleteOperation(op.id);
+                        }
+                        EntityLog.log(context, EntityLog.Type.Account, account,
+                                "JMAP " + account.name + " cancelled transient syncs=" + syncs.size());
+                    }
+                }
             } finally {
                 if (iservice != null)
                     try {
