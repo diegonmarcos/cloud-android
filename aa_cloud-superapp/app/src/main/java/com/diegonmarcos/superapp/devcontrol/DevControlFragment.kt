@@ -332,27 +332,6 @@ class DevControlFragment : Fragment() {
         }
     }
 
-    /**
-     * Read the log buffer for one scope.
-     *
-     * The three scopes are read three DIFFERENT ways, which is why this is not
-     * one command with a flag:
-     *
-     *   uid == -1  this app   — Runtime.exec in our own process. Android hands
-     *                           an unprivileged app only its own lines, which
-     *                           is the whole reason the other two exist.
-     *   uid == -2  all apps   — the Shizuku shell channel (uid 2000), which
-     *                           holds READ_LOGS and therefore sees everything.
-     *   uid >= 0   one app    — same channel, narrowed with `--uid`. By UID and
-     *                           not by pid: a pid needs the app to be RUNNING,
-     *                           while the uid is stable and works for an app
-     *                           that has already crashed — which is usually the
-     *                           app whose log you want.
-     *
-     * When Shizuku is not available the elevated scopes say so and name the
-     * reason, rather than silently falling back to this app's own lines and
-     * looking like the other app logged nothing.
-     */
     /** True once READ_LOGS has been granted; from then on the whole buffer is
      *  readable IN THIS PROCESS, with no shell channel live. */
     private fun holdsReadLogs(ctx: Context): Boolean =
@@ -373,38 +352,51 @@ class DevControlFragment : Fragment() {
      *   shell channel      — the fallback until then. Works, but only while
      *                        Shizuku or a paired adb is actually up.
      *
-     * A single app is narrowed with `--uid`, not `--pid`: a pid needs the app to
-     * be RUNNING, while the uid is stable and still works for one that has
-     * already crashed — usually the app whose log you want.
+     * A single app is narrowed by UID, not by pid: a pid needs the app to be
+     * RUNNING, while the uid is stable and still works for one that has already
+     * crashed — usually the app whose log you want. Once elevated that
+     * narrowing happens in memory over the LogPipe stream; only the shell-channel
+     * fallback still spends a `--uid` flag on it.
      */
     private fun readLogcat(ctx: Context, uid: Int, errorsOnly: Boolean): String {
+        val elevated = holdsReadLogs(ctx)
+
+        // In-process whenever it can answer: own logs always, everything once
+        // READ_LOGS is held. No binder, no bind latency.
+        //
+        // Served from the shared LogPipe stream and filtered in memory rather
+        // than by re-running `logcat --uid=N`. Not a detail: holding READ_LOGS
+        // sends every separate exec to the log-consent dialog, so the old
+        // one-exec-per-refresh viewer re-prompted roughly every minute. One
+        // stream answers all three scopes, and `--uid` is not needed at all —
+        // which also drops the Android 10 floor the flag imposed.
+        if (uid == -1 || elevated) {
+            // -1 "this app" must filter to OUR uid explicitly. It used to be
+            // free — logd narrowed an unprivileged read for us — but once this
+            // app holds READ_LOGS the stream carries the whole device, and
+            // leaving it unfiltered would quietly turn "this app" into "all
+            // apps". -2 "all apps" is the only scope that filters nothing.
+            val scope = when {
+                uid >= 0 -> uid
+                uid == -1 -> android.os.Process.myUid()
+                else -> com.diegonmarcos.superapp.devtools.LogPipe.ANY_UID
+            }
+            return com.diegonmarcos.superapp.devtools.LogPipe.tail(
+                n = 5000, uid = scope, errorsOnly = errorsOnly,
+            )
+        }
+
+        // Not granted yet: borrow a shell channel for this one read.
         val args = buildList {
             add("logcat"); add("-d"); add("-v"); add("time")
             // --uid landed in Android 10; below that logcat rejects it outright.
             if (uid >= 0 && android.os.Build.VERSION.SDK_INT >= 29) add("--uid=$uid")
             if (errorsOnly) add("*:E")
         }
-        val elevated = holdsReadLogs(ctx)
-
         if (uid >= 0 && android.os.Build.VERSION.SDK_INT < 29) {
             return "Per-app filtering needs Android 10+ (logcat --uid). " +
                 "Use All Apps on this device."
         }
-
-        // In-process whenever it can answer: own logs always, everything once
-        // READ_LOGS is held. No binder, no bind latency.
-        if (uid == -1 || elevated) {
-            val out = runCatching {
-                Runtime.getRuntime().exec(args.toTypedArray())
-                    .inputStream.bufferedReader().readText()
-            }.getOrElse { return "logcat read failed: ${it.message}" }
-            if (out.isNotBlank()) return out
-            return if (uid == -1 && !elevated)
-                "(empty — Android only lets an app read its OWN logs; use the app, then Refresh)"
-            else "(empty — nothing in the buffer for this scope)"
-        }
-
-        // Not granted yet: borrow a shell channel for this one read.
         val cmd = args.joinToString(" ")
         val out = com.diegonmarcos.superapp.adbdebug.ShellChannels.active(ctx)?.exec(ctx, cmd)
             ?: com.diegonmarcos.superapp.adbdebug.ShizukuAdb.exec(ctx, cmd)

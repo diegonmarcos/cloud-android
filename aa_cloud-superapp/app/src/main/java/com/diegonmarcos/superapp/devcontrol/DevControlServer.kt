@@ -985,15 +985,12 @@ object DevControlServer {
         )
     }
 
-    /** Runs `logcat -d -t N -v threadtime`. Needs no permission to return this
-     *  app's OWN lines. NOTE this app (unlike the rest of the fleet) does hold
-     *  READ_LOGS for the cross-app viewer, so here the read is device-wide AND
-     *  goes through the unpersistable log-consent dialog; see
-     *  PrivilegedGrants.staleGrants. */
-    private fun readLogcat(n: Int): String = runCatching {
-        val p = Runtime.getRuntime().exec(arrayOf("logcat", "-d", "-t", n.toString(), "-v", "threadtime"))
-        p.inputStream.bufferedReader().readText()
-    }.getOrElse { "logcat read failed: $it\n" }
+    /** Newest N lines from the shared [LogPipe] stream. This app holds
+     *  READ_LOGS for the cross-app viewer, so the content is device-wide — and
+     *  precisely because of that it must NOT exec its own `logcat`: each exec
+     *  would be another unpersistable consent prompt. */
+    private fun readLogcat(n: Int): String =
+        com.diegonmarcos.superapp.devtools.LogPipe.tail(n)
 
     /** Reads the tail of Trace.kt's trace.log file. */
     private fun readTraceTail(ctx: android.content.Context, n: Int): String = runCatching {

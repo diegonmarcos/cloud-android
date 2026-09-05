@@ -57,12 +57,13 @@ object LogUpload {
      * exactly one place instead of being copy-pasted per caller.
      */
     internal fun captureAndRedactLogcat(maxBytes: Int = MAX_BYTES): String {
-        val raw = runCatching {
-            val proc = ProcessBuilder("logcat", "-d", "-v", "time")
-                .redirectErrorStream(true)
-                .start()
-            proc.inputStream.bufferedReader().use(BufferedReader::readText).also { proc.destroy() }
-        }.getOrElse { "logcat capture failed: ${it.javaClass.simpleName}: ${it.message}" }
+        // Via LogPipe, not a private `logcat -d`: in an app holding READ_LOGS
+        // each exec is another unpersistable consent prompt, and an upload that
+        // silently popped a dialog every time would be its own bug. LogPipe
+        // reports a dead reader in the text rather than returning empty, so a
+        // broken capture cannot masquerade as a quiet app.
+        // Whole buffer; [maxBytes] below is the real cap, as it always was.
+        val raw = com.diegonmarcos.superapp.devtools.LogPipe.tail(Int.MAX_VALUE)
         val redacted = redact(raw)
         return if (redacted.length > maxBytes) redacted.takeLast(maxBytes) else redacted
     }

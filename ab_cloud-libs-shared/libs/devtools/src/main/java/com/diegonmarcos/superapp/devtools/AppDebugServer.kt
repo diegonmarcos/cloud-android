@@ -411,16 +411,13 @@ object AppDebugServer {
      *
      * Reads whatever the host app's uid is entitled to and nothing more, which
      * for every app in the fleet means its OWN lines (logd's SimpleLogBuffer
-     * drops entries from other uids for a process without the `log` gid). It
-     * deliberately does NOT want READ_LOGS: holding it would put this exec
-     * behind LogcatManagerService's user-consent dialog, which cannot be made
-     * permanent and re-prompts every 60 seconds. Own-uid reads never prompt.
+     * drops entries from other uids for a process without the `log` gid).
+     *
+     * Served from [LogPipe] rather than its own `logcat -d`, because in an app
+     * that DOES hold READ_LOGS every separate exec is a separate consent
+     * prompt. One stream per process, one prompt per process; see LogPipe.
      */
-    fun readLogcat(n: Int): String = runCatching {
-        val p = Runtime.getRuntime()
-            .exec(arrayOf("logcat", "-d", "-t", n.toString(), "-v", "threadtime"))
-        p.inputStream.bufferedReader().readText()
-    }.getOrElse { "logcat read failed: $it\n" }
+    fun readLogcat(n: Int): String = LogPipe.tail(n)
 
     /** Reads what AppCrashLogger wrote. The directory name is the only
      *  contract between writer and reader. */
