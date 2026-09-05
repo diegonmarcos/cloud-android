@@ -24,6 +24,28 @@
       }
     },
     {
+      "id": "morpheus",
+      "label": "c3-morpheus",
+      "package": "com.diegonmarcos.morpheus",
+      "alt_id": null,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "c3-morpheus",
+      "tag": "latest",
+      "asset": "C3-Morpheus.apk",
+      "release_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/C3-Morpheus.apk",
+      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ac_c3-morpheus",
+      "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/c3-morpheus",
+      "blocked": false,
+      "kind": "app",
+      "assets": {
+        "arm64-v8a": "C3-Morpheus.apk",
+        "armeabi-v7a": "C3-Morpheus.apk",
+        "x86_64": "C3-Morpheus-x86_64.apk",
+        "x86": "C3-Morpheus-x86_64.apk"
+      }
+    },
+    {
       "id": "watchdog",
       "label": "c3-watchdog",
       "package": "com.diegonmarcos.watchdog",

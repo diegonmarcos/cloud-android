@@ -18,7 +18,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "cloud-morpheus"
+rootProject.name = "c3-morpheus"
 
 def buildJson = new groovy.json.JsonSlurper().parse(file('build.json'))
 buildJson.modules.each { name, _spec ->

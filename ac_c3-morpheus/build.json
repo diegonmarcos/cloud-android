@@ -1,5 +1,5 @@
 {
-  "name": "cloud-morpheus",
+  "name": "c3-morpheus",
   "description": "c3-morpheus on a phone: the cloud's workflow orchestrator. Four panels — the Dagu workflow list, the probe registry that declares what 'healthy' means, the fleet control panel, and the PM board (Paca). c3-watchdog keeps what is running alive; c3-morpheus decides what runs.",
   "category": "android",
   "build": {
