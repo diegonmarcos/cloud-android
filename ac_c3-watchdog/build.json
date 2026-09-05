@@ -48,7 +48,8 @@
     "tools": {
       "_doc": "Where libs:watchdog fetches the binaries it SHIPS. The APK carries them; nothing is ever installed on the phone. aarch64 static musl, because that is every Android device this decade and musl does not care which libc the environment has \u2014 or whether it has one.",
       "repo": "diegonmarcos/cloud-u-linux",
-      "tag": "c3-watchdog-latest"
+      "tag": "c3-watchdog-latest",
+      "ui_asset": "c3-watchdog-app.html"
     }
   },
   "android": {
