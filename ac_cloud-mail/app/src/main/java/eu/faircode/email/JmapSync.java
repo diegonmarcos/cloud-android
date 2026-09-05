@@ -705,7 +705,16 @@ public class JmapSync {
         if (!message.seen.equals(seen) &&
                 db.operation().getOperationCount(message.folder, message.id, EntityOperation.SEEN) == 0) {
             db.message().setMessageSeen(message.id, seen);
-            db.message().setMessageUiSeen(message.id, seen);
+            // comms: never flip a locally-read message back to unread. When the server
+            // lags local state (a lost or ineffective Email/set, no pending operation
+            // left to prove intent), mirroring the downgrade into ui_seen marked read
+            // mail unread again on every poll -- and every such flip re-entered the
+            // message into the new-mail notification diff, re-posting its notification
+            // each cycle: the notification flood. Server bookkeeping (message.seen,
+            // above) still tracks the server; the user-visible read state only ever
+            // upgrades from the server, it never downgrades.
+            if (seen || !Boolean.TRUE.equals(message.ui_seen))
+                db.message().setMessageUiSeen(message.id, seen);
         }
 
         if (!message.flagged.equals(flagged) &&

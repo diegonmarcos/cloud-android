@@ -385,6 +385,40 @@ class NotificationHelper {
         return channel;
     }
 
+    // comms: cancel every posted new-mail notification and latch the messages behind
+    // them so nothing re-notifies. Called on every notifyMessages pass while the
+    // notify_silenced kill switch is on (all operations are no-ops after the first
+    // pass), and from the settings switch for immediate effect. Runs off the main
+    // thread when it touches the database (notifyMessages always does); the settings
+    // fragment passes data=null and a null context skips the database work.
+    static void silenceAllMessageNotifications(Context context, NotificationManager nm, NotificationData data) {
+        try {
+            for (android.service.notification.StatusBarNotification sbn : nm.getActiveNotifications()) {
+                String tag = sbn.getTag();
+                if (sbn.getId() == NOTIFICATION_TAGGED && tag != null && tag.startsWith("unseen."))
+                    nm.cancel(tag, NOTIFICATION_TAGGED);
+            }
+        } catch (Throwable ex) {
+            Log.w(ex);
+        }
+
+        if (context != null)
+            try {
+                DB db = DB.getInstance(context);
+                db.message().ignoreAllNotifications();
+                db.message().clearNotifyingMessages();
+            } catch (Throwable ex) {
+                Log.w(ex);
+            }
+
+        if (data != null)
+            for (long group : data.groupNotifying.keySet()) {
+                List<Long> ids = data.groupNotifying.get(group);
+                if (ids != null)
+                    ids.clear();
+            }
+    }
+
     static void notifyMessages(Context context, List<TupleMessageEx> messages, NotificationHelper.NotificationData data, boolean foreground) {
         if (messages == null)
             messages = new ArrayList<>();
@@ -407,6 +441,18 @@ class NotificationHelper {
         String pin = prefs.getString("pin", null);
         boolean biometric_notify = prefs.getBoolean("biometrics_notify", true);
         long notify_rate_limit = prefs.getInt("notify_rate_limit", 0);
+
+        // comms: emergency kill switch. The JMAP seen-state reconciliation was able to
+        // flip locally-read messages back to unseen on every poll, which re-notified the
+        // same messages endlessly and flooded the shade with thousands of rows (see
+        // JmapSync.reconcileKeywords and the ui_seen latch in the remove loop below).
+        // This single switch silences every new-mail notification, immediately, and it
+        // defaults to SILENCED so an update can never flood again before the user has a
+        // chance to opt back in: Settings > Notifications, first switch.
+        if (prefs.getBoolean("notify_silenced", true)) {
+            silenceAllMessageNotifications(context, nm, data);
+            return;
+        }
 
         long now = new Date().getTime();
         boolean pro = ActivityBilling.isPro(context);
@@ -623,6 +669,22 @@ class NotificationHelper {
 
                 data.groupNotifying.get(group).remove(id);
                 db.message().setMessageNotifying(Math.abs(id), 0);
+
+                // comms: idempotence latch. A message leaves the notified set because it
+                // was read (here) or dismissed (ui_ignored, set by the delete intent).
+                // The JMAP seen-state reconciliation could flip a locally-read message
+                // back to unseen on the next poll, at which point this loop would
+                // re-notify it -- every poll, forever, for every read message: the
+                // notification flood. Latching ui_ignored on the way out makes a
+                // notification per message once-only for the lifetime of the row, no
+                // matter what the sync layer does to its seen flag afterwards. Snoozed
+                // messages (ui_hide, not ui_seen) are deliberately not latched so the
+                // snooze wake-up still notifies.
+                EntityMessage removed = db.message().getMessage(Math.abs(id));
+                if (removed != null &&
+                        Boolean.TRUE.equals(removed.ui_seen) &&
+                        !Boolean.TRUE.equals(removed.ui_ignored))
+                    db.message().setMessageUiIgnored(removed.id, true);
             }
 
             if (notifications.size() == 0) {

@@ -1074,6 +1074,12 @@ public interface DaoMessage {
     @Query("UPDATE message SET notifying = 0 WHERE NOT (notifying IS 0)")
     int clearNotifyingMessages();
 
+    // comms: latch for the notify_silenced kill switch -- every unseen message is
+    // marked ignored so switching notifications back on cannot replay the backlog
+    // as a burst of notifications; only mail arriving after that point notifies.
+    @Query("UPDATE message SET ui_ignored = 1 WHERE NOT ui_ignored AND NOT ui_seen")
+    int ignoreAllNotifications();
+
     @Query("UPDATE message SET headers = NULL" +
             " WHERE headers IS NOT NULL" +
             " AND account IN (SELECT id FROM account WHERE pop = " + EntityAccount.TYPE_IMAP + ")")

@@ -782,6 +782,8 @@
     <string name="title_advanced_default_folder">Select default folder</string>
 
     <string name="title_advanced_notifications">Manage notifications</string>
+    <string name="title_advanced_notify_silenced">Silence all new message notifications</string>
+    <string name="title_advanced_notify_silenced_hint">Cancels every posted message notification immediately and keeps new ones from being posted. Turning this off only notifies messages that arrive afterwards.</string>
     <string name="title_advanced_notifications_delete">Delete notification channels</string>
     <string name="title_advanced_notifications_default">Default channel</string>
     <string name="title_advanced_notifications_service">Monitoring channel</string>
