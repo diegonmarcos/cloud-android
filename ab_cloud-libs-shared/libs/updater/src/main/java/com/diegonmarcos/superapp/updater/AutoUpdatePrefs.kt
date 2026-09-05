@@ -19,6 +19,7 @@ object AutoUpdatePrefs {
     private const val KEY_UNATTENDED = "unattended_pass"
     private const val KEY_ENABLED = "enabled"
     private const val KEY_REQUIRE_SILENT = "require_silent"
+    private const val KEY_REQUIRE_UNMETERED = "require_unmetered"
 
     /**
      * Master runtime on/off for auto-update. This is what the "Auto-update"
@@ -85,6 +86,29 @@ object AutoUpdatePrefs {
     fun setRequireSilent(ctx: Context, on: Boolean) =
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
             .edit().putBoolean(KEY_REQUIRE_SILENT, on).apply()
+
+    /**
+     * "Only spend my mobile data on updates if I asked for them." ON by
+     * default — the fail-safe answer, and the one a user who never opens this
+     * screen would pick. Same reasoning as [requireSilent]: what used to be
+     * BuildConfig.AU_REQUIRE_UNMETERED could only say "every device on this
+     * build", and one APK ships to thousands of devices on wildly different
+     * data plans. The default is hard-coded `true` rather than read from the
+     * build constant because the constant is now true everywhere anyway, and a
+     * shipped `false` must not be able to silently start spending a stranger's
+     * data.
+     *
+     * Only gates UNATTENDED passes. A user-initiated check/update is explicit
+     * consent and downloads on any network — see the `force` branches in
+     * [UpdateWorker].
+     */
+    fun requireUnmetered(ctx: Context): Boolean =
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(KEY_REQUIRE_UNMETERED, true)
+
+    fun setRequireUnmetered(ctx: Context, on: Boolean) =
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_REQUIRE_UNMETERED, on).apply()
 
     fun setSilent(ctx: Context, on: Boolean) =
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_SILENT, on).apply()

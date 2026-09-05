@@ -282,6 +282,19 @@ class PermissionsFragment : Fragment() {
             permButton(ctx, "Set Install-unknown-apps",
                        com.diegonmarcos.superapp.updater.AutoUpdatePrefs.canInstallSilently(ctxAny())) { openUnknownAppSourcesSettings() },
         ))
+        // Gates the UNATTENDED passes only — "Update now" is the user asking,
+        // and that still downloads on mobile data.
+        row(ctx, col, "Update over Wi-Fi only",
+            if (com.diegonmarcos.superapp.updater.AutoUpdatePrefs.requireUnmetered(ctxAny())) "✓ ON" else "✗ OFF")
+        col.addView(permButtonRow(ctx,
+            permButton(ctx, "Update over Wi-Fi only: " + (if (com.diegonmarcos.superapp.updater.AutoUpdatePrefs.requireUnmetered(ctxAny())) "ON" else "OFF"),
+                       com.diegonmarcos.superapp.updater.AutoUpdatePrefs.requireUnmetered(ctxAny())) {
+                val now = !com.diegonmarcos.superapp.updater.AutoUpdatePrefs.requireUnmetered(ctxAny())
+                com.diegonmarcos.superapp.updater.AutoUpdatePrefs.setRequireUnmetered(ctxAny(), now)
+                Toast.makeText(ctxAny(), "Update over Wi-Fi only " + (if (now) "ON" else "OFF"), Toast.LENGTH_SHORT).show()
+                rebuildFragment()
+            },
+        ))
         // ── RECOVERY ────────────────────────────────────────────────────────
         // Everything above this line assumes the update chain works. This is
         // what is left when it does not.

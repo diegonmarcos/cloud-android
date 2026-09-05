@@ -273,6 +273,17 @@ class ConstellationFragment : Fragment() {
                 openUnknownAppSources(ctx)
             },
         ))
+        // Only gates the UNATTENDED passes: the buttons above are the user
+        // asking, so they download on any network regardless of this.
+        val wifiOnly = AutoUpdatePrefs.requireUnmetered(ctx)
+        headerControls.addView(buttonRow(ctx,
+            btn(ctx, "Update over Wi-Fi only: " + (if (wifiOnly) "ON" else "OFF"),
+                if (wifiOnly) 0xFF2F855A.toInt() else 0xFF4A4A55.toInt()) {
+                AutoUpdatePrefs.setRequireUnmetered(ctx, !wifiOnly)
+                Toast.makeText(ctx, "Update over Wi-Fi only " + (if (!wifiOnly) "ON" else "OFF"), Toast.LENGTH_SHORT).show()
+                renderHeader(ctx)
+            },
+        ))
         headerControls.addView(caption(ctx,
             if (AutoUpdatePrefs.canInstallSilently(ctx)) "Silent installs enabled."
             else "Grant 'Install unknown apps' for no-tap updates."))

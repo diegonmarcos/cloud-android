@@ -65,7 +65,7 @@ class UpdateWorker(
             // wake-up. Fleet.autoPass has no metered check of its own (Fleet.kt
             // does not import ConnectivityManager at all), so the gate has to be
             // here, at the call site.
-            if (!force && !(BuildConfig.AU_REQUIRE_UNMETERED && isMetered(applicationContext)))
+            if (!force && !(AutoUpdatePrefs.requireUnmetered(applicationContext) && isMetered(applicationContext)))
                 updateFleet()
             // THE BUG, and it is a nesting bug. Fleet.autoPass raises both flags
             // for itself and lowers them UNCONDITIONALLY in its own finally — it
@@ -85,7 +85,7 @@ class UpdateWorker(
             val available = UpdateChecker(applicationContext).available()
                 ?: return@withContext Result.success()
             // Ask (don't auto-download) on metered unless the user forced it.
-            if (!force && BuildConfig.AU_REQUIRE_UNMETERED && isMetered(applicationContext)) {
+            if (!force && AutoUpdatePrefs.requireUnmetered(applicationContext) && isMetered(applicationContext)) {
                 Log.i("Updater/Worker", "update available but on metered network — prompting instead of auto-downloading")
                 UpdateProgress.update(UpdateProgress.State.UpdateAvailable(available.remoteSize))
                 return@withContext Result.success()

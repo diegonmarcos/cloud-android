@@ -48,7 +48,7 @@ class ConstellationWorker(appCtx: Context, params: WorkerParameters) :
         // which on a permanently-VPN'd phone reports metered even over Wi-Fi;
         // this asks the ACTIVE network, which inherits NOT_METERED from the
         // VPN's underlying transport. Next pass retries, so this only defers.
-        if (AuConfig.AU_REQUIRE_UNMETERED && isMetered(applicationContext)) {
+        if (AutoUpdatePrefs.requireUnmetered(applicationContext) && isMetered(applicationContext)) {
             Log.i(TAG, "auto-update: skipped, metered network and require_unmetered is set")
             return@withContext Result.success()
         }
