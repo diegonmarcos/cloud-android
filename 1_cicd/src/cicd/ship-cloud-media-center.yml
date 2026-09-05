@@ -183,6 +183,87 @@ jobs:
             echo "variant=debug" >> "$GITHUB_OUTPUT"
           fi
 
+      # ── Prebuilt native codecs ──────────────────────────────────────
+      # app/src/main/cpp/CMakeLists.txt links libheif/libde265,
+      # libjpeg-turbo/libpng, x265/aom and LibRaw/libtiff as PREBUILT STATIC
+      # libs out of app/src/main/cpp/{heif,imgcodec,heifenc,rawcodec}/<abi>/,
+      # and compiles a STUB (`#else` branch, every method returns false/0)
+      # when they are absent. Those directories are .gitignored and exist
+      # only once scripts/native/*.sh has run.
+      #
+      # Until now nothing in THIS pipeline ran them: the composite action that
+      # does lives at ac_cloud-media-center/.github/actions/build-native-libs
+      # and is referenced only by the vendored upstream workflows
+      # (ac_cloud-media-center/.github/workflows/{stable,nightly}.yml), a
+      # nested .github/ that GitHub never executes — only the repo-root one
+      # runs. So every APK we ever shipped carried four ~4.8 KB stubs
+      # (libheiftiles, libheifenc, libimgstream, librawcodec — DT_NEEDED
+      # libc/libm/libdl/liblog and nothing else) on BOTH ABIs: HEIF tiling,
+      # HEIC/AVIF encode, streaming JPEG/PNG encode and RAW decode have never
+      # once been present in a published build.
+      #
+      # The action is not reused directly because its steps are written
+      # relative to ITS repo root (`scripts/native/...`, `app/src/main/cpp`),
+      # which is ac_cloud-media-center, not this workspace root. The scripts
+      # themselves resolve their own output paths, so invoking them by path is
+      # safe from anywhere; they also accept our exact matrix ABI names.
+      #
+      # Each stack caches independently keyed on its build script. A failure
+      # degrades to the stub instead of blocking the APK — the same contract
+      # NativeLibraries.load already implements on the Kotlin side.
+      - name: Cache prebuilt libheif (decode)
+        if: steps.gate.outputs.skip != 'true'
+        id: heif-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.WORK_DIR }}/app/src/main/cpp/heif
+          key: heif-${{ runner.os }}-${{ matrix.abi }}-${{ hashFiles('ac_cloud-media-center/scripts/native/build-heif.sh') }}
+
+      - name: Cache prebuilt imgcodec (JPEG/PNG encode)
+        if: steps.gate.outputs.skip != 'true'
+        id: imgcodec-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.WORK_DIR }}/app/src/main/cpp/imgcodec
+          key: imgcodec-${{ runner.os }}-${{ matrix.abi }}-${{ hashFiles('ac_cloud-media-center/scripts/native/build-imgcodec.sh') }}
+
+      - name: Cache prebuilt heifenc (HEIC/AVIF encode)
+        if: steps.gate.outputs.skip != 'true'
+        id: heifenc-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.WORK_DIR }}/app/src/main/cpp/heifenc
+          key: heifenc-${{ runner.os }}-${{ matrix.abi }}-${{ hashFiles('ac_cloud-media-center/scripts/native/build-heif-encode.sh') }}
+
+      - name: Cache prebuilt rawcodec (RAW decode + TIFF export)
+        if: steps.gate.outputs.skip != 'true'
+        id: rawcodec-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.WORK_DIR }}/app/src/main/cpp/rawcodec
+          key: rawcodec-${{ runner.os }}-${{ matrix.abi }}-${{ hashFiles('ac_cloud-media-center/scripts/native/build-libraw.sh') }}
+
+      - name: Build native codecs (${{ matrix.abi }})
+        if: steps.gate.outputs.skip != 'true'
+        working-directory: ${{ env.WORK_DIR }}
+        run: |
+          set -u
+          build() {
+            echo "::group::$1 (${{ matrix.abi }})"
+            if bash "scripts/native/$1" "${{ matrix.abi }}"; then
+              echo "::endgroup::"
+            else
+              echo "::endgroup::"
+              echo "::warning::$1 failed for ${{ matrix.abi }} — that codec falls back to its stub"
+            fi
+          }
+          [ "${{ steps.heif-cache.outputs.cache-hit }}"     = "true" ] || build build-heif.sh
+          [ "${{ steps.imgcodec-cache.outputs.cache-hit }}" = "true" ] || build build-imgcodec.sh
+          [ "${{ steps.heifenc-cache.outputs.cache-hit }}"  = "true" ] || build build-heif-encode.sh
+          [ "${{ steps.rawcodec-cache.outputs.cache-hit }}" = "true" ] || build build-libraw.sh
+          echo "prebuilt static libs now present:"
+          find app/src/main/cpp -name '*.a' -printf '%10s  %p\n' 2>/dev/null | sort -k2 || true
+
       # ── Build via build.sh (engine) ─────────────────────────────────
       - name: Build APK (engine)
         if: steps.gate.outputs.skip != 'true'

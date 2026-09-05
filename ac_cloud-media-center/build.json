@@ -19,8 +19,10 @@
     "target_sdk": 37,
     "version_code": 1,
     "version_name": "0.1.0-dev",
+    "_doc_abi_filters": "NOT CONSUMED BY THIS APP — schema parity only. aa_cloud-superapp and ab_cloud-libs-shared/* read build.json::android.abi_filters from their gradle files; nothing under ac_cloud-media-center does. This app inherits upstream ReFra's `flavorDimensions += \"abi\"` axis (app/build.gradle.kts::productFlavors), and the shipped ABI is chosen per matrix job by COMMS_BUNDLE_ABI, which build.sh maps to the matching assemble task via build.gradle_task_by_abi. Listing only arm64-v8a here was therefore inert AND false: release.abis and release.variants both ship arm64-v8a + x86_64, and `unzip -l` on the published assets confirms lib/arm64-v8a/ and lib/x86_64/ respectively. Kept in sync with release.abis so the two cannot disagree again.",
     "abi_filters": [
-      "arm64-v8a"
+      "arm64-v8a",
+      "x86_64"
     ]
   },
   "license": {
