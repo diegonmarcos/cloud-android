@@ -113,7 +113,7 @@
       "tag": "latest",
       "interval_hours": 6,
       "_doc_interval": "WorkManager periodic minimum is 15 min. 6h matches typical update cadence + spares battery / data.",
-      "require_unmetered_network": false,
+      "require_unmetered_network": true,
       "require_charging": false,
       "_doc_install": "Declared default for the runtime Auto-update toggle (Configs/About \u2192 Permissions). 'silent' \u2192 USER_ACTION_NOT_REQUIRED (no install prompt) once 'Install unknown apps' is granted; falls back to a prompt without it. 'prompt' \u2192 always USER_ACTION_REQUIRED.",
       "install_mode": "silent",

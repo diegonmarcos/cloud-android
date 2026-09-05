@@ -606,7 +606,7 @@
       "enabled": true,
       "tag": "latest",
       "interval_hours": 6,
-      "require_unmetered_network": false,
+      "require_unmetered_network": true,
       "require_charging": false,
       "install_mode": "silent",
       "_doc_max_installs_per_pass": "Most install sessions ONE unattended background pass may open. A background pass cannot show the system install dialog (Android 10+ blocks background activity starts), so each install it starts leaves a tap-to-install notification holding a PackageInstaller session until the user answers it. Unbounded, one pass over the 40-entry fleet opens 40 and the installer hits Android's 50-session cap - 'Too many active sessions for UID'. The remainder is picked up by the next pass. User-initiated 'Update all' is NOT capped: it runs in the foreground where the dialog appears and sessions resolve at once.",

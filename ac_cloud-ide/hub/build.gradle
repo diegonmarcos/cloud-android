@@ -157,7 +157,9 @@ android {
         buildConfigField "String",  "AUTO_UPDATE_TAG", "\"${au.tag}\""
         buildConfigField "long",    "AUTO_UPDATE_INTERVAL_HOURS", "${au.interval_hours}L"
         buildConfigField "boolean", "AUTO_UPDATE_ENABLED",        "${au.enabled}"
-        buildConfigField "boolean", "AU_REQUIRE_UNMETERED",       "${au.require_unmetered_network}"
+        // Fail-safe: unset means Wi-Fi-only. Not `?:` — Groovy's elvis treats
+        // an explicit `false` as absent. See :libs:updater build.gradle.
+        buildConfigField "boolean", "AU_REQUIRE_UNMETERED",       "${au.require_unmetered_network == null ? true : au.require_unmetered_network}"
         buildConfigField "boolean", "AU_REQUIRE_CHARGING",        "${au.require_charging}"
         buildConfigField "String",  "AU_INSTALL_MODE",            "\"${au.install_mode}\""
 

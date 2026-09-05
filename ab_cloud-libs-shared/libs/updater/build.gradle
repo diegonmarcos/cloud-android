@@ -80,7 +80,12 @@ android {
         // it runs in the foreground where the dialog appears and sessions
         // resolve immediately.
         buildConfigField "int", "AU_MAX_PER_PASS", "${au.max_installs_per_pass ?: 3}"
-        buildConfigField "boolean", "AU_REQUIRE_UNMETERED",        "${au.require_unmetered_network}"
+        // Fail-safe, not fail-open: an app that never declares the key gets
+        // Wi-Fi-only, because the cost of guessing wrong is the user's mobile
+        // data. Not `?: true` (the style used above for the int): Groovy's
+        // elvis treats an explicit `false` as absent, so that form would make
+        // the value unexpressible rather than defaulted. Test for null.
+        buildConfigField "boolean", "AU_REQUIRE_UNMETERED",        "${au.require_unmetered_network == null ? true : au.require_unmetered_network}"
         buildConfigField "boolean", "AU_REQUIRE_CHARGING",         "${au.require_charging}"
         buildConfigField "String",  "AU_INSTALL_MODE",             "\"${au.install_mode}\""
         buildConfigField "String",  "GIT_SHORT_SHA",               "\"${shortSha}\""
