@@ -1,4 +1,4 @@
-# cloud-watchdog
+# c3-watchdog
 
 The my-watchdog panel, on a phone. **This app invents no page and no number.**
 
@@ -101,12 +101,12 @@ off the proot launcher's environ.
 2. In nix-on-droid, run the env side (the app used to push the binary over
    ssh; now it is fetched from the release):
    ```sh
-   mkdir -p ~/.cache/cloud-watchdog/bin && cd ~/.cache/cloud-watchdog/bin
+   mkdir -p ~/.cache/c3-watchdog/bin && cd ~/.cache/c3-watchdog/bin
    curl -fsSL -o my-watchdog-tui https://github.com/diegonmarcos/cloud-u-linux/releases/download/my-watchdog-latest/my-watchdog-tui-aarch64
    curl -fsSL -o my-watchdog     https://github.com/diegonmarcos/cloud-u-linux/releases/download/my-watchdog-latest/my-watchdog-aarch64
    chmod +x my-watchdog my-watchdog-tui
    (nohup ./my-watchdog --no-tray >/dev/null 2>&1 &)
-   (nohup ./my-watchdog-tui android-bridge >> ~/.cache/cloud-watchdog/bridge.log 2>&1 &)
+   (nohup ./my-watchdog-tui android-bridge >> ~/.cache/c3-watchdog/bridge.log 2>&1 &)
    ```
 3. Open the app. The drawer lists the fleet as soon as the first local
    envelope lands (≤ 5 s); tap a machine to have the env measure it.
@@ -136,7 +136,7 @@ the page again. (fixed 2026-09-02)
 The app reaches nothing, so look at the env. From a shell in nix-on-droid:
 
 ```sh
-tail ~/.cache/cloud-watchdog/bridge.log         # "pushed local (131219 B)" every 5 s?
+tail ~/.cache/c3-watchdog/bridge.log         # "pushed local (131219 B)" every 5 s?
 pgrep -x my-watchdog-tui || echo "bridge loop not running"
 pgrep -x my-watchdog     || echo "sampler not running"
 am broadcast -a com.diegonmarcos.watchdog.LOG -n com.diegonmarcos.watchdog/com.diegonmarcos.superapp.watchdog.BridgeReceiver   # what the app saw

@@ -1,18 +1,18 @@
-name: "Ship → Cloud-Watchdog APK (build + push to GHCR via ORAS + attach to GH Release)"
+name: "Ship → C3-Watchdog APK (build + push to GHCR via ORAS + attach to GH Release)"
 
 # The my-watchdog panel as an app. It draws no dashboard of its own: at
 # runtime it ssh's to nix-on-droid on 127.0.0.1 and asks
 # `my-konsole-dash tui <cols> <rows>` for one screen, already drawn by
 # ratatui and transcribed to HTML. Same data-driven publish path as every
-# other app here — the engine reads ac_cloud-watchdog/build.json::release,
+# other app here — the engine reads ac_c3-watchdog/build.json::release,
 # so no registry, tag or artifact name is written in this file.
 
-# Builds the Cloud Nav APK from ac_cloud-watchdog/ and publishes via two channels,
-# both data-driven by ac_cloud-watchdog/build.json::release (mirror of the
+# Builds the Cloud Nav APK from ac_c3-watchdog/ and publishes via two channels,
+# both data-driven by ac_c3-watchdog/build.json::release (mirror of the
 # ship-cloud-superapp.yml engine contract — the only "knob" here is which
 # build.sh subcommand to invoke; engine reads build.json for the rest):
 #
-#   1. ORAS push as OCI artifact → ghcr.io/diegonmarcos/cloud-watchdog:<tags>
+#   1. ORAS push as OCI artifact → ghcr.io/diegonmarcos/c3-watchdog:<tags>
 #   2. GH Release attachment     → APK on the rolling `latest` release
 #
 # One matrix job per ABI variant (build.json::release.variants[].id): arm64
@@ -48,28 +48,28 @@ on:
   push:
     branches: [main]
     tags:
-      - "ac_cloud-watchdog-v*"
+      - "ac_c3-watchdog-v*"
     paths:
       # MANAGED by cloud-android-ship-repo-workflow-engine.sh: every dir
-      # ac_cloud-watchdog/build.json::modules declares is added automatically, dead
+      # ac_c3-watchdog/build.json::modules declares is added automatically, dead
       # entries are dropped, and cloud-android-source-identity.sh hashes
       # exactly this list — so nothing can trigger a build the publish
       # gate does not weigh. Extra entries no module map can express
       # (settings.gradle.kts references, scan roots) are kept: add them
       # here and they stay.
-      - "1_cicd/src/cicd/ship-cloud-watchdog.yml"
+      - "1_cicd/src/cicd/ship-c3-watchdog.yml"
       - "ab_cloud-libs-shared/libs/watchdog/**"
-      - "ac_cloud-watchdog/**"
+      - "ac_c3-watchdog/**"
 permissions:
   contents: write   # for gh release create + tag push reads
   packages: write   # for ghcr push (oras)
 
 concurrency:
-  group: ship-cloud-watchdog-${{ github.ref }}
+  group: ship-c3-watchdog-${{ github.ref }}
   cancel-in-progress: true
 
 env:
-  WORK_DIR: ac_cloud-watchdog
+  WORK_DIR: ac_c3-watchdog
 
 jobs:
   build_and_publish:
@@ -116,7 +116,7 @@ jobs:
         uses: android-actions/setup-android@v3
         with:
           # No cmake/ndk — Cloud Nav has no native build (MapLibre ships a
-          # prebuilt AAR). Pins mirror ac_cloud-watchdog/flake.nix + build.json.
+          # prebuilt AAR). Pins mirror ac_c3-watchdog/flake.nix + build.json.
           packages: "platforms;android-35 platforms;android-34 platforms;android-26 build-tools;35.0.0 build-tools;34.0.0 platform-tools"
 
       - name: Set up Gradle 8.10.2 (cached)
@@ -200,7 +200,7 @@ jobs:
         if: steps.gate.outputs.skip != 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: Cloud-Watchdog-${{ matrix.abi }}-${{ steps.variant.outputs.variant }}-${{ github.sha }}
+          name: C3-Watchdog-${{ matrix.abi }}-${{ steps.variant.outputs.variant }}-${{ github.sha }}
           path: ${{ env.WORK_DIR }}/dist/*.apk
           if-no-files-found: error
           retention-days: 30
@@ -232,7 +232,7 @@ jobs:
       - name: Is the GHCR package publicly pullable
         if: ${{ always() && steps.gate.outputs.skip != 'true' }}
         continue-on-error: true
-        run: sh 1_cicd/dist/scripts/cloud-android-ghcr-visibility.sh diegonmarcos cloud-watchdog
+        run: sh 1_cicd/dist/scripts/cloud-android-ghcr-visibility.sh diegonmarcos c3-watchdog
 
       # ── GitHub Release (engine reads build.json::release.gh_release) ──
       - name: Publish to GitHub Releases

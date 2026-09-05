@@ -18,7 +18,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "cloud-watchdog"
+rootProject.name = "c3-watchdog"
 
 def buildJson = new groovy.json.JsonSlurper().parse(file('build.json'))
 buildJson.modules.each { name, _spec ->
