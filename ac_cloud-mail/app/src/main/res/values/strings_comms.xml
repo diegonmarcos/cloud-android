@@ -66,6 +66,8 @@
     <string name="title_comms_auto_update_hint" translatable="false">Auto-update — silent self-update (default ON). Grant "Install unknown apps" to skip the install prompt:</string>
     <string name="title_comms_auto_update_on" translatable="false">Auto-update: ON</string>
     <string name="title_comms_auto_update_off" translatable="false">Auto-update: OFF</string>
+    <string name="title_comms_wifi_only_on" translatable="false">Update over Wi-Fi only: ON</string>
+    <string name="title_comms_wifi_only_off" translatable="false">Update over Wi-Fi only: OFF</string>
     <string name="title_comms_install_grant" translatable="false">Grant: Install unknown apps</string>
     <string name="title_comms_install_granted" translatable="false">✓ Install unknown apps</string>
     <string name="title_comms_stamp_override_hint" translatable="false">Build stamp (YYYYMMDD.HHMMSS) used for update checks. Empty = use the baked stamp. Enter "dev" or an old stamp to force-update to the newest release.</string>

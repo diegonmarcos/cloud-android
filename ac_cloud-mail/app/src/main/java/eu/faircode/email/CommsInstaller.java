@@ -63,6 +63,22 @@ public class CommsInstaller {
                 .edit().putBoolean(PREF_AUTO_SILENT, on).apply();
     }
 
+    // comms: the update APK is ~29 MB. Default ON so an automatic pass never
+    // spends mobile data; only the AUTOMATIC path in CommsUpdateWorker honours
+    // this — the About "Check for updates" button is explicit consent and
+    // downloads on any network.
+    static final String PREF_WIFI_ONLY = "comms_auto_update_wifi_only";
+
+    static boolean wifiOnly(Context ctx) {
+        return PreferenceManager.getDefaultSharedPreferences(ctx)
+                .getBoolean(PREF_WIFI_ONLY, true);
+    }
+
+    static void setWifiOnly(Context ctx, boolean on) {
+        PreferenceManager.getDefaultSharedPreferences(ctx)
+                .edit().putBoolean(PREF_WIFI_ONLY, on).apply();
+    }
+
     /** Whether the OS will let us install without a prompt — the "install
      *  unknown apps" special access. USER_ACTION_NOT_REQUIRED silently degrades
      *  to a prompt without it, so this drives the About grant-row status. */

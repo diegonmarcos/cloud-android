@@ -38,6 +38,9 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.text.TextUtils;
 
 import androidx.annotation.NonNull;
@@ -144,6 +147,12 @@ public class CommsUpdateWorker extends Worker {
             // notification so the user installs manually from About.
             notifyUpdate(ctx);
             if (CommsInstaller.autoSilent(ctx)) {
+                if (isMetered(ctx)) {
+                    Log.i(TAG + " skipping automatic update download:"
+                            + " network is metered (or unknown) and"
+                            + " " + CommsInstaller.PREF_WIFI_ONLY + " is on");
+                    return Result.success();
+                }
                 File apk = new File(ctx.getCacheDir(), "updates/cloud-mail-update.apk");
                 downloadApk(rel.downloadUrl, apk, rel.size);
                 CommsInstaller.install(ctx, apk, true);
@@ -152,6 +161,38 @@ public class CommsUpdateWorker extends Worker {
         } catch (Throwable ex) {
             Log.w(ex);
             return Result.retry();
+        }
+    }
+
+    /**
+     * Whether the AUTOMATIC download must be held back. The update APK is
+     * ~29 MB, so it may never be pulled over mobile data on a pass the user did
+     * not ask for. Returns false only when the "Update over Wi-Fi only" pref is
+     * off, or the active network positively reports NOT_METERED — no active
+     * network, no capabilities, or no ConnectivityManager all count as metered,
+     * because the only safe guess about an unknown link is that it costs money.
+     *
+     * Not FairEmail's "metered" pref: that one governs email sync and is never
+     * read by the updater.
+     */
+    private static boolean isMetered(Context ctx) {
+        if (!CommsInstaller.wifiOnly(ctx))
+            return false;
+        try {
+            ConnectivityManager cm =
+                    (ConnectivityManager) ctx.getSystemService(Context.CONNECTIVITY_SERVICE);
+            if (cm == null)
+                return true;
+            Network active = cm.getActiveNetwork();
+            if (active == null)
+                return true;
+            NetworkCapabilities caps = cm.getNetworkCapabilities(active);
+            if (caps == null)
+                return true;
+            return !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED);
+        } catch (Throwable ex) {
+            Log.w(ex);
+            return true;
         }
     }
 
@@ -341,11 +382,18 @@ public class CommsUpdateWorker extends Worker {
             PeriodicWorkRequest request =
                     new PeriodicWorkRequest.Builder(CommsUpdateWorker.class,
                             INTERVAL_HOURS, TimeUnit.HOURS)
+                            // comms: UNMETERED, not CONNECTED — the periodic pass
+                            // may download a ~29 MB APK, so the job must not even
+                            // wake on mobile data. The user-initiated checkNow()
+                            // below stays CONNECTED on purpose.
                             .setConstraints(new Constraints.Builder()
-                                    .setRequiredNetworkType(NetworkType.CONNECTED).build())
+                                    .setRequiredNetworkType(NetworkType.UNMETERED).build())
                             .build();
+            // comms: UPDATE, not KEEP — with KEEP the already-enqueued job on
+            // every installed device keeps its old CONNECTED constraint forever,
+            // so the fix above would only reach fresh installs.
             WorkManager.getInstance(context).enqueueUniquePeriodicWork(
-                    WORK_NAME, ExistingPeriodicWorkPolicy.KEEP, request);
+                    WORK_NAME, ExistingPeriodicWorkPolicy.UPDATE, request);
         } catch (Throwable ex) {
             Log.w(ex);
         }

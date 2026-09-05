@@ -90,6 +90,17 @@ public class FragmentOptionsCommsAbout extends FragmentBase {
         });
         btnGrant.setOnClickListener(v -> openUnknownAppSources(v.getContext()));
 
+        // comms: Wi-Fi-only gate for the AUTOMATIC download. ON (default) →
+        // CommsUpdateWorker skips the ~29 MB APK on a metered link; the
+        // "Check for updates" button above is unaffected.
+        Button btnWifi = view.findViewById(R.id.comms_btn_wifi_only);
+        refreshWifiButton(view.getContext(), btnWifi);
+        btnWifi.setOnClickListener(v -> {
+            Context ctx = v.getContext();
+            CommsInstaller.setWifiOnly(ctx, !CommsInstaller.wifiOnly(ctx));
+            refreshWifiButton(ctx, btnWifi);
+        });
+
         bindUnreadDiagnostics(view);
     }
 
@@ -162,6 +173,12 @@ public class FragmentOptionsCommsAbout extends FragmentBase {
         btnGrant.setText(getString(CommsInstaller.canInstallSilently(ctx)
                 ? R.string.title_comms_install_granted
                 : R.string.title_comms_install_grant));
+    }
+
+    private void refreshWifiButton(Context ctx, Button btnWifi) {
+        btnWifi.setText(getString(CommsInstaller.wifiOnly(ctx)
+                ? R.string.title_comms_wifi_only_on
+                : R.string.title_comms_wifi_only_off));
     }
 
     /** Open Settings → "Install unknown apps" scoped to Cloud Mail so the user

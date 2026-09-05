@@ -124,6 +124,17 @@
             app:layout_constraintStart_toEndOf="@id/comms_btn_auto_update"
             app:layout_constraintTop_toTopOf="@id/comms_btn_auto_update" />
 
+        <!-- comms: Wi-Fi-only gate for the AUTOMATIC update download (~29 MB).
+             Does not affect "Check for updates" above, which is explicit
+             consent and works on any network. -->
+        <Button
+            android:id="@+id/comms_btn_wifi_only"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="3dp"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/comms_btn_auto_update" />
+
         <!-- comms: read/unread diagnostics.
              Three separate attempts to fix the read/unread cue each verified
              the layer that had just been edited (theme attrs, adapter code,
@@ -144,7 +155,7 @@
             android:textColor="?android:attr/textColorSecondary"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/comms_btn_auto_update" />
+            app:layout_constraintTop_toBottomOf="@id/comms_btn_wifi_only" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </ScrollView>
