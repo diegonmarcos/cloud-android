@@ -6,11 +6,11 @@ name: "Ship → C3-Morpheus APK (build + push to GHCR via ORAS + attach to GH Re
 # library module, so this is the leanest APK build here.
 #
 # Same data-driven publish path as every other app: the engine reads
-# ac_cloud-morpheus/build.json::release, so no registry, tag or artifact name
+# ac_c3-morpheus/build.json::release, so no registry, tag or artifact name
 # is written in this file.
 
-# Builds the C3-Morpheus APK from ac_cloud-morpheus/ and publishes via two channels,
-# both data-driven by ac_cloud-morpheus/build.json::release (mirror of the
+# Builds the C3-Morpheus APK from ac_c3-morpheus/ and publishes via two channels,
+# both data-driven by ac_c3-morpheus/build.json::release (mirror of the
 # ship-cloud-superapp.yml engine contract — the only "knob" here is which
 # build.sh subcommand to invoke; engine reads build.json for the rest):
 #
@@ -50,10 +50,10 @@ on:
   push:
     branches: [main]
     tags:
-      - "ac_cloud-morpheus-v*"
+      - "ac_c3-morpheus-v*"
     paths:
       # MANAGED by cloud-android-ship-repo-workflow-engine.sh: every dir
-      # ac_cloud-morpheus/build.json::modules declares is added automatically, dead
+      # ac_c3-morpheus/build.json::modules declares is added automatically, dead
       # entries are dropped, and cloud-android-source-identity.sh hashes
       # exactly this list — so nothing can trigger a build the publish
       # gate does not weigh. Extra entries no module map can express
@@ -70,7 +70,7 @@ on:
       # runs.
       - "1_cicd/src/cicd/ship-c3-morpheus.yml"
       - ".github/workflows/ship-c3-morpheus.yml"
-      - "ac_cloud-morpheus/**"
+      - "ac_c3-morpheus/**"
 permissions:
   contents: write   # for gh release create + tag push reads
   packages: write   # for ghcr push (oras)
@@ -80,7 +80,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  WORK_DIR: ac_cloud-morpheus
+  WORK_DIR: ac_c3-morpheus
 
 jobs:
   build_and_publish:
@@ -127,7 +127,7 @@ jobs:
         uses: android-actions/setup-android@v3
         with:
           # No cmake/ndk — morpheus has no native code whatsoever. Pins mirror
-          # ac_cloud-morpheus/flake.nix + build.json::toolchain.
+          # ac_c3-morpheus/flake.nix + build.json::toolchain.
           packages: "platforms;android-35 platforms;android-34 platforms;android-26 build-tools;35.0.0 build-tools;34.0.0 platform-tools"
 
       - name: Set up Gradle 8.10.2 (cached)

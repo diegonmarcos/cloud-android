@@ -88,7 +88,7 @@
       "_doc": "rolling_tag is canonical: one release the ship workflow overwrites on every main push, so /releases/latest/download/C3-Morpheus.apk is a stable URL.",
       "enabled": true,
       "rolling_tag": "latest",
-      "tag_pattern": "ac_cloud-morpheus-v*",
+      "tag_pattern": "ac_c3-morpheus-v*",
       "asset_name": "C3-Morpheus.apk"
     },
     "variants": [
