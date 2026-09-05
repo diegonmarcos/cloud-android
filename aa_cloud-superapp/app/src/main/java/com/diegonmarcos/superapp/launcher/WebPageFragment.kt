@@ -76,6 +76,29 @@ class WebPageFragment : Fragment() {
                 override fun onPageFinished(view: WebView?, url: String?) {
                     backToPreviousPage.isEnabled = view?.canGoBack() == true
                 }
+
+                /**
+                 * SAY SO when the page does not load. Every site embedded here
+                 * is ours, and the ones that matter — Paca among them — are
+                 * mesh-only: paca.diegonmarcos.com serves no certificate at the
+                 * public edge and simply does not answer off the WireGuard
+                 * mesh. The platform's reaction to that is a blank white view,
+                 * which is indistinguishable from a feature that was never
+                 * built, and this page IS the whole board.
+                 *
+                 * Main frame only: a failed favicon or analytics sub-request
+                 * must not blank a page that rendered.
+                 */
+                override fun onReceivedError(
+                    view: WebView,
+                    request: android.webkit.WebResourceRequest,
+                    error: android.webkit.WebResourceError,
+                ) {
+                    if (!request.isForMainFrame) return
+                    val host = runCatching { java.net.URI(url).host }.getOrNull() ?: url
+                    view.loadDataWithBaseURL(null, errorHtml(host, error.description?.toString()),
+                        "text/html", "utf-8", null)
+                }
             }
             if (url.isNotBlank()) loadUrl(url)
         }
@@ -91,6 +114,21 @@ class WebPageFragment : Fragment() {
         web = null
         super.onDestroyView()
     }
+
+    /** The blank-page replacement. Names the host, the likely cause and the
+     *  one thing the user can do about it, because "mesh-only" is the answer
+     *  for most of what this fragment embeds. */
+    private fun errorHtml(host: String, detail: String?): String = """
+        <html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+        <body style="margin:0;padding:24px;background:#12101a;color:#e9d8fd;
+                     font-family:monospace;line-height:1.6">
+          <h3 style="margin:0 0 12px">Could not load $host</h3>
+          <p style="color:#b9a8d0;margin:0 0 12px">${detail.orEmpty()}</p>
+          <p style="color:#b9a8d0;margin:0">This page is served on the WireGuard
+          mesh only — it answers nothing at the public edge. Check the tunnel is
+          up (Configs &rarr; WireGuard) and reopen.</p>
+        </body></html>
+    """.trimIndent()
 
     companion object {
         private const val ARG_URL = "url"

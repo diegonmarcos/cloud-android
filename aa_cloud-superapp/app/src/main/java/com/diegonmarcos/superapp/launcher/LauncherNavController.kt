@@ -183,8 +183,16 @@ class LauncherNavController(private val host: NavHost) {
         // Tabbed section: every page is already on screen (tablet) or one tap
         // away on the strip (phone), so "open page X" means SELECT it, not
         // push a second copy over the top.
+        //
+        // Only when X IS one of the tabs. A hidden page is routable but has no
+        // tab, and handing it to goSection asked the strip to select something
+        // it does not list — [SectionTabsFragment.startIndex] answers -1 and
+        // falls back to tab 0, so the target silently became the section's
+        // FIRST page. That is what "page:c3/health opens Observability" and
+        // "the C3 tiles do not open" were: not a routing failure, a tab
+        // selection that quietly succeeded on the wrong page.
         Sections.byId(sectionId)?.let { sec ->
-            if (isTabbed(sec)) {
+            if (isTabbed(sec) && sec.pages.any { it.id == pageId }) {
                 goSection(sectionId, sec.label, pageId)
                 host.closeDrawerIfOpen()
                 return
@@ -315,9 +323,17 @@ class LauncherNavController(private val host: NavHost) {
         val ownTiles = section.tilesByPage[page.id].orEmpty()
         val mirrored = page.mirrorSection.takeIf { it.isNotBlank() }?.let { Sections.byId(it) }
         return when {
-            // `mirror_section` — this facet IS that section's grid. Cloud ▸
-            // Configs shows THE Configs page, Actions and all, instead of a
-            // second copy of the same page list drifting beside it.
+            // `mirror_section` — this facet IS that section. Cloud ▸ Configs
+            // shows THE Configs page, Actions and all, instead of a second
+            // copy of the same page list drifting beside it.
+            //
+            // Mirroring shows the section the way the section shows ITSELF, so
+            // a TABBED one arrives as its tab strip rather than as a grid of
+            // its tabs. Cloud ▸ C3 is that case: C3 is two tabs, Observability
+            // and Topology, and rendering it as two icons you have to tap
+            // through is not a mirror of it.
+            mirrored != null && isTabbed(mirrored) ->
+                SectionTabsFragment.newInstance(mirrored.id)
             mirrored != null -> sectionGrid(mirrored, page.label)
             // What the PAGE declares, in order — stack_<id>, then tiles_<id>.
             // Only a page that declares neither falls back to the section-wide
