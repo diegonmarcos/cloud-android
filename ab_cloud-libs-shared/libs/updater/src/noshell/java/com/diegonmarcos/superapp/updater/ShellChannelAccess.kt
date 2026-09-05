@@ -28,3 +28,8 @@ internal interface ShellChannel {
 }
 
 internal fun activeShellChannel(@Suppress("UNUSED_PARAMETER") ctx: Context): ShellChannel? = null
+
+internal fun ensureShellChannel(@Suppress("UNUSED_PARAMETER") ctx: Context): ShellChannel? = null
+
+internal fun shellChannelDiagnosis(@Suppress("UNUSED_PARAMETER") ctx: Context): String =
+    "this app is built without :libs:shizuku-adb-debug-tools, so it has no shell channel at all"

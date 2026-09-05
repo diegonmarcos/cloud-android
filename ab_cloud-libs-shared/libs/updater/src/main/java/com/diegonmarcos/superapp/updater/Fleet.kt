@@ -337,17 +337,26 @@ object Fleet {
                       "than the device has. Nothing installed")
             }
         }
+        // NAME WHAT DECLINED, AND WHY. "no install channel accepted <pkg>" was
+        // the whole message, which is a statement of the outcome and not of the
+        // cause: it read identically whether the phone had never been paired,
+        // had merely not reconnected since the last app start, or had run `pm
+        // install` and been refused. Each channel now hands back a sentence.
+        val declined = mutableListOf<String>()
         for (channel in channels) {
-            if (channel.install(ctx, app, apk)) {
+            val why = channel.install(ctx, app, apk)
+            if (why == null) {
                 Log.i(TAG, "install committed via ${channel.name}: ${app.label} (${app.pkg})")
                 return
             }
+            Log.w(TAG, "install channel '${channel.name}' declined ${app.pkg}: $why")
+            declined += "${channel.name} → $why"
         }
-        error("no install channel accepted ${app.pkg} " +
-            "(tried ${channels.joinToString { it.name }})" +
-            if (!ALLOW_PROMPTING_FALLBACK && activeShellChannel(ctx) == null)
-                ". There is no privileged shell channel (embedded adb / Shizuku), and the " +
-                "prompting PackageInstaller fallback is disabled — see Fleet.ALLOW_PROMPTING_FALLBACK"
+        error("no install channel accepted ${app.pkg}. " +
+            declined.joinToString(" | ") +
+            if (!ALLOW_PROMPTING_FALLBACK)
+                ". The prompting PackageInstaller fallback is disabled, so there is no other " +
+                "channel to try — see Fleet.ALLOW_PROMPTING_FALLBACK"
             else "")
     }
 
@@ -582,8 +591,14 @@ object Fleet {
         // Decide the work-list FIRST (status checks, no overlay yet) so the
         // batch header can show a correct "N/total" — otherwise the overlay's
         // bar just resets 0→100 per app with no context (scrambled-progress bug).
-        val silent = silentCapable(ctx)
-        val channel = silentChannelName(ctx)
+        // ESTABLISH the channel here, once, before deciding the pass is
+        // unattended-incapable. silentCapable() is a probe, so a paired phone
+        // whose embedded adb client had not reconnected since the last app
+        // start reported "no privileged channel" and BLOCKED the whole batch
+        // below without ever trying to bring the channel up.
+        val established = ensureShellChannel(ctx)
+        val silent = established != null
+        val channel = established?.name()
         val todo = apps.filter { app ->
             if (app.blocked) return@filter false
             val state = status(ctx, app)
@@ -619,14 +634,16 @@ object Fleet {
         // as N failed installs rather than as the one thing that is actually
         // wrong. This is the loud version of "cannot install unattended".
         if (!silent && !ALLOW_PROMPTING_FALLBACK) {
+            val diagnosis = shellChannelDiagnosis(ctx)
             Log.w(TAG, "NO PRIVILEGED INSTALL CHANNEL: ${todo.size} update(s) ready and " +
                        "nothing can install them without a confirmation dialog, which is " +
                        "disabled. Bring up the embedded adb channel (Wireless debugging → " +
-                       "pair) or Shizuku, then the next pass installs all of them silently")
+                       "pair) or Shizuku, then the next pass installs all of them silently. " +
+                       "Ladder said: $diagnosis")
             return Pass(0, todo.size, 0, silent, channel,
-                "BLOCKED: ${todo.size} update(s) ready but there is no privileged shell " +
-                "channel, and the confirmation-dialog fallback is disabled — nothing " +
-                "downloaded, nothing installed")
+                "BLOCKED: ${todo.size} update(s) ready but no privileged shell channel came " +
+                "up, and the confirmation-dialog fallback is disabled — nothing downloaded, " +
+                "nothing installed. $diagnosis")
         }
         // Cap the batch. [limit] is Int.MAX_VALUE for user-initiated "Update
         // all"/"Install all" - those run in the foreground, the system dialog
