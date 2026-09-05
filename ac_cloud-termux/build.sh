@@ -83,7 +83,7 @@ _json() { prefer_host jq -r "$1 // empty" "$SCRIPT_DIR/build.json"; }
 #   _fork_json "$key" '.build.gradle_task'
 #   _fork_json "$key" ''                    # the whole fork object
 # ── ABI variant helpers ────────────────────────────────────────────────
-# Ported VERBATIM from the standard app engine (ac_cloud-watchdog/build.sh),
+# Ported VERBATIM from the standard app engine (ac_c3-watchdog/build.sh),
 # contract and key names unchanged. The forks are built per ABI like every
 # other app in the constellation, and release.variants[] is how every other app
 # already declares that — so this engine learns to read the existing shape

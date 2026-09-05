@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Cloud-Watchdog's suite tile.
+<!-- C3-Watchdog's suite tile.
      A dog, because the app is a watchdog — the tile pointed at
      ic_p_c3_health, which is a heart, and a heart on a fleet monitor reads as
      health tracking rather than a machine watching machines.

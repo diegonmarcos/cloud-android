@@ -1,6 +1,6 @@
 # libs:watchdog
 
-The ssh bridge `ac_cloud-watchdog` uses, shared **by reference** (a module
+The ssh bridge `ac_c3-watchdog` uses, shared **by reference** (a module
 `dir` in the consuming app's `build.json::modules`) so it is one
 implementation rather than a copy per app. It also ships its own APK, because
 `ab_cloud-libs` scans this directory and a directory with a `build.gradle`
@@ -23,4 +23,4 @@ finding the end of an answer by watching for a prompt or a pause, which paints
 half-drawn screens whenever the far side is slow. A sentinel line the
 transcript cannot contain says exactly where a screen ends.
 
-See `ac_cloud-watchdog/README.md` and `cloud-u-linux/da_watchdog/ARCHITECTURE.md`.
+See `ac_c3-watchdog/README.md` and `cloud-u-linux/da_watchdog/ARCHITECTURE.md`.

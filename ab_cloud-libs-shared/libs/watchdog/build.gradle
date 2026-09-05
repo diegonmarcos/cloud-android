@@ -83,7 +83,7 @@ android {
 // driving it — they ship as one artifact.
 //
 // They live HERE and not in the app because this module is the logic: the ssh
-// channel, the protocol and the tools it speaks to. ac_cloud-watchdog is the
+// channel, the protocol and the tools it speaks to. ac_c3-watchdog is the
 // UI on top.
 //
 // aarch64 static musl: every Android device this decade, and musl means it
