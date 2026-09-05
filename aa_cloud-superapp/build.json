@@ -1081,7 +1081,7 @@
           },
           {
             "id": "cloud-rss",
-            "label": "Infra RSS",
+            "label": "C3 Obsv",
             "icon": "ic_p_sol_cloud",
             "facet": true
           }
@@ -1233,13 +1233,62 @@
         ],
         "stack_cloud-rss": [
           {
+            "kind": "section_title",
+            "title": "Fleet signals",
+            "subtitle": "How fresh is what the cloud publishes",
+            "_doc": "TOP LEVEL = the verdict. Every row below measures the AGE OF THE NEWEST MESSAGE on an ntfy topic, which is the only health fact a phone can establish about a fleet it cannot reach into. Silence is never drawn green: ntfy answers 200 when publishing to an UNREGISTERED topic, so a health script can publish into the void for weeks and look perfectly healthy."
+          },
+          {
+            "kind": "signal_health",
+            "title": "Health probes",
+            "subtitle": "Fresh · stale · silent · unavailable",
+            "_doc": "Topic list mirrors c3-morpheus data/probes.json script_probes[].topic rather than declaring a parallel set — the DAG that publishes the topic is the thing being watched. expect_within_minutes is derived from that DAG's cron in infra-obs_dagu/src/dags/, with slack for a missed run: */5 crons -> 20, daily crons -> 1560 (26h).",
+            "signals": [
+              { "topic": "health_mesh",       "label": "Mesh connectivity", "expect_within_minutes": 20 },
+              { "topic": "health_endpoints",  "label": "Service endpoints", "expect_within_minutes": 20 },
+              { "topic": "health_dns",        "label": "DNS resolution",    "expect_within_minutes": 1560 },
+              { "topic": "health_resources",  "label": "VM resources",      "expect_within_minutes": 1560 },
+              { "topic": "health_containers", "label": "Containers",        "expect_within_minutes": 1560 }
+            ]
+          },
+          {
+            "kind": "signal_health",
+            "title": "Daily reports",
+            "subtitle": "Long-form health runs",
+            "_doc": "The two report topics c3-morpheus names explicitly. cloud-health-mail-full.sh is known to miscount (reports maddy=0 stalwart=0 while both stores hold mail), so a FRESH row here means the report ran, NOT that its contents are correct — freshness and correctness are different claims and this card only makes the first.",
+            "signals": [
+              { "topic": "health_report_cloud-health-full-daily",  "label": "Cloud health (daily)", "expect_within_minutes": 1560 },
+              { "topic": "health_report_cloud-mail-health-full",   "label": "Mail health",          "expect_within_minutes": 1560 },
+              { "topic": "health_report_cloud-sec-data-report",    "label": "Security data",        "expect_within_minutes": 0 },
+              { "topic": "health_report_cloud-sec-network-report", "label": "Security network",     "expect_within_minutes": 0 },
+              { "topic": "infra_mail-health",                      "label": "Mail ingest",          "expect_within_minutes": 0 }
+            ]
+          },
+          {
+            "kind": "signal_health",
+            "title": "Security, deploys and ops",
+            "subtitle": "Last seen — cadence not declared",
+            "_doc": "These topics are NOT declared in probes.json script_probes, so there is no promised interval to measure against. expect_within_minutes 0 means the card reports last-seen age in neutral grey and never colours it green: an unknown cadence cannot be called healthy. Give a topic a cadence here only once probes.json declares one.",
+            "signals": [
+              { "topic": "sec_audit",        "label": "SSH audit",       "expect_within_minutes": 0 },
+              { "topic": "sec_tls",          "label": "TLS expiry",      "expect_within_minutes": 0 },
+              { "topic": "sec_connections",  "label": "Auth events",     "expect_within_minutes": 0 },
+              { "topic": "sec_yara",         "label": "YARA scan",       "expect_within_minutes": 0 },
+              { "topic": "deploy_ship",      "label": "Ship deploys",    "expect_within_minutes": 0 },
+              { "topic": "deploy_containers","label": "Container rolls", "expect_within_minutes": 0 },
+              { "topic": "deploy_dagu",      "label": "Dagu deploys",    "expect_within_minutes": 0 },
+              { "topic": "ops_backups",      "label": "Backups",         "expect_within_minutes": 0 },
+              { "topic": "ops_reports",      "label": "Ops reports",     "expect_within_minutes": 0 }
+            ]
+          },
+          {
             "kind": "c3_public",
-            "title": "C3 Health · Public",
+            "title": "Reachability · Public",
             "subtitle": "Services reachable via Caddy edge"
           },
           {
             "kind": "c3_private",
-            "title": "C3 Health · Private",
+            "title": "Reachability · Private",
             "subtitle": "Internal compose-network containers"
           },
           {
@@ -1248,13 +1297,14 @@
             "subtitle": "wg0 UDP direct + wg0-tcp wstunnel"
           },
           {
-            "kind": "rss",
-            "title": "RSS · ntfy channels"
+            "kind": "section_title",
+            "title": "ntfy channels",
+            "subtitle": "Every topic, grouped by scope",
+            "_doc": "SECOND LEVEL. The three-scope structure (Advisories / My channels / Cloud channels) is unchanged and still resolved by NtfyCatalog + NtfyScopes from build.json::ui.ntfy.scopes — it is demoted beneath the dashboard, not deleted. Declaring no `scopes` here keeps this the full browser over all 26 channels."
           },
           {
-            "kind": "drive_connections",
-            "title": "Drive · Connections",
-            "subtitle": "Storage backends declared in build.json"
+            "kind": "rss",
+            "title": "All channels"
           }
         ],
         "tiles_cloud-rss": [
