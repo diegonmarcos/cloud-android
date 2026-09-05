@@ -160,6 +160,25 @@ object Sections {
          *  panels are never hidden — the same fail-visible rule [NtfyScopes]
          *  applies to an unknown topic prefix. */
         val origin: String = "",
+        /** Used by kind=signal_health — which ntfy topics this card reports the
+         *  FRESHNESS of. Mirrors c3-morpheus's probes.json `script_probes[].topic`
+         *  rather than declaring a parallel set: the DAG that publishes the topic
+         *  is the thing being watched, so the topic name IS the probe id.
+         *  `expect_within_minutes` is the publish interval the topic promises;
+         *  older than that and the card says STALE instead of drawing green,
+         *  because a quiet topic is either "nothing wrong" or "the publisher is
+         *  dead" and only the interval tells them apart. */
+        val signals: List<SignalRef> = emptyList(),
+    )
+
+    /** One watched ntfy topic on a kind=signal_health card. [expectWithinMinutes]
+     *  <= 0 means the topic makes no freshness promise, so the card reports its
+     *  last-seen age as a fact and never colours it green — an unknown cadence
+     *  cannot be called healthy. */
+    data class SignalRef(
+        val topic: String,
+        val label: String,
+        val expectWithinMinutes: Int,
     )
 
     /** One toggle in a page's `filters_<page id>` row. The filter IDS are the
@@ -655,6 +674,23 @@ object Sections {
                     p.optJSONArray("scopes")?.let { sa ->
                         for (m in 0 until sa.length()) sa.optString(m).takeIf { it.isNotBlank() }?.let(scopeIds::add)
                     }
+                    // kind=signal_health — the ntfy topics whose FRESHNESS this
+                    // card reports. A topic with no declared interval is still
+                    // listed: an unwatched signal is invisible, and invisible is
+                    // how a dead publisher goes unnoticed (same rule as NtfyScopes).
+                    val signalList = mutableListOf<SignalRef>()
+                    p.optJSONArray("signals")?.let { sa ->
+                        for (m in 0 until sa.length()) {
+                            val s = sa.optJSONObject(m) ?: continue
+                            val topic = s.optString("topic")
+                            if (topic.isBlank()) continue
+                            signalList += SignalRef(
+                                topic               = topic,
+                                label               = s.optString("label", topic),
+                                expectWithinMinutes = s.optInt("expect_within_minutes", 0),
+                            )
+                        }
+                    }
                     out.add(StackPanel(
                         kind            = p.optString("kind", "placeholder"),
                         title           = p.optString("title", ""),
@@ -672,6 +708,7 @@ object Sections {
                         dashGroupIds    = dashGroupIds,
                         scopes          = scopeIds,
                         origin          = p.optString("origin", ""),
+                        signals         = signalList,
                     ))
                 }
                 return out

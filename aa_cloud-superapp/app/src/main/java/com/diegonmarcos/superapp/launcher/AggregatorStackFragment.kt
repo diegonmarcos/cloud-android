@@ -377,6 +377,7 @@ class AggregatorStackFragment : Fragment(),
         "repos"              -> renderRepos(ctx, body, panel)
         "gha_runs"           -> renderGhaRuns(ctx, body, panel)
         "stats"              -> renderStats(ctx, body, panel)
+        "signal_health"      -> renderSignalHealth(ctx, body, panel)
         "cloud_dashboard"    -> renderCloudDashboard(ctx, body, panel)
         else                 -> renderPlaceholder(ctx, body, panel)
     }
@@ -1032,6 +1033,153 @@ class AggregatorStackFragment : Fragment(),
             body.addView(row)
         }
         body.addView(caption(ctx, "Mock data — live fetch pending"))
+    }
+
+    /** kind=signal_health — the top level of C3 Obsv: "is the cloud telling me
+     *  anything is wrong right now".
+     *
+     *  Every row is one ntfy topic published by a c3-morpheus script probe, and
+     *  what is measured is the AGE OF THE NEWEST MESSAGE. That is the only
+     *  health fact a phone can establish about a fleet it cannot reach into.
+     *
+     *  FOUR states, never two, because the two failure modes this page exists to
+     *  catch both look like silence:
+     *    OK          — a message inside the topic's promised interval.
+     *    SILENT      — the fetch SUCCEEDED and the topic is empty. Says so, in
+     *                  amber, because a quiet topic is either "nothing wrong" or
+     *                  "the publisher died" and this card cannot tell which.
+     *                  ntfy answers 200 when publishing to an UNREGISTERED topic,
+     *                  so a health script can publish into the void for weeks and
+     *                  look perfectly healthy; SILENT is what that looks like here.
+     *    STALE       — messages exist but the newest is older than the promise.
+     *    UNAVAILABLE — the fetch itself failed. Renders GREY and says the status
+     *                  is unknown. It must never render green: a health dashboard
+     *                  showing "all clear" because its own fetch broke is the
+     *                  worst possible failure-reporting-success, since this is the
+     *                  surface trusted to say when something is wrong.
+     *
+     *  Inline views only, no child fragment — so this card is safe to rebuild,
+     *  unlike anything routed through [embedChild]'s fixed host pool. */
+    private fun renderSignalHealth(
+        ctx: android.content.Context, body: LinearLayout, panel: Sections.StackPanel,
+    ) {
+        if (panel.subtitle.isNotBlank()) body.addView(caption(ctx, panel.subtitle))
+        if (panel.signals.isEmpty()) {
+            // Naming the reason beats an empty card that reads as "all quiet".
+            body.addView(caption(ctx, "No signals declared for this card in build.json"))
+            return
+        }
+        val executor = java.util.concurrent.Executors.newFixedThreadPool(4)
+        for (sig in panel.signals) {
+            val row = LinearLayout(ctx).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+                val p = dp(5); setPadding(0, p, 0, p)
+                isClickable = true; isFocusable = true
+                setOnClickListener {
+                    runCatching {
+                        startActivity(android.content.Intent(
+                            android.content.Intent.ACTION_VIEW,
+                            android.net.Uri.parse("https://rss.diegonmarcos.com/${sig.topic}")))
+                    }
+                }
+            }
+            val dot = View(ctx).apply {
+                val sz = dp(8)
+                layoutParams = LinearLayout.LayoutParams(sz, sz).apply { rightMargin = dp(8) }
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    shape = android.graphics.drawable.GradientDrawable.OVAL
+                    setColor(0x66FFFFFF)
+                }
+            }
+            row.addView(dot)
+            row.addView(TextView(ctx).apply {
+                text = sig.label
+                setTextColor(0xDDFFFFFF.toInt())
+                textSize = 13f
+                layoutParams = LinearLayout.LayoutParams(
+                    0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            })
+            // Starts as "checking", NOT as OK — an un-fetched row must never
+            // spend even its first frame looking healthy.
+            val state = TextView(ctx).apply {
+                text = "checking…"
+                setTextColor(0x99FFFFFF.toInt())
+                textSize = 12f
+                typeface = Typeface.DEFAULT_BOLD
+            }
+            row.addView(state)
+            body.addView(row)
+
+            runCatching {
+                executor.execute {
+                    val verdict = pollSignal(sig)
+                    state.post {
+                        state.text = verdict.text
+                        state.setTextColor(verdict.color)
+                        (dot.background as? android.graphics.drawable.GradientDrawable)
+                            ?.setColor(verdict.color)
+                    }
+                }
+            }.onFailure {
+                // Could not even schedule the probe — say so rather than leaving
+                // the row reading "checking…" forever, which looks like progress.
+                state.text = "unavailable"
+                state.setTextColor(SIGNAL_UNKNOWN)
+            }
+        }
+        executor.shutdown()
+    }
+
+    private data class SignalVerdict(val text: String, val color: Int)
+
+    /** Grey = we do not know. Deliberately NOT red: red is a claim about the
+     *  fleet, and a failed fetch is a claim about this phone's network. */
+    private val SIGNAL_UNKNOWN = 0xFF9E9E9E.toInt()
+    private val SIGNAL_OK      = 0xFF34C759.toInt()
+    private val SIGNAL_WARN    = 0xFFFFB020.toInt()
+
+    /** ntfy's poll API: newest message wins. Any non-200, any exception, and any
+     *  unparseable body is UNAVAILABLE — the honest answer is that we did not
+     *  measure, not that everything is fine. */
+    private fun pollSignal(sig: Sections.SignalRef): SignalVerdict {
+        val newest: Long = try {
+            val url = java.net.URL(
+                "https://rss.diegonmarcos.com/${sig.topic}/json?poll=1&since=7d")
+            val conn = (url.openConnection() as java.net.HttpURLConnection).apply {
+                connectTimeout = 4000; readTimeout = 4000; requestMethod = "GET"
+            }
+            try {
+                if (conn.responseCode != 200)
+                    return SignalVerdict("unavailable · HTTP ${conn.responseCode}", SIGNAL_UNKNOWN)
+                var maxTime = 0L
+                conn.inputStream.bufferedReader().forEachLine { line ->
+                    if (line.isBlank()) return@forEachLine
+                    runCatching {
+                        val o = org.json.JSONObject(line)
+                        if (o.optString("event") == "message")
+                            maxTime = maxOf(maxTime, o.optLong("time", 0L))
+                    }
+                }
+                maxTime
+            } finally { conn.disconnect() }
+        } catch (_: Throwable) {
+            // Includes the mesh being down, which is itself unknown-not-healthy.
+            return SignalVerdict("unavailable · no answer", SIGNAL_UNKNOWN)
+        }
+
+        if (newest <= 0L) return SignalVerdict("silent 7d · publisher?", SIGNAL_WARN)
+        val ageMinutes = ((System.currentTimeMillis() / 1000L) - newest) / 60L
+        val ageText = when {
+            ageMinutes < 60   -> "${ageMinutes}m ago"
+            ageMinutes < 1440 -> "${ageMinutes / 60}h ago"
+            else              -> "${ageMinutes / 1440}d ago"
+        }
+        // No declared cadence means no basis for calling it healthy — report the
+        // fact in neutral grey rather than inventing a green verdict.
+        if (sig.expectWithinMinutes <= 0) return SignalVerdict(ageText, SIGNAL_UNKNOWN)
+        return if (ageMinutes <= sig.expectWithinMinutes) SignalVerdict(ageText, SIGNAL_OK)
+               else SignalVerdict("stale · $ageText", SIGNAL_WARN)
     }
 
     /** kind=cloud_dashboard — live container map. Decodes the baked service
