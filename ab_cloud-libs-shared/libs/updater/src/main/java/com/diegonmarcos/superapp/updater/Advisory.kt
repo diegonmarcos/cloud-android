@@ -1,5 +1,6 @@
 package com.diegonmarcos.superapp.updater
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
 import org.json.JSONArray
@@ -88,7 +89,110 @@ object Advisory {
          *  different, and last-word-per-id resolves them without ordering
          *  rules. */
         val retract: Boolean = false,
+        /** When the message was POSTED, from the ntfy envelope's `time`, in
+         *  millis. Zero for a locally-derived advisory, which has no publish
+         *  time because it is recomputed from live conditions on every read.
+         *  Drives the staleness bound in [tooOld]. */
+        val publishedAtMs: Long = 0L,
     )
+
+    /**
+     * A message somebody typed, turned into a banner.
+     *
+     * ## Plain text is the primary case
+     * This started as a strict JSON contract, and that was the wrong product.
+     * It is a MESSAGE BOARD: the operator posts a sentence and every phone
+     * shows it. Requiring a schema meant an ordinary `curl -d 'Maintenance
+     * tonight 22:00'` produced nothing at all — silently, because a message
+     * that did not parse was "ignored rather than half-rendered" — and what
+     * did appear read like an error the app emitted rather than a note a human
+     * wrote.
+     *
+     * So: any non-empty message becomes a banner. No required fields, no
+     * wrapper, no ceremony. ntfy's own optional `title` is used when present
+     * because ntfy already has that concept and posting with `-H "Title: …"`
+     * is natural; otherwise the first line becomes the heading and the rest
+     * the body, which is how people write notes anyway.
+     *
+     * ## The structured form still works, because it costs one branch
+     * A message that happens to be the old `fleet-advisory` JSON is rendered
+     * as before, including `retract` and `severity`. That is worth keeping for
+     * the automated recovery advisories — but it is now the special case, not
+     * the price of entry.
+     *
+     * [envelope] is ntfy's own JSON line, not the payload: the message id and
+     * the publish time live there, and both matter (the id is what a dismissal
+     * is keyed on, the time is what expires it).
+     */
+    fun fromNtfy(envelope: JSONObject): Item? {
+        val text = envelope.optString("message").trim()
+        if (text.isEmpty()) return null
+        val postedMs = envelope.optLong("time", 0L) * 1000L
+        // Structured first — it is strictly more specific, so if it parses it
+        // is what the publisher meant.
+        structured(text, postedMs)?.let { return it }
+        val ntfyTitle = envelope.optString("title").trim()
+        val head = if (ntfyTitle.isNotEmpty()) ntfyTitle else text.lineSequence().first().trim()
+        val body = if (ntfyTitle.isNotEmpty()) text
+                   else text.substringAfter('\n', "").trim()
+        return Item(
+            // The ntfy message id, so a dismissal is per POST. Editing the
+            // wording and re-posting is a new message and shows again, which
+            // is what a notice board should do — otherwise a corrected notice
+            // would stay hidden behind the dismissal of the wrong one.
+            id = envelope.optString("id").takeIf { it.isNotBlank() } ?: text.hashCode().toString(),
+            appId = null,
+            title = head,
+            detail = body,
+            // A human note is not an emergency. Severity is what tints the
+            // banner and gates the notification; a posted message should look
+            // like a message, not like the app is broken.
+            severity = Severity.INFO,
+            source = "feed",
+            link = firstUrl(text),
+            publishedAtMs = postedMs,
+        )
+    }
+
+    /** The old strict contract, when a message happens to be one. */
+    private fun structured(body: String, postedMs: Long): Item? = runCatching {
+        val o = JSONObject(body)
+        if (o.optString("kind") != "fleet-advisory") return null
+        val id = o.optString("id").takeIf { it.isNotBlank() } ?: return null
+        val retract = o.optBoolean("retract", false)
+        Item(
+            id = id,
+            appId = o.optString("app").takeIf { it.isNotBlank() },
+            // A retraction only has to identify what it withdraws, so it is
+            // not held to the title requirement a raise is — demanding one
+            // would mean an advisory could be published but never recalled.
+            title = o.optString("title").takeIf { it.isNotBlank() }
+                ?: (if (retract) "" else return null),
+            detail = o.optString("detail"),
+            severity = runCatching { Severity.valueOf(o.optString("severity")) }
+                .getOrDefault(Severity.WARN),
+            source = "feed",
+            link = o.optString("link").takeIf { it.isNotBlank() },
+            retract = retract,
+            publishedAtMs = postedMs,
+        )
+    }.getOrNull()
+
+    /**
+     * Any http(s) URL in the posted text, `.apk` winning over a plain one.
+     *
+     * Costs the poster nothing — a message with no URL simply shows no button
+     * — and turns "the fix is at <link>" from something the user has to
+     * retype into something they can tap. An `.apk` link is routed through the
+     * recovery screen by the UI rather than the browser, so the verified
+     * download path is not skipped just because the URL arrived in prose.
+     */
+    private fun firstUrl(text: String): String? {
+        val found = Regex("""https?://\S+""").findAll(text)
+            .map { it.value.trimEnd('.', ',', ')', '"', '\'', '>') }
+            .toList()
+        return found.firstOrNull { it.endsWith(".apk", ignoreCase = true) } ?: found.firstOrNull()
+    }
 
     // ── Trigger 1: repeated install failure for the same app ────────────────
 
@@ -196,7 +300,8 @@ object Advisory {
             json.put(JSONObject()
                 .put("id", i.id).put("appId", i.appId ?: JSONObject.NULL)
                 .put("title", i.title).put("detail", i.detail)
-                .put("severity", i.severity.name).put("link", i.link ?: JSONObject.NULL))
+                .put("severity", i.severity.name).put("link", i.link ?: JSONObject.NULL)
+                .put("publishedAtMs", i.publishedAtMs))
         }
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .putString("feed_items", json.toString())
@@ -207,54 +312,34 @@ object Advisory {
     }
 
     /**
-     * What an advisory published to the ntfy topic must look like for a device
-     * to render it usefully. Documented in code because the publisher is
-     * SERVER-SIDE — no app writes this feed, and one that did could not help a
-     * device too stale to run it.
+     * HOW TO POST A MESSAGE TO EVERY PHONE.
      *
-     * ntfy message body, JSON:
+     *     curl -d 'Server maintenance tonight 22:00' http://10.0.0.6:8090/fleet_advisory
      *
-     *     {"kind":"fleet-advisory",
-     *      "id":"2026-09-05-superapp-stuck",   // dedupe key, stable per advisory
-     *      "app":"cloud-superapp",             // fleet id, or omit if not app-specific
-     *      "title":"SuperApp updates are stuck",
-     *      "detail":"Your build is 3 days behind. Tap to install directly.",
-     *      "severity":"STUCK",                 // INFO | WARN | STUCK
-     *      "link":"https://…/CloudSuperApp.apk"}  // optional direct APK URL
+     * That is the whole thing. The text appears as the banner on every home
+     * screen. Optionally give it a heading the way ntfy already does:
      *
-     * To WITHDRAW it, publish the same id again with `"retract":true` (nothing
-     * else is required). Devices poll with `since=all`, so an advisory does not
-     * age out on its own — the last message for an id wins, and a retraction is
-     * a message like any other.
+     *     curl -H "Title: Maintenance" -d 'Back by 23:00.' http://10.0.0.6:8090/fleet_advisory
      *
-     * A message that is not this shape is ignored rather than half-rendered.
+     * Include a URL anywhere in the text and it becomes a button; an `.apk`
+     * URL routes through the verified recovery installer rather than the
+     * browser. No URL, no button.
+     *
+     * NEWEST POST WINS — this is a notice board, so it shows the current
+     * notice, not a history. To take a message down, post the next one; to
+     * clear the board entirely, post a single space, which is empty and shows
+     * nothing.
+     *
+     * A message stops showing on its own once it is older than the staleness
+     * bound (see [tooOld]), so a forgotten notice expires rather than living
+     * for ntfy's full 30-day replay.
+     *
+     * The strict `{"kind":"fleet-advisory", …}` JSON form is still understood
+     * and still supports `severity` and `retract` — the automated recovery
+     * advisories use it. It is the special case; plain text is the norm.
      */
     const val feedContract: String =
-        "kind=fleet-advisory; id,app,title,detail,severity,link,retract"
-
-    /** Parse one feed message body into an [Item], or null when it is not an
-     *  advisory. Kept here beside the contract it implements. */
-    fun parseFeedMessage(body: String): Item? = runCatching {
-        val o = JSONObject(body)
-        if (o.optString("kind") != "fleet-advisory") return null
-        val id = o.optString("id").takeIf { it.isNotBlank() } ?: return null
-        val retract = o.optBoolean("retract", false)
-        Item(
-            id = id,
-            appId = o.optString("app").takeIf { it.isNotBlank() },
-            // A retraction only has to identify what it withdraws, so it is
-            // not held to the title requirement a raise is — demanding one
-            // would mean an advisory could be published but never recalled.
-            title = o.optString("title").takeIf { it.isNotBlank() }
-                ?: (if (retract) "" else return null),
-            detail = o.optString("detail"),
-            severity = runCatching { Severity.valueOf(o.optString("severity")) }
-                .getOrDefault(Severity.WARN),
-            source = "feed",
-            link = o.optString("link").takeIf { it.isNotBlank() },
-            retract = retract,
-        )
-    }.getOrNull()
+        "plain text (newest wins); optional strict kind=fleet-advisory JSON"
 
     // ── Reading it back ─────────────────────────────────────────────────────
 
@@ -280,6 +365,7 @@ object Advisory {
                         .getOrDefault(Severity.WARN),
                     source = "feed",
                     link = o.optString("link").takeIf { it.isNotBlank() && it != "null" },
+                    publishedAtMs = o.optLong("publishedAtMs", 0L),
                 )
             }
         }
@@ -329,9 +415,43 @@ object Advisory {
             )
         }
 
-        return out.filter { it.id !in dismissed }
+        return out.filter { !snoozed(p, it.id) && !tooOld(it) }
             .sortedByDescending { it.severity.ordinal }
     }
+
+    /**
+     * THE SECOND, INDEPENDENT BOUND — a banner must not be able to outlive its
+     * usefulness even if every other mechanism fails.
+     *
+     * Polling with `since=all` means ntfy replays its whole 30-day cache on
+     * every poll, so an advisory persists until someone explicitly retracts it.
+     * That put the entire weight of "this eventually goes away" on two things
+     * that can both fail: a publisher remembering to post a tombstone, and a
+     * dismiss button that (see [dismiss]) did not work. When both failed the
+     * result was a permanent banner, which is what actually happened.
+     *
+     * Server-side retention and a client-side staleness bound are not
+     * alternatives — the honest design is both. An advisory about a build from
+     * hours ago has no business on screen a fortnight later whatever the
+     * server still holds, and a device that has been off for a month should
+     * not wake up to a wall of history.
+     *
+     * Locally-derived advisories are exempt: they carry no publish time
+     * because they are recomputed from live conditions every time [current] is
+     * called, so they cannot be stale by construction — they vanish the moment
+     * the condition does.
+     */
+    private fun tooOld(item: Item): Boolean {
+        if (item.publishedAtMs <= 0L) return false
+        val age = System.currentTimeMillis() - item.publishedAtMs
+        return age > MAX_FEED_AGE_MS
+    }
+
+    /** Two weeks. Comfortably longer than any real incident takes to resolve,
+     *  comfortably shorter than ntfy's 30-day replay window — so the client
+     *  bound bites before the server one does, which is the point of having
+     *  it. */
+    private const val MAX_FEED_AGE_MS = 14L * 24L * 60L * 60L * 1000L
 
     /** Whether [item] may be raised as a NOTIFICATION now, marking it raised if
      *  so. The banner is not rate limited — it is passive and costs nothing to
@@ -348,16 +468,44 @@ object Advisory {
     // ── Session dismissal ───────────────────────────────────────────────────
 
     /**
-     * Dismissed FOR THIS PROCESS ONLY, deliberately — an in-memory set, not a
-     * preference. A permanently dismissible warning about a device that cannot
-     * update itself is a warning that gets dismissed once and never seen again,
-     * which is indistinguishable from never having shown it. Getting the banner
-     * out of the way for now is reasonable; making the problem invisible
-     * forever is not, and the problem is still there on the next launch.
+     * "Later" means later. It used to mean nothing at all.
+     *
+     * This was an in-memory set, and the comment defending that choice argued a
+     * permanently dismissible warning gets dismissed once and never seen again.
+     * The reasoning was sound and the implementation did not implement it: THIS
+     * APP IS THE LAUNCHER. Android restarts the launcher process routinely —
+     * on memory pressure, on config change, many times an hour — and every
+     * restart emptied the set. So the banner came back within minutes, every
+     * time, forever, and the button did nothing a user could perceive.
+     *
+     * That is worse than having no button. A control that visibly does nothing
+     * teaches the user that the whole surface is broken and not worth reading,
+     * which is precisely the attention this advisory needs to keep for the one
+     * time it matters.
+     *
+     * So it is persisted, and it is a SNOOZE rather than a permanent mute: the
+     * original concern was right, and a device that still cannot update itself
+     * a week later does need to say so again. [SNOOZE_MS] is the honest middle,
+     * and the UI names the duration rather than saying a bare "Later".
+     *
+     * `commit()`, not `apply()`: the tap is very often followed by the user
+     * leaving, and `apply()` is free to lose the write if the process dies
+     * first — which would reproduce the exact bug this replaces.
      */
-    private val dismissed = java.util.Collections.synchronizedSet(mutableSetOf<String>())
+    private const val SNOOZE_MS = 7L * 24L * 60L * 60L * 1000L
 
-    fun dismissForSession(id: String) { dismissed += id; notifyListener() }
+    @SuppressLint("ApplySharedPref")
+    fun dismiss(ctx: Context, id: String) {
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putLong("snooze_$id", System.currentTimeMillis())
+            .commit()
+        Log.i(TAG, "$id snoozed for ${SNOOZE_MS / 3_600_000L}h")
+        notifyListener()
+    }
+
+    /** True while [id] is inside its snooze window. */
+    private fun snoozed(p: android.content.SharedPreferences, id: String): Boolean =
+        System.currentTimeMillis() - p.getLong("snooze_$id", 0L) < SNOOZE_MS
 
     // ── Change notification for the banner ──────────────────────────────────
 

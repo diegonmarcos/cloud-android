@@ -39,16 +39,12 @@ import java.net.URL
  * surfaces as `CLEARTEXT communication not permitted`, which looks nothing
  * like an HTTP error and would have been a second silent death.
  *
- * ## Publishing
- *     curl -d '{"kind":"fleet-advisory","id":"2026-09-05-superapp-stuck",
- *               "app":"cloud-superapp","severity":"STUCK",
- *               "title":"Update stuck",
- *               "detail":"Open the app and tap Fix it - install directly.",
- *               "link":"https://github.com/…/Cloud-SuperApp.apk"}' \
- *          http://10.0.0.6:8090/fleet_advisory
+ * ## Publishing — it is a MESSAGE BOARD
+ *     curl -d 'Server maintenance tonight 22:00' http://10.0.0.6:8090/fleet_advisory
  *
- * Withdraw with the same id and `"retract":true`.
- * Schema: [Advisory.feedContract], parsed by [Advisory.parseFeedMessage].
+ * That text becomes the banner on every home screen. Newest post wins; to take
+ * a notice down, post the next one. See [Advisory.feedContract] and
+ * [Advisory.fromNtfy] for headings, links and the optional strict JSON form.
  */
 object AdvisoryFeed {
 
@@ -124,19 +120,27 @@ object AdvisoryFeed {
                        "stored advisories left intact")
             return
         }
-        // Last word per id wins across every topic that answered. With
-        // since=all there is no server-side expiry doing this implicitly any
-        // more, so a retraction is an explicit message and this is the only
-        // thing that resolves it.
-        val merged = answers.flatMap { it.second?.items ?: emptyList() }
-            .associateBy { it.id }
-            .values
-            .filter { !it.retract }
+        // NEWEST POST WINS. A notice board shows the current notice, not a
+        // history — so this is one message, not a merged set.
+        //
+        // It used to merge every message by id, which meant the board
+        // accumulated: with `since=all` replaying ntfy's 30-day cache, an old
+        // post kept reappearing forever unless someone remembered to retract
+        // it by hand. Taking only the latest makes "post the next message" the
+        // way to replace one, which is how a notice board is expected to work
+        // and needs no extra concept.
+        //
+        // A retraction is then just the newest message being one, and an empty
+        // board is the newest message being blank.
+        val latest = answers.flatMap { it.second?.items ?: emptyList() }
+            .maxByOrNull { it.publishedAtMs }
+        val live = listOfNotNull(latest?.takeIf { !it.retract })
         Log.i(TAG, "advisory poll: " +
                    answers.joinToString(" ") { (t, f) ->
                        "$t=${f?.items?.size?.toString() ?: "unreachable"}"
-                   } + " -> ${merged.size} live")
-        Advisory.ingestExternal(ctx, merged)
+                   } + " -> " + (latest?.let { "'${it.title.take(40)}'" } ?: "nothing") +
+                   (if (latest?.retract == true) " (retracted)" else ""))
+        Advisory.ingestExternal(ctx, live)
     }
 
     /**
@@ -198,15 +202,21 @@ object AdvisoryFeed {
     }.getOrNull()
 
     /**
-     * ntfy's newline-delimited envelopes, each carrying our document as the
-     * `message` STRING. The two-stage parse is unwrapping the transport, not
-     * parsing twice — reading the envelope as the advisory would find `kind`
-     * absent and discard every message.
+     * ntfy's newline-delimited envelopes.
+     *
+     * The ENVELOPE is handed to [Advisory.fromNtfy], not just the message
+     * string: the post's id and its publish time live on the envelope, and
+     * both are load bearing — the id is what a dismissal is keyed on, and the
+     * time is what decides which post is newest and when it goes stale.
+     *
+     * This used to extract `message` and require it to parse as a JSON
+     * contract, so an ordinary `curl -d 'text'` produced zero items and the
+     * board silently stayed blank.
      */
     private fun parse(body: String): List<Advisory.Item> =
         body.lineSequence()
             .mapNotNull { line -> runCatching { JSONObject(line) }.getOrNull() }
             .filter { it.optString("event") == "message" }
-            .mapNotNull { Advisory.parseFeedMessage(it.optString("message")) }
+            .mapNotNull { Advisory.fromNtfy(it) }
             .toList()
 }

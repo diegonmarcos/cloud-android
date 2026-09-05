@@ -129,7 +129,15 @@ object RecoveryBanner {
             orientation = LinearLayout.HORIZONTAL
             setPadding(0, dp(8), 0, 0)
         }
-        row.addView(button(activity, "Fix it — install directly", accent) {
+        // A posted message is a message, not an alarm: it gets a button only
+        // when there is somewhere to go. The recovery advisories still say
+        // "Fix it" because for them there genuinely is something to fix.
+        val actionLabel = when {
+            item.source == "feed" && item.severity == Advisory.Severity.INFO ->
+                if (item.link != null) "Open link" else null
+            else -> "Fix it — install directly"
+        }
+        if (actionLabel != null) row.addView(button(activity, actionLabel, accent) {
             // A FEED advisory may name an APK URL directly, and that link is
             // the true last resort: it does not go through this app's sources,
             // this app's fleet manifest, or this app's idea of which tag is
@@ -137,18 +145,28 @@ object RecoveryBanner {
             // it to the browser means the download and the install are both
             // done by software that is not the broken one.
             val link = item.link
-            if (link != null) runCatching {
+            // An .apk link goes through the recovery screen, NOT the browser:
+            // that path verifies the download before installing it, and a URL
+            // that arrived in prose is exactly the case where skipping
+            // verification would be easiest and worst. Any other URL is an
+            // ordinary link and the browser is the right place for it.
+            if (link != null && !link.endsWith(".apk", ignoreCase = true)) runCatching {
                 activity.startActivity(
                     android.content.Intent(android.content.Intent.ACTION_VIEW,
                         android.net.Uri.parse(link)))
             }.onFailure { activity.startActivity(RecoveryActivity.intent(activity, item.appId)) }
             else activity.startActivity(RecoveryActivity.intent(activity, item.appId))
         })
-        row.addView(button(activity, "Later", 0xFF3A3A45.toInt()) {
-            // SESSION ONLY. See Advisory.dismissForSession: a device that cannot
-            // update itself does not stop being that device because the warning
-            // was inconvenient once, so it comes back on the next launch.
-            Advisory.dismissForSession(item.id)
+        // "DISMISS" MEANS DISMISSED. This said "Later" and was backed by an
+        // in-memory set — and this app is the LAUNCHER, whose process Android
+        // restarts many times an hour, so the banner returned within minutes,
+        // every time. The user read that as a permanent, unremovable message,
+        // and they were right to: a control that visibly does nothing is worse
+        // than no control, because it teaches them the surface is a lie.
+        // Advisory.dismiss now persists with commit(), and the label names the
+        // duration instead of vaguely promising "later".
+        row.addView(button(activity, "Dismiss", 0xFF3A3A45.toInt()) {
+            Advisory.dismiss(activity, item.id)
         })
         card.addView(row)
         return card

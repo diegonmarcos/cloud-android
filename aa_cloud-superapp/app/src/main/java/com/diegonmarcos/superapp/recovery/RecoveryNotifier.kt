@@ -68,7 +68,15 @@ object RecoveryNotifier {
     fun post(ctx: Context, items: List<Advisory.Item>) {
         if (items.isEmpty()) return
         ensureChannel(ctx)
-        items.filter { Advisory.shouldNotify(ctx, it) }.forEach { item ->
+        // A POSTED NOTE IS NOT AN EMERGENCY. This channel is IMPORTANCE_HIGH
+        // because it was built for "this device can no longer update itself",
+        // and firing it for "maintenance tonight 22:00" would spend that
+        // urgency on routine notices until the user silences the channel — at
+        // which point the one message that had to get through cannot. INFO
+        // items are the message board and live on the banner only; WARN and
+        // STUCK are the machine saying something is wrong, and still notify.
+        items.filter { it.severity != Advisory.Severity.INFO }
+            .filter { Advisory.shouldNotify(ctx, it) }.forEach { item ->
             val pi = PendingIntent.getActivity(
                 ctx, idOf(item), RecoveryActivity.intent(ctx, item.appId),
                 PendingIntent.FLAG_UPDATE_CURRENT or
