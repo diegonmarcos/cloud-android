@@ -183,7 +183,7 @@ Eleven, from two sources that each know something the other does not:
 |---|---|---|
 | `config.json::vms` | provider, public IP, real name | 5 VMs |
 | `config.json::native.wireguard.clients` | the v6, and the runners ssh has never heard of | gha-runner, health-runner, vault-backup |
-| `~/.ssh/config` | which row is **this** machine, and the names you actually type | surface-nixos, phone, gcp-t4 |
+| `~/.ssh/config` | which row is **this** machine, and the names you actually type | surface-nixos, phone, oci-apps |
 
 The mesh is **four** networks, and a machine is on as many of them as it has
 addresses for — wg0 `10.0.0.0/24` + `fd0c:1d00::/64`, the public tunnel
