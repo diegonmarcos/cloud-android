@@ -203,7 +203,12 @@ public class JmapSync {
                 // JMAP connects for 65 min after 22:05). A phone must retry within
                 // minutes; a truly-down server just gets polled every 5 min, cheap.
                 long BACKOFF_CAP_MS = 300_000L; // 5 min
-                long wait = (consecutiveFailures <= 0 ? Math.min(base, BACKOFF_CAP_MS)
+                // The cap belongs to the FAILURE lane only. Applying it to the
+                // healthy lane too clamped a configured 15-minute poll down to
+                // 5, running the full double sweep 3x more often than asked --
+                // the opposite of what a backoff is for. A connected account
+                // waits exactly the interval the user chose.
+                long wait = (consecutiveFailures <= 0 ? base
                         : Math.min(BACKOFF_CAP_MS, 60_000L << Math.min(consecutiveFailures - 1, 6)));
                 state.acquire(wait, false);
             } catch (InterruptedException ex) {
