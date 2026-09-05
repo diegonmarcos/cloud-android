@@ -24,6 +24,28 @@
       }
     },
     {
+      "id": "watchdog",
+      "label": "c3-watchdog",
+      "package": "com.diegonmarcos.watchdog",
+      "alt_id": null,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "c3-watchdog",
+      "tag": "latest",
+      "asset": "C3-Watchdog.apk",
+      "release_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/C3-Watchdog.apk",
+      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ac_c3-watchdog",
+      "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/c3-watchdog",
+      "blocked": false,
+      "kind": "app",
+      "assets": {
+        "arm64-v8a": "C3-Watchdog.apk",
+        "armeabi-v7a": "C3-Watchdog.apk",
+        "x86_64": "C3-Watchdog-x86_64.apk",
+        "x86": "C3-Watchdog-x86_64.apk"
+      }
+    },
+    {
       "id": "browser",
       "label": "cloud-browser",
       "package": "com.diegonmarcos.cloudbrowser",
@@ -392,28 +414,6 @@
         "armeabi-v7a": "Cloud-Wallet.apk",
         "x86_64": "Cloud-Wallet-x86_64.apk",
         "x86": "Cloud-Wallet-x86_64.apk"
-      }
-    },
-    {
-      "id": "watchdog",
-      "label": "cloud-watchdog",
-      "package": "com.diegonmarcos.watchdog",
-      "alt_id": null,
-      "registry": "ghcr.io",
-      "namespace": "diegonmarcos",
-      "image": "cloud-watchdog",
-      "tag": "latest",
-      "asset": "Cloud-Watchdog.apk",
-      "release_url": "https://github.com/diegonmarcos/cloud-u-android/releases/latest/download/Cloud-Watchdog.apk",
-      "repo_url": "https://github.com/diegonmarcos/cloud-u-android/tree/main/ac_cloud-watchdog",
-      "ghcr_page": "https://github.com/diegonmarcos/cloud-u-android/pkgs/container/cloud-watchdog",
-      "blocked": false,
-      "kind": "app",
-      "assets": {
-        "arm64-v8a": "Cloud-Watchdog.apk",
-        "armeabi-v7a": "Cloud-Watchdog.apk",
-        "x86_64": "Cloud-Watchdog-x86_64.apk",
-        "x86": "Cloud-Watchdog-x86_64.apk"
       }
     },
     {

@@ -81,7 +81,11 @@ regen_constellation() {
     # cloud-infra-desktop-termux-boot - named for the host it targets - was invisible to
     # the store no matter what its build.json said. This predicate admits exactly
     # the same repos the glob did, plus any correctly-declared one.
-    # id = dir basename sans an ac_cloud- prefix if it has one.
+    # id = dir basename sans an ac_cloud- or ac_c3- prefix if it has one.
+    # The c3- rebrand renames apps out of the ac_cloud- namespace; without the
+    # second strip an app's fleet id changes shape the moment it is renamed
+    # (watchdog -> ac_c3-watchdog), which is a gratuitous id change for what is
+    # meant to be a directory rename.
     local apps="[]" bj id dir reldir
     # One level deep AND one nested level: ab_cloud-libs-shared holds the two
     # build harnesses (lib-apks, keyboard-engines) as subdirectories since the
@@ -94,7 +98,7 @@ regen_constellation() {
         jq -e '(.lib_apks != null) or (.forks != null)
                or (.android.application_id != null and .release.ghcr != null)' \
            "$bj" >/dev/null 2>&1 || continue
-        dir="$(basename "$(dirname "$bj")")"; id="${dir#ac_cloud-}"
+        dir="$(basename "$(dirname "$bj")")"; id="${dir#ac_cloud-}"; id="${id#ac_c3-}"
         # repo_url must survive nesting. The glob reaches two levels, so a
         # dir can be a_solutions/ae-tool_termux-boot - basename alone built
         # .../tree/main/ae-tool_termux-boot, a 404. Identical to $dir for
