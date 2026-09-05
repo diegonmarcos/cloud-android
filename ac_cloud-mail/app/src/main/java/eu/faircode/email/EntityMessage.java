@@ -225,6 +225,13 @@ public class EntityMessage implements Serializable {
     public String flags; // system flags
     public String[] keywords; // user flags
     public String[] labels; // Gmail
+    // Folder ids matching labels[], 1:1 and in the same order. A JMAP Email is
+    // ONE row homed in its primary mailbox, so this is the ONLY record that it
+    // is also a member of those other mailboxes -- DaoMessage.in_folder matches
+    // on it so a USER category mailbox lists its mail instead of rendering
+    // empty. Ids (not names) because the String[] converter Uri.encodes each
+    // token, and digits survive that unchanged.
+    public String[] label_ids;
     @NonNull
     public Boolean fts = false;
     @NonNull

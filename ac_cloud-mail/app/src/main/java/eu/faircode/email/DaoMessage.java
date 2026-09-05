@@ -43,6 +43,22 @@ public interface DaoMessage {
     String is_outbox = "folder.type = '" + EntityFolder.OUTBOX + "'";
     String is_sent = "folder.type = '" + EntityFolder.SENT + "'";
 
+    // A JMAP Email is ONE object that is a MEMBER of several mailboxes, so it is
+    // stored as ONE row homed in its primary folder, with the other memberships
+    // in labels[] / label_ids[] (see JmapSync). A folder view that only matches
+    // the home folder therefore renders every USER category mailbox EMPTY even
+    // though the membership is on the row -- so match home OR membership.
+    //
+    // label_ids holds folder IDS, not names: the String[] converter Uri.encodes
+    // every token, which turns a name like "24 House" into "24%20House" -- and
+    // those %XX escapes are LIKE wildcards. A decimal id contains no % or _, so
+    // padding both sides with a space makes this an exact whole-token match with
+    // no ESCAPE clause and no dependency on instr(). IFNULL keeps a row that
+    // predates the column behaving exactly as before, so this predicate only
+    // ever WIDENS the old one -- it can never hide a message.
+    String in_folder = "(message.folder = :folder" +
+            " OR (' ' || IFNULL(message.label_ids, '') || ' ') LIKE ('% ' || :folder || ' %'))";
+
     @Transaction
     @SuppressWarnings(RoomWarnings.CURSOR_MISMATCH)
     @Query("SELECT message.*" +
@@ -153,7 +169,7 @@ public interface DaoMessage {
             ", MAX(message.importance) AS ui_importance" +
             ", MAX(CASE WHEN" +
             "   (:found AND folder.type <> '" + EntityFolder.ARCHIVE + "')" +
-            "   OR (NOT :found AND folder.id = :folder)" +
+            "   OR (NOT :found AND " + in_folder + ")" +
             "   THEN message.received ELSE 0 END) AS dummy" +
             " FROM message" +
             " JOIN account_view AS account ON account.id = message.account" +
@@ -161,12 +177,12 @@ public interface DaoMessage {
             " JOIN folder_view AS folder ON folder.id = message.folder" +
             " JOIN folder_view AS f ON f.id = :folder" +
             " WHERE (message.account = f.account OR message.account = identity.account OR " + is_outbox + ")" +
-            " AND (:threading OR folder.id = :folder)" +
+            " AND (:threading OR " + in_folder + ")" +
             " AND (NOT message.ui_hide OR :debug)" +
             " AND (NOT :found OR message.ui_found = :found)" +
             " GROUP BY CASE WHEN message.thread IN (:expanded) THEN COALESCE(message.hash, message.msgid, message.id) WHEN message.thread IS NULL OR NOT :threading THEN message.id ELSE message.thread END" +
             " HAVING (SUM((:found AND message.ui_found)" +
-            " OR (NOT :found AND message.folder = :folder)) > 0)" +
+            " OR (NOT :found AND " + in_folder + ")) > 0)" +
             " AND SUM(NOT message.ui_hide OR :debug) > 0" +
             " AND (NOT (:filter_seen AND NOT :filter_unflagged) OR SUM(1 - message.ui_seen) > 0 OR " + is_outbox + ")" +
             " AND (NOT (:filter_unflagged AND NOT :filter_seen) OR COUNT(message.id) - SUM(1 - message.ui_flagged) > 0 OR " + is_outbox + ")" +
@@ -886,6 +902,9 @@ public interface DaoMessage {
     @Query("UPDATE message SET labels = :labels WHERE id = :id AND NOT (labels IS :labels)")
     int setMessageLabels(long id, String labels);
 
+    @Query("UPDATE message SET label_ids = :label_ids WHERE id = :id AND NOT (label_ids IS :label_ids)")
+    int setMessageLabelIds(long id, String label_ids);
+
     @Query("UPDATE message SET ui_seen = :ui_seen WHERE id = :id AND NOT (ui_seen IS :ui_seen)")
     int setMessageUiSeen(long id, boolean ui_seen);
 
@@ -1276,7 +1295,7 @@ public interface DaoMessage {
             ", MAX(message.importance) AS ui_importance" +
             ", MAX(CASE WHEN" +
             "   (:found AND folder.type <> '" + EntityFolder.ARCHIVE + "')" +
-            "   OR (NOT :found AND folder.id = :folder)" +
+            "   OR (NOT :found AND " + in_folder + ")" +
             "   THEN message.received ELSE 0 END) AS dummy" +
             " FROM message" +
             " JOIN account_view AS account ON account.id = message.account" +
@@ -1284,12 +1303,12 @@ public interface DaoMessage {
             " JOIN folder_view AS folder ON folder.id = message.folder" +
             " JOIN folder_view AS f ON f.id = :folder" +
             " WHERE (message.account = f.account OR message.account = identity.account OR " + is_outbox + ")" +
-            " AND (:threading OR folder.id = :folder)" +
+            " AND (:threading OR " + in_folder + ")" +
             " AND (NOT message.ui_hide OR :debug)" +
             " AND (NOT :found OR message.ui_found = :found)" +
             " GROUP BY CASE WHEN message.thread IN (:expanded) THEN COALESCE(message.hash, message.msgid, message.id) WHEN message.thread IS NULL OR NOT :threading THEN message.id ELSE message.thread END" +
             " HAVING (SUM((:found AND message.ui_found)" +
-            " OR (NOT :found AND message.folder = :folder)) > 0)" +
+            " OR (NOT :found AND " + in_folder + ")) > 0)" +
             " AND SUM(NOT message.ui_hide OR :debug) > 0" +
             " AND (NOT (:filter_seen AND NOT :filter_unflagged) OR SUM(1 - message.ui_seen) > 0 OR " + is_outbox + ")" +
             " AND (NOT (:filter_unflagged AND NOT :filter_seen) OR COUNT(message.id) - SUM(1 - message.ui_flagged) > 0 OR " + is_outbox + ")" +

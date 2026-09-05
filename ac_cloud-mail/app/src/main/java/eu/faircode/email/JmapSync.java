@@ -633,7 +633,7 @@ public class JmapSync {
             EntityFolder primary = (primaryId == null ? null : folderById.get(primaryId));
             if (primary == null)
                 primary = folder; // fallback: this mailbox is the only home
-            String[] labels = labelsFor(email, primary.name, mailboxToFolder, folderById);
+            Labels labels = labelsFor(email, primary.name, mailboxToFolder, folderById);
 
             EntityMessage message = buildMessage(account, primary, email, labels);
             try {
@@ -711,17 +711,23 @@ public class JmapSync {
 
         // Labels = the email's OTHER mailbox memberships (Gmail labels[] reuse).
         EntityFolder home = folderById.get(message.folder);
-        String[] labels = labelsFor(email, (home == null ? null : home.name),
+        Labels labels = labelsFor(email, (home == null ? null : home.name),
                 mailboxToFolder, folderById);
-        if (!Helper.equal(message.labels, labels))
-            db.message().setMessageLabels(message.id, DB.Converters.fromStringArray(labels));
+        String[] names = (labels == null ? null : labels.names);
+        String[] ids = (labels == null ? null : labels.ids);
+        if (!Helper.equal(message.labels, names))
+            db.message().setMessageLabels(message.id, DB.Converters.fromStringArray(names));
+        // Backfills label_ids for rows that predate the column, and is what
+        // makes a USER category mailbox list this message (DaoMessage.in_folder).
+        if (!Helper.equal(message.label_ids, ids))
+            db.message().setMessageLabelIds(message.id, DB.Converters.fromStringArray(ids));
     }
 
     // Build an EntityMessage from a JMAP Email header. Server-id → uidl (POP
     // analog); keywords → seen/flagged/answered; threadId is used verbatim.
     // [folder] is the email's PRIMARY mailbox; [labels] its other memberships.
     private static EntityMessage buildMessage(EntityAccount account, EntityFolder folder,
-                                              Email email, String[] labels) {
+                                              Email email, Labels labels) {
         EntityMessage m = new EntityMessage();
         m.account = account.id;
         m.folder = folder.id;
@@ -732,7 +738,8 @@ public class JmapSync {
         // mail. This row lives in the PRIMARY mailbox; the other memberships
         // ride along as labels[] (the Gmail label machinery), so an email filed
         // into N mailboxes is ONE row with N-1 label chips, not N rows.
-        m.labels = labels;
+        m.labels = (labels == null ? null : labels.names);
+        m.label_ids = (labels == null ? null : labels.ids);
         // hash stays keyed on Email.id (identical across every mailbox holding
         // the email) so any residual duplicate collapses in the conversation
         // view via FragmentMessages.markDuplicates.
@@ -1194,6 +1201,16 @@ public class JmapSync {
             EntityFolder f = folderById.get(fid);
             if (f == null || noPhoneSync(f.name))
                 continue;
+            // Only a SYNCING folder may be a home. A message filed ONLY into a
+            // category (no INBOX membership -- what a Sieve rule that MOVES
+            // rather than copies produces) used to home to a USER mailbox that
+            // never syncs, so the removal pass never saw it and the message was
+            // invisible everywhere. Returning null here instead makes the caller
+            // fall back to the folder actually being swept, which is a syncing
+            // role folder by construction, and the category still shows the
+            // message via label_ids. Nothing can home somewhere unreachable.
+            if (!isSyncingType(f.type))
+                continue;
             int p = folderPriority(f.type);
             // Tie-break on folder id for a deterministic, stable choice.
             if (p < bestP || (p == bestP && best != null && fid < best)) {
@@ -1210,13 +1227,28 @@ public class JmapSync {
     // The primary folder's own name is excluded (that is the row's home, not a
     // label), as are health-probe mailboxes. Sorted so the order-sensitive
     // Helper.equal reconcile is a no-op when membership is unchanged.
-    private static String[] labelsFor(Email email, String primaryName,
-                                      Map<String, Long> mailboxToFolder,
-                                      Map<Long, EntityFolder> folderById) {
+    // The display names and the folder ids of every NON-primary mailbox this
+    // email belongs to, built together from ONE walk of the server's mailboxIds
+    // so the chips the user sees and the membership DaoMessage.in_folder lists
+    // on can never disagree. names[i] and ids[i] describe the same mailbox.
+    private static class Labels {
+        final String[] names;
+        final String[] ids;
+
+        Labels(String[] names, String[] ids) {
+            this.names = names;
+            this.ids = ids;
+        }
+    }
+
+    private static Labels labelsFor(Email email, String primaryName,
+                                    Map<String, Long> mailboxToFolder,
+                                    Map<Long, EntityFolder> folderById) {
         Map<String, Boolean> mids = email.getMailboxIds();
         if (mids == null)
             return null;
-        List<String> out = new ArrayList<>();
+        // Sorted + deduplicated by name, preserving the previous ordering.
+        Map<String, Long> out = new java.util.TreeMap<>();
         for (Map.Entry<String, Boolean> e : mids.entrySet()) {
             if (!Boolean.TRUE.equals(e.getValue()))
                 continue;
@@ -1228,13 +1260,20 @@ public class JmapSync {
                 continue;
             if (f.name.equals(primaryName))
                 continue;
-            if (!out.contains(f.name))
-                out.add(f.name);
+            if (!out.containsKey(f.name))
+                out.put(f.name, fid);
         }
         if (out.isEmpty())
             return null;
-        Collections.sort(out);
-        return out.toArray(new String[0]);
+        String[] names = new String[out.size()];
+        String[] ids = new String[out.size()];
+        int i = 0;
+        for (Map.Entry<String, Long> e : out.entrySet()) {
+            names[i] = e.getKey();
+            ids[i] = Long.toString(e.getValue());
+            i++;
+        }
+        return new Labels(names, ids);
     }
 
     // id → EntityFolder for every folder of the account.
