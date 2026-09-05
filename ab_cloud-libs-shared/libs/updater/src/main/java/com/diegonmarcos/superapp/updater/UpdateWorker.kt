@@ -35,6 +35,13 @@ class UpdateWorker(
         // success without touching the network and the UI showed nothing.
         if (!force && (!BuildConfig.AUTO_UPDATE_ENABLED || !AutoUpdatePrefs.enabled(applicationContext)))
             return@withContext Result.success()
+        // FIRST, before anything that can reach a screen. The persisted twin of
+        // [UpdateProgress.quiet] used to be set only by Fleet.autoPass, i.e. only
+        // for the fleet half, so the SELF-update half of an unattended pass ran
+        // with no persisted flag at all and the overlay had nothing to gate on.
+        // Set late is set wrong: a flag raised even one state-write in leaves a
+        // visible flash, which is indistinguishable from "still showing".
+        if (!force) AutoUpdatePrefs.setUnattendedPass(applicationContext, true)
         UpdateProgress.beginDownload() // disarm any stale cancel from a prior run
         // NOTHING IS DRAWN BY AN UNATTENDED PASS. Fleet.autoPass already held
         // this for the fleet half, which left the SELF-update half above it
@@ -53,6 +60,20 @@ class UpdateWorker(
             // apps. Unattended only — a forced "check for updates" is the user
             // asking about THIS app.
             if (!force) updateFleet()
+            // THE BUG, and it is a nesting bug. Fleet.autoPass raises both flags
+            // for itself and lowers them UNCONDITIONALLY in its own finally — it
+            // has no idea it was called from inside a larger unattended pass. So
+            // control came back here with quiet=false and unattended=false, and
+            // everything below (the self download + install, the long, visible
+            // part) drew a full progress bar on every single auto-update. That is
+            // the bar the user kept reporting after each previous fix: the fixes
+            // were all upstream of the point where the flag got cleared.
+            // Re-assert rather than teach autoPass to save/restore, because that
+            // file is being edited concurrently — see the report.
+            if (!force) {
+                UpdateProgress.quiet = true
+                AutoUpdatePrefs.setUnattendedPass(applicationContext, true)
+            }
 
             val available = UpdateChecker(applicationContext).available()
                 ?: return@withContext Result.success()
@@ -82,6 +103,11 @@ class UpdateWorker(
             // Process-wide flag: it must not survive this worker, or the next
             // thing the USER starts would run with no progress bar at all.
             UpdateProgress.quiet = false
+            // Same for the persisted one, and for the same reason — this is the
+            // outermost scope of the pass, so here the unconditional clear is
+            // the correct one. A crash mid-pass costs one silenced pass, never a
+            // permanently muted app.
+            AutoUpdatePrefs.setUnattendedPass(applicationContext, false)
         }
     }
 

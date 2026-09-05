@@ -11,6 +11,7 @@ import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.fragment.app.Fragment
+import com.diegonmarcos.superapp.core.NotificationStore
 
 /**
  * Fullscreen overlay shown while the in-app updater is checking,
@@ -29,6 +30,7 @@ class UpdateOverlayFragment : Fragment() {
     private lateinit var progressBar: ProgressBar
     private lateinit var dismissButton: TextView
     private lateinit var cancelButton: TextView
+    private lateinit var minimizeButton: TextView
     private lateinit var updateNowButton: TextView
     private lateinit var diagnoseButton: TextView
     private lateinit var actionRow: LinearLayout
@@ -113,6 +115,55 @@ class UpdateOverlayFragment : Fragment() {
             ).apply { topMargin = dp(20) }
             setOnClickListener { runCatching { Updater.cancelNow(requireContext()) } }
         }
+        // Minimize — "give me my screen back", NOT "stop". Shown beside Cancel
+        // during any active state, because a manual update the user chose to
+        // start is still not a reason to hold the whole screen hostage until it
+        // finishes. It is deliberately a peer of Cancel and not a corner "x":
+        // the two outcomes are different enough that the safe one has to be as
+        // easy to hit as the destructive one.
+        //
+        // This touches UpdateProgress' VISIBILITY latch only. No cancelNow, no
+        // reset, no state write — the download and install carry on untouched
+        // and never learn this happened. The scrim goes with the fragment, so
+        // input returns to the app underneath.
+        minimizeButton = TextView(ctx).apply {
+            text = "Minimize"
+            gravity = Gravity.CENTER
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(0xFFFFFFFF.toInt())
+            setBackgroundColor(0xFF4A4A55.toInt())
+            setPadding(dp(28), dp(12), dp(28), dp(12))
+            isClickable = true; isFocusable = true
+            visibility = View.GONE
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(12) }
+            setOnClickListener {
+                runCatching {
+                    val c = requireContext()
+                    // Tell the user where the work went and how to get it back,
+                    // on the feed they already have. Reusing NotificationStore
+                    // rather than adding a status surface is the whole point —
+                    // this complaint has produced four of those already.
+                    NotificationStore.push(
+                        ctx      = c,
+                        source   = "Updater",
+                        title    = "Update continues in the background",
+                        body     = (UpdateProgress.batchLabel ?: "Update") +
+                            " is still running. Tap Check for updates to bring the progress view back.",
+                        severity = NotificationStore.Sev.INFO,
+                    )
+                    // Latch first, then drop the view: the host re-attaches on
+                    // the next progress tick, so removing the fragment without
+                    // setting the latch would simply bounce it back on screen.
+                    UpdateProgress.minimize()
+                    parentFragmentManager.beginTransaction()
+                        .remove(this@UpdateOverlayFragment)
+                        .commitAllowingStateLoss()
+                }
+            }
+        }
         // "Update now" — shown ONLY on the metered UpdateAvailable prompt. Grants
         // consent to download over mobile data; kicks a forced one-shot check.
         updateNowButton = TextView(ctx).apply {
@@ -184,6 +235,7 @@ class UpdateOverlayFragment : Fragment() {
         column.addView(diagnoseButton)
         column.addView(actionRow)
         column.addView(cancelButton)
+        column.addView(minimizeButton)
         column.addView(updateNowButton)
         column.addView(dismissButton)
         root.addView(column)
@@ -203,6 +255,10 @@ class UpdateOverlayFragment : Fragment() {
         val prompt = state is UpdateProgress.State.UpdateAvailable
         dismissButton.visibility = if (terminal || prompt) View.VISIBLE else View.GONE
         cancelButton.visibility = if (active) View.VISIBLE else View.GONE
+        // Exactly when Cancel shows: while there is something running to walk
+        // away from. On a terminal state there is nothing to minimize — OK
+        // already dismisses.
+        minimizeButton.visibility = if (active) View.VISIBLE else View.GONE
         updateNowButton.visibility = if (prompt) View.VISIBLE else View.GONE
         progressBar.visibility = if (terminal || prompt) View.GONE else View.VISIBLE
         when (state) {

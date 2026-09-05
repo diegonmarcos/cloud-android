@@ -2108,6 +2108,18 @@ open class ShellActivity : AppCompatActivity(),
         runCatching {
             val tag = UpdateOverlayFragment.TAG
             val existing = supportFragmentManager.findFragmentByTag(tag) as? UpdateOverlayFragment
+            // Last gate before the overlay reaches the screen: an unattended
+            // pass, or a manual one the user minimized, draws nothing. Asked
+            // here rather than upstream because this is the only place that
+            // actually attaches, and every previous fix sat above it.
+            // Failed states are never suppressed.
+            if (com.diegonmarcos.superapp.updater.UpdateProgress.suppressed(this, state)) {
+                if (existing != null) {
+                    supportFragmentManager.beginTransaction()
+                        .remove(existing).commitAllowingStateLoss()
+                }
+                return@runCatching
+            }
             when (state) {
                 is com.diegonmarcos.superapp.updater.UpdateProgress.State.Idle -> {
                     if (existing != null) {

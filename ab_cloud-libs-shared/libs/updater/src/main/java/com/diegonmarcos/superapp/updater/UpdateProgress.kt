@@ -1,5 +1,7 @@
 package com.diegonmarcos.superapp.updater
 
+import android.content.Context
+
 /**
  * Process-wide observable state for the in-app updater. The
  * download/install pipeline writes states here as it advances;
@@ -61,8 +63,59 @@ object UpdateProgress {
     /** Cancel button → arm cancellation for any in-flight download loop. */
     fun requestCancel() { cancelRequested = true }
 
-    /** Start of a fresh user-initiated download session — disarm any stale cancel. */
-    fun beginDownload() { cancelRequested = false }
+    /**
+     * Start of a fresh user-initiated download session — disarm any stale
+     * cancel, and un-minimize: the user asking for an update again is the
+     * clearest possible request to see it.
+     */
+    fun beginDownload() { cancelRequested = false; minimized = false }
+
+    /**
+     * Manual pass only: the user hit Minimize and wants the screen back.
+     *
+     * A latch rather than a one-off fragment removal, because the host
+     * re-attaches the overlay on the very next progress tick — removing the
+     * view alone would put it straight back a fraction of a second later.
+     * It suppresses the UI and NOTHING ELSE: no cancel, no pause, the pass
+     * never learns this happened. Cleared by [restore], by [beginDownload]
+     * and by [reset], so it can never outlive the pass that set it.
+     */
+    @Volatile var minimized: Boolean = false
+        private set
+
+    fun minimize() { minimized = true }
+
+    /**
+     * Bring a minimized overlay back showing LIVE state — the replay below
+     * reads the current [state] field, so what returns is where the pass is
+     * now, not a snapshot from when it was minimized.
+     */
+    fun restore() {
+        minimized = false
+        if (!quiet) listener?.invoke(state)
+    }
+
+    /**
+     * True when [state] must not reach the screen.
+     *
+     * Two independent reasons, one question, asked at the point that actually
+     * draws: an unattended pass is in flight (nobody asked to watch), or the
+     * user minimized a manual one (they asked NOT to watch).
+     *
+     * The unattended half reads the PERSISTED flag rather than [quiet].
+     * [quiet] is a plain field, so it is only observable inside the process
+     * that set it; the overlay is attached by an Activity that is a different
+     * process for every satellite app, and a field gate there is not a gate at
+     * all — it silently does nothing, which is exactly how this bug survived
+     * being "fixed" more than once.
+     *
+     * [State.Failed] is deliberately never suppressed. Suppress progress,
+     * never errors — silence about work that did not happen is hiding, not
+     * quietness. [NotificationStore] push stays unconditional either way.
+     */
+    fun suppressed(ctx: Context, state: State): Boolean =
+        state !is State.Failed &&
+            (minimized || AutoUpdatePrefs.unattendedPass(ctx))
 
     /**
      * During a multi-app "Update all", names the current app + position
@@ -116,5 +169,5 @@ object UpdateProgress {
         if (!quiet) listener?.invoke(next)
     }
 
-    fun reset() { batchLabel = null; update(State.Idle) }
+    fun reset() { batchLabel = null; minimized = false; update(State.Idle) }
 }

@@ -58,6 +58,12 @@ class MainActivity : AppCompatActivity(), WalletHost {
     private fun handleUpdateState(state: UpdateProgress.State) {
         val tag = "update_overlay"
         val frag = supportFragmentManager.findFragmentByTag(tag)
+        // An unattended pass, or a manual one the user minimized, draws
+        // nothing. Failed states are never suppressed.
+        if (UpdateProgress.suppressed(this, state)) {
+            frag?.let { supportFragmentManager.commit(allowStateLoss = true) { remove(it) } }
+            return
+        }
         when (state) {
             is UpdateProgress.State.Idle -> {
                 frag?.let { supportFragmentManager.commit { remove(it) } }
