@@ -79,6 +79,15 @@ object Advisory {
         /** Optional direct URL for the "self healing link" — set by a feed
          *  advisory that names an APK the app's own sources cannot reach. */
         val link: String? = null,
+        /** A TOMBSTONE: this advisory is withdrawn. Only ever set by the feed,
+         *  because only the feed needs it — a locally-derived advisory
+         *  disappears when the condition that produced it does, but a published
+         *  one has no such condition to watch and must be explicitly recalled.
+         *  Carried on the item rather than sent as a separate message type so
+         *  that "raise X" and "clear X" are the same document with one field
+         *  different, and last-word-per-id resolves them without ordering
+         *  rules. */
+        val retract: Boolean = false,
     )
 
     // ── Trigger 1: repeated install failure for the same app ────────────────
@@ -213,9 +222,15 @@ object Advisory {
      *      "severity":"STUCK",                 // INFO | WARN | STUCK
      *      "link":"https://…/CloudSuperApp.apk"}  // optional direct APK URL
      *
+     * To WITHDRAW it, publish the same id again with `"retract":true` (nothing
+     * else is required). Devices poll with `since=all`, so an advisory does not
+     * age out on its own — the last message for an id wins, and a retraction is
+     * a message like any other.
+     *
      * A message that is not this shape is ignored rather than half-rendered.
      */
-    const val feedContract: String = "kind=fleet-advisory; id,app,title,detail,severity,link"
+    const val feedContract: String =
+        "kind=fleet-advisory; id,app,title,detail,severity,link,retract"
 
     /** Parse one feed message body into an [Item], or null when it is not an
      *  advisory. Kept here beside the contract it implements. */
@@ -223,15 +238,21 @@ object Advisory {
         val o = JSONObject(body)
         if (o.optString("kind") != "fleet-advisory") return null
         val id = o.optString("id").takeIf { it.isNotBlank() } ?: return null
+        val retract = o.optBoolean("retract", false)
         Item(
             id = id,
             appId = o.optString("app").takeIf { it.isNotBlank() },
-            title = o.optString("title").takeIf { it.isNotBlank() } ?: return null,
+            // A retraction only has to identify what it withdraws, so it is
+            // not held to the title requirement a raise is — demanding one
+            // would mean an advisory could be published but never recalled.
+            title = o.optString("title").takeIf { it.isNotBlank() }
+                ?: (if (retract) "" else return null),
             detail = o.optString("detail"),
             severity = runCatching { Severity.valueOf(o.optString("severity")) }
                 .getOrDefault(Severity.WARN),
             source = "feed",
             link = o.optString("link").takeIf { it.isNotBlank() },
+            retract = retract,
         )
     }.getOrNull()
 
