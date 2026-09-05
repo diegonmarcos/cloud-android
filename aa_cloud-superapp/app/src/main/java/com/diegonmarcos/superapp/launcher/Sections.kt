@@ -169,6 +169,13 @@ object Sections {
          *  because a quiet topic is either "nothing wrong" or "the publisher is
          *  dead" and only the interval tells them apart. */
         val signals: List<SignalRef> = emptyList(),
+        /** Used by kind=notification_center — which STREAM this card groups.
+         *  `phone` = everything the notification listener captured, grouped by
+         *  the posting app; `cloud` = the ntfy channels in [scopes] plus the
+         *  in-app feed, grouped by publisher. It is deliberately the same split
+         *  as [origin] rather than a second classifier: the card renders the
+         *  stream the Source toggle would hide, so the two cannot disagree. */
+        val stream: String = "",
     )
 
     /** One watched ntfy topic on a kind=signal_health card. [expectWithinMinutes]
@@ -709,6 +716,7 @@ object Sections {
                         scopes          = scopeIds,
                         origin          = p.optString("origin", ""),
                         signals         = signalList,
+                        stream          = p.optString("stream", ""),
                     ))
                 }
                 return out

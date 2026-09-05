@@ -1168,8 +1168,8 @@
             "target": "extapp:cloud-chat"
           }
         ],
-        "_doc_stack_my-rss": "Apps RSS is the PERSONAL inbox, Infra RSS the full channel browser. Both render the same ntfy card (kind=rss) over the same catalog in ui.ntfy — the only difference is the `scopes` filter: Apps RSS takes advisory + user, Infra RSS omits `scopes` and therefore takes all three. There is no second topic list anywhere; a topic added to ui.ntfy.channels lands on the right page by its prefix on the next build, and an unknown prefix falls to the catch-all scope (Cloud channels) under its raw name rather than disappearing. Advisories stay pinned first here for the same reason they are on Infra RSS: a stranded phone is told to look at exactly this card.",
-        "_doc_filters_my-rss": "The three toggles above the Apps RSS stack. Declared here, not in Kotlin: the OPTION SET and the LABELS are data, only the three filter IDS (sort|source|show) are a contract the fragment implements. Drop an option or rename `Both` with a JSON edit. `default` is what a phone shows before the user has ever touched the row; the choice is then remembered per page in SharedPreferences (committed, not applied — this app is the launcher and Android restarts it many times an hour, so a queued write is a setting that silently reverts). SOURCE works off each panel's `origin` below rather than any package list: a stream is Phone or Cloud by WHERE IT COMES FROM, which cannot go stale, whereas a list of phone package names starts rotting the day it is written. SHOW is All vs Unread and NOT All vs Dismissed: neither NotificationStore nor PhoneNotificationStore records a dismissed flag — PhoneNotificationStore deliberately keeps entries the system already dismissed, and the in-app panel calls cancelAll() on open, so a Dismissed filter would read a field nothing writes and render an eternally empty list. Unread is real because it needs no new field at all: it is `ts > last visit`, and both stores already carry ts.",
+        "_doc_stack_my-rss": "Apps RSS is a NOTIFICATION CENTRE divided per app, not a stack of feeds. It declares one card per STREAM and each card renders one group per PUBLISHER. Phone stream: the group key is the notification's own `packageName`, labelled with its `appLabel` — carried by the notification itself, so an app installed tomorrow groups correctly with no edit here and no package list to rot. Cloud stream: the group key is the ntfy TOPIC (and the `source` field for the in-app feed), because a cloud message has no package and the address it was published to is the closest thing it carries to one — a topic has exactly one publisher the way a package has exactly one app. Grouping by SCOPE was the alternative and is wrong: advisory/user/cloud is a routing category shared by many publishers, so it would collapse every unrelated channel into one bucket, which is the undivided list this page replaced. Scope still selects WHICH topics the cloud card carries, via `scopes` below, over the same ui.ntfy catalog Infra RSS browses — there is still no second topic list anywhere. The old rss / notifications / phone_notifications / news_feeds panels are gone: three of the four were child fragments embedded through the fixed host-id pool, which is exactly what cannot survive a card that re-renders on every toggle tap.",
+        "_doc_filters_my-rss": "The three toggles above the Apps RSS stack. Declared here, not in Kotlin: the OPTION SET and the LABELS are data, only the three filter IDS (sort|source|show) are a contract the fragment implements. `default` is what a phone shows before the user has ever touched the row; the choice is then remembered per page in SharedPreferences (committed, not applied — this app is the launcher and Android restarts it many times an hour, so a queued write is a setting that silently reverts), and a stored id this file no longer declares falls back to the default rather than stranding the row on an invisible choice. SORT now chooses the ORDER OF THE APP GROUPS — App = alphabetical, Time = most recently active app first — never whether grouping happens, because the division per app IS this page; inside a group the order is always newest-first, so flipping Sort can never bury something fresh. SOURCE works off each panel's `origin` below rather than any package list: a stream is Phone or Cloud by WHERE IT COMES FROM, which cannot go stale. SHOW is All vs Unread and NOT All vs Dismissed: neither NotificationStore nor PhoneNotificationStore records a dismissed flag — PhoneNotificationStore deliberately keeps entries the system already dismissed, and opening the cloud card calls cancelAll(), which destroys dismissal state rather than recording it, so a Dismissed filter would read a field nothing writes and render an eternally empty list. Unread needs no new field at all: it is `ts > last visit`, read before the watermark is advanced so toggling within one visit keeps answering the same question, and both stores already carry ts.",
         "filters_my-rss": [
           {
             "id": "sort",
@@ -1200,35 +1200,25 @@
             ]
           }
         ],
-        "_doc_origin_my-rss": "`origin` is the Cloud-vs-Phone classifier, and it is a property of the STREAM, not of any individual notification. Everything captured by the notification listener is by construction from an app installed on this device (phone); everything in the ntfy catalog, the in-app SuperApp feed and the curated news list is by construction from off-device (cloud). A panel with no `origin` is never hidden by the Source toggle — an unclassified card stays visible rather than disappearing, the same fail-visible rule ui.ntfy.scopes uses for an unknown prefix.",
+        "_doc_origin_my-rss": "`origin` is the Cloud-vs-Phone classifier, and it is a property of the STREAM, not of any individual notification. Everything captured by the notification listener is by construction from an app installed on this device (phone); everything in the ntfy catalog and the in-app SuperApp feed is by construction from off-device (cloud). Each card renders the stream its own `origin` would hide, so `origin` and `stream` cannot disagree. A panel with no `origin` is never hidden by the Source toggle — an unclassified card stays visible rather than disappearing, the same fail-visible rule ui.ntfy.scopes uses for an unknown prefix.",
         "stack_my-rss": [
           {
-            "kind": "rss",
-            "title": "ntfy · my channels",
-            "subtitle": "Advisories and this phone's channels",
+            "kind": "notification_center",
+            "stream": "phone",
+            "title": "Phone apps",
+            "subtitle": "Every app that has posted to this phone's shade, one group per app, newest first inside each.",
+            "origin": "phone"
+          },
+          {
+            "kind": "notification_center",
+            "stream": "cloud",
+            "title": "Cloud publishers",
+            "subtitle": "The SuperApp's own feed, then one group per ntfy channel with a live freshness verdict.",
             "origin": "cloud",
             "scopes": [
               "advisory",
               "user"
             ]
-          },
-          {
-            "kind": "notifications",
-            "title": "Cloud-SuperApp Notifications",
-            "subtitle": "In-app feed (Updater + Crash producers)",
-            "origin": "cloud"
-          },
-          {
-            "kind": "phone_notifications",
-            "title": "Phone Notifications",
-            "subtitle": "Live system notifications (last 50, dedupe by key — requires Notification Access)",
-            "origin": "phone"
-          },
-          {
-            "kind": "news_feeds",
-            "title": "News & RSS",
-            "subtitle": "Curated open channels (not ntfy)",
-            "origin": "cloud"
           }
         ],
         "stack_cloud-rss": [

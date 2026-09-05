@@ -9,7 +9,6 @@ import com.diegonmarcos.superapp.rss.RssFeedFragment
 import com.diegonmarcos.superapp.cloud.CalendarMonthFragment
 import com.diegonmarcos.superapp.cloud.CalendarAgendaFragment
 import com.diegonmarcos.superapp.cloud.TasksFragment
-import com.diegonmarcos.superapp.cloud.NewsFeedFragment
 import com.diegonmarcos.superapp.cloud.GitHubFeed
 import com.diegonmarcos.superapp.cloud.DriveConnectionsFragment
 import com.diegonmarcos.superapp.cloud.C3MeshFragment
@@ -50,6 +49,7 @@ import kotlinx.coroutines.withContext
  *   c3_public / c3_private   → embedded [C3HealthFragment] (scope-filtered)
  *   wg_mesh                   → embedded [C3MeshFragment]
  *   rss                       → embedded [RssFeedFragment]
+ *   notification_center       → per-app grouped notification list, inline views
  *   drive_connections         → embedded [DriveConnectionsFragment]
  *   linktree_slide            → grouped link grid sourced from data/linktree.json
  *   link_grid                 → grouped link grid declared inline in build.json
@@ -360,7 +360,6 @@ class AggregatorStackFragment : Fragment(),
         "c3_private"         -> embedChild(body, C3HealthFragment.newInstance(C3HealthFragment.SCOPE_PRIVATE))
         "wg_mesh"            -> embedChild(body, C3MeshFragment.newInstance())
         "rss"                -> embedChild(body, RssFeedFragment.newInstance(panel.scopes))
-        "news_feeds"         -> embedChild(body, NewsFeedFragment.newInstance())
         "calendar_month"     -> embedChild(body, CalendarMonthFragment.newInstance())
         "calendar_agenda"    -> embedChild(body, CalendarAgendaFragment.newInstance())
         "tasks"              -> embedChild(body, TasksFragment.newInstance())
@@ -372,8 +371,7 @@ class AggregatorStackFragment : Fragment(),
         "chat_matrix"        -> renderChatPlaceholder(ctx, body, "Matrix", "page:chat/matrix")
         "chat_mattermost"    -> renderChatPlaceholder(ctx, body, "Mattermost", "page:chat/mattermost")
         "open_link"          -> renderOpenLink(ctx, body, panel)
-        "notifications"      -> refreshable(body) { renderNotifications(ctx, body) }
-        "phone_notifications" -> refreshable(body) { renderPhoneNotifications(ctx, body) }
+        "notification_center" -> refreshable(body) { renderNotificationCenter(ctx, body, panel) }
         "repos"              -> renderRepos(ctx, body, panel)
         "gha_runs"           -> renderGhaRuns(ctx, body, panel)
         "stats"              -> renderStats(ctx, body, panel)
@@ -612,94 +610,88 @@ class AggregatorStackFragment : Fragment(),
         return box
     }
 
-    /** Embed the in-app NotificationStore feed inline as a stack-panel
-     *  body. Same row shape as NotificationCenterFragment but without
-     *  the backdrop / dropdown chrome — this is the version that lives
-     *  inside the Infos aggregator. Wired producers: Updater +
-     *  CrashLogger; future producers push via NotificationStore.push(). */
-    private fun renderNotifications(ctx: android.content.Context, body: LinearLayout) {
-        // Viewing this panel also dismisses any matching framework
-        // notification so the launcher icon badge clears at the same
-        // time the in-app feed becomes visible.
-        runCatching {
-            (ctx.getSystemService(android.content.Context.NOTIFICATION_SERVICE)
-                as? android.app.NotificationManager)?.cancelAll()
-        }
-        val stored  = NotificationStore.all(ctx)
-        val entries = arrange(stored, { it.ts }, { it.source })
-        if (entries.isEmpty()) {
-            body.addView(android.widget.TextView(ctx).apply {
-                text = if (stored.isNotEmpty()) filteredAwayNote(stored.size)
-                       else "No notifications yet.\n\nProducers wired: Updater (version-bump on launch), Crash (uncaught exceptions)."
-                setTextColor(0x99FFFFFF.toInt())
-                setTextAppearance(android.R.style.TextAppearance_Material_Caption)
-                setPadding(0, dp(8), 0, dp(8))
-            })
-            return
-        }
-        val now = System.currentTimeMillis()
-        for (e in entries.take(20)) {
-            val row = LinearLayout(ctx).apply {
-                orientation = LinearLayout.VERTICAL
-                val pad = dp(10); setPadding(pad, pad, pad, pad)
-                val lp = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                ).apply { topMargin = dp(6) }
-                layoutParams = lp
-                setBackgroundColor(when (e.severity) {
-                    NotificationStore.Sev.ERROR -> 0x55B91C1C.toInt()
-                    NotificationStore.Sev.WARN  -> 0x55D97706.toInt()
-                    else                        -> 0x331A0033
-                })
-            }
-            val meta = LinearLayout(ctx).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = android.view.Gravity.CENTER_VERTICAL
-            }
-            meta.addView(android.widget.TextView(ctx).apply {
-                text = e.title
-                setTextColor(0xFFE9D8FD.toInt())
-                setTextAppearance(android.R.style.TextAppearance_Material_Body1)
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            })
-            val ago = (now - e.ts).let { ms ->
-                when {
-                    ms < 60_000     -> "just now"
-                    ms < 3_600_000  -> "${ms / 60_000}m ago"
-                    ms < 86_400_000 -> "${ms / 3_600_000}h ago"
-                    else            -> "${ms / 86_400_000}d ago"
-                }
-            }
-            meta.addView(android.widget.TextView(ctx).apply {
-                text = "${e.source} · $ago"
-                setTextColor(0x88FFFFFF.toInt())
-                setTextAppearance(android.R.style.TextAppearance_Material_Caption)
-            })
-            row.addView(meta)
-            row.addView(android.widget.TextView(ctx).apply {
-                text = e.body
-                setTextColor(0xCCE9D8FD.toInt())
-                setTextAppearance(android.R.style.TextAppearance_Material_Caption)
-                setPadding(0, dp(2), 0, 0)
-            })
-            body.addView(row)
+    // ── kind=notification_center ───────────────────────────────────────
+    //
+    // The Apps RSS page is now exactly this kind, twice: one card per STREAM,
+    // and inside each card one group per APP.
+    //
+    // Every view built below is a plain inline View. Nothing here goes through
+    // [embedChild], and that is load-bearing rather than incidental: embedChild
+    // allocates from a FIXED pool of host ids and only commits when nothing is
+    // already attached, so any body that re-runs comes back permanently blank
+    // while still looking like a card that merely loaded nothing. These bodies
+    // re-run on every toggle tap (they are registered through [refreshable]),
+    // and a grouped notification list is the most re-rendered surface in the
+    // app — so it may not own a child fragment at all. The page also no longer
+    // declares any embedChild-routed panel, so [nextEmbedIdx] never advances
+    // here and the fixed pool cannot be exhausted by a rebuild.
+
+    /** One app / publisher and everything it has posted. [key] is the stable
+     *  identity we grouped on — a package name, an ntfy topic, an in-app
+     *  producer — and [label] is what the user reads. */
+    private data class NotifGroup(
+        val key: String,
+        val label: String,
+        val sub: String,
+        val rows: List<NotifRow>,
+        val launchPackage: String = "",
+        val url: String = "",
+    ) {
+        val newest: Long get() = rows.maxOfOrNull { it.ts } ?: 0L
+    }
+
+    private data class NotifRow(
+        val ts: Long,
+        val title: String,
+        val text: String,
+        val severity: String = "info",
+    )
+
+    /** A group's one-line verdict. Same four-state vocabulary the C3 Obsv page
+     *  uses, because the two things this page must never confuse are the same
+     *  two: an app that has genuinely posted nothing, and a stream we could
+     *  not read. */
+    private data class GroupState(val text: String, val color: Int)
+
+    private data class NtfyResult(val ok: Boolean, val error: String, val rows: List<NotifRow>)
+
+    /** Per-topic poll results for this visit. Toggling Sort or Show rebuilds
+     *  the body; without this every tap would re-poll every channel. */
+    private val ntfyCache = mutableMapOf<String, NtfyResult>()
+
+    private fun renderNotificationCenter(
+        ctx: android.content.Context, body: LinearLayout, panel: Sections.StackPanel,
+    ) = when (panel.stream) {
+        "phone" -> renderPhoneCenter(ctx, body)
+        "cloud" -> renderCloudCenter(ctx, body, panel)
+        // A card that declares no stream cannot guess one. Saying so beats an
+        // empty list, which the user would read as "you have no notifications".
+        else -> Unit.also {
+            body.addView(emptyHint(ctx, "This card declares no `stream`. " +
+                "Add \"stream\": \"phone\" or \"cloud\" to the panel in build.json."))
         }
     }
 
-    /** Phone-system notifications captured by PhoneNotificationListenerService.
-     *  When access is denied the panel collapses to a single CTA button
-     *  that fires Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS. When
-     *  granted, rows render like the in-app notifications panel above
-     *  but tapping launches the source app. */
-    private fun renderPhoneNotifications(ctx: android.content.Context, body: LinearLayout) {
+    /**
+     * Phone stream: one group per POSTING APP, keyed on `packageName` and
+     * labelled with `appLabel`.
+     *
+     * There is no package list in this file and there must never be one. The
+     * grouping key rides on the notification itself, so an app installed
+     * tomorrow groups correctly with no Kotlin and no build.json edit, and an
+     * app that goes away simply stops appearing — whereas a hand-written list
+     * starts rotting the day it is written.
+     */
+    private fun renderPhoneCenter(ctx: android.content.Context, body: LinearLayout) {
         if (!isNotificationAccessGranted(ctx)) {
-            body.addView(android.widget.TextView(ctx).apply {
-                text = "Notification Access not granted. As a launcher we can read the phone's system notifications — grant once, then they stream here."
-                setTextColor(0x99FFFFFF.toInt())
-                setTextAppearance(android.R.style.TextAppearance_Material_Caption)
-                setPadding(0, dp(8), 0, dp(8))
-            })
+            // The single most likely reason a real user sees nothing here. It is
+            // a MISSING CAPABILITY, not an empty inbox, and the card says which
+            // — grey, with the way to fix it attached. Rendering an empty list
+            // in this state would be a failure reporting success.
+            body.addView(stateLine(ctx, "unavailable · permission not granted", SIGNAL_UNKNOWN))
+            body.addView(caption(ctx,
+                "Notification Access is off, so this phone's notifications are not being captured at all. " +
+                "This list is empty because we cannot read them — not because none arrived."))
             body.addView(android.widget.Button(ctx).apply {
                 text = "Grant Notification Access"
                 setOnClickListener {
@@ -712,69 +704,380 @@ class AggregatorStackFragment : Fragment(),
             })
             return
         }
-        val stored  = PhoneNotificationStore.all(ctx)
-        val entries = arrange(stored, { e -> e.ts }, { e -> e.appLabel.ifBlank { e.packageName } })
-        if (entries.isEmpty()) {
-            body.addView(android.widget.TextView(ctx).apply {
-                text = if (stored.isNotEmpty()) filteredAwayNote(stored.size)
-                       else "Notification Access granted — no phone notifications captured yet. They will land here as apps post them."
-                setTextColor(0x99FFFFFF.toInt())
-                setTextAppearance(android.R.style.TextAppearance_Material_Caption)
-                setPadding(0, dp(8), 0, dp(8))
-            })
+        val stored = PhoneNotificationStore.all(ctx)
+        if (stored.isEmpty()) {
+            // Granted and empty is a REAL state and a different one: amber, and
+            // it names the listener so it cannot be mistaken for a dead page.
+            body.addView(stateLine(ctx, "silent · listener granted, nothing captured", SIGNAL_WARN))
+            body.addView(caption(ctx,
+                "Apps appear here as they post. Nothing has arrived since the store was last cleared."))
             return
         }
+        val groups = stored
+            .groupBy { it.packageName.ifBlank { it.appLabel } }
+            .map { (key, entries) ->
+                NotifGroup(
+                    key           = key,
+                    label         = entries.firstOrNull { it.appLabel.isNotBlank() }?.appLabel ?: key,
+                    sub           = key,
+                    launchPackage = entries.first().packageName,
+                    rows          = entries.map { NotifRow(it.ts, it.title.ifBlank { it.appLabel }, it.text) },
+                )
+            }
+        if (renderGroups(ctx, body, groups) == 0) {
+            body.addView(caption(ctx, filteredAwayNote(stored.size)))
+        }
+    }
+
+    /**
+     * Cloud stream, grouped by PUBLISHER: the ntfy TOPIC for a fleet message,
+     * the `source` field for an in-app one.
+     *
+     * Why topic and not scope. A cloud message carries no package name, and the
+     * closest thing it does carry is the address it was published to. A topic
+     * has exactly one publisher the way a package has exactly one app, so the
+     * per-app division survives the crossing from phone to cloud. A scope
+     * (advisory / user / cloud) is a ROUTING CATEGORY shared by many
+     * publishers; grouping on it would collapse every unrelated channel into
+     * one bucket, which is precisely the undivided list this redesign replaces.
+     * Scope still decides WHICH topics this card carries — it is just not the
+     * grouping key.
+     */
+    private fun renderCloudCenter(
+        ctx: android.content.Context, body: LinearLayout, panel: Sections.StackPanel,
+    ) {
+        // Opening the in-app feed also clears the framework badge, as the old
+        // panel did: the launcher badge and this list must not disagree. Note
+        // this DESTROYS system dismissal state rather than recording it, which
+        // is why no "Dismissed" filter is offered anywhere on this page — it
+        // would read a field nothing writes.
+        runCatching {
+            (ctx.getSystemService(android.content.Context.NOTIFICATION_SERVICE)
+                as? android.app.NotificationManager)?.cancelAll()
+        }
+
+        body.addView(groupHeader(ctx, "In-app feed"))
+        val stored = NotificationStore.all(ctx)
+        val local = stored.groupBy { it.source.ifBlank { "SuperApp" } }.map { (source, entries) ->
+            NotifGroup(
+                key   = source,
+                label = source,
+                sub   = "in-app producer",
+                rows  = entries.map {
+                    NotifRow(it.ts, it.title, it.body, when (it.severity) {
+                        NotificationStore.Sev.ERROR -> "error"
+                        NotificationStore.Sev.WARN  -> "warn"
+                        else                        -> "info"
+                    })
+                },
+            )
+        }
+        if (renderGroups(ctx, body, local) == 0) {
+            if (stored.isEmpty()) {
+                body.addView(stateLine(ctx, "silent · no in-app events", SIGNAL_WARN))
+                body.addView(caption(ctx, "Producers wired: Updater (version bump on launch), " +
+                    "Crash (uncaught exceptions)."))
+            } else {
+                body.addView(caption(ctx, filteredAwayNote(stored.size)))
+            }
+        }
+
+        body.addView(groupHeader(ctx, "Channels"))
+        renderNtfyGroups(ctx, body, panel)
+    }
+
+    /**
+     * One group per ntfy topic in this card's declared scopes, each with a live
+     * verdict. The failure states are what separate this from a plain feed:
+     *
+     *   N · 5m ago  — messages arrived (green).
+     *   silent 7d   — the poll SUCCEEDED and the topic is empty (amber). ntfy
+     *                 answers 200 for a topic nobody has ever published to, so a
+     *                 dead publisher looks exactly like a quiet one; amber says
+     *                 we cannot tell them apart rather than drawing an innocent
+     *                 empty group.
+     *   unavailable — the poll itself failed. GREY, never red and never absent:
+     *                 a failed fetch is a claim about THIS PHONE'S network, not
+     *                 about the fleet, and it must never be rendered as "no
+     *                 notifications".
+     *
+     * The topic list comes from the baked `ui.ntfy` catalog, so a channel added
+     * upstream lands here by data on the next build. Ordering is alphabetical
+     * under both Sort modes: a topic whose poll has not landed yet has no
+     * timestamp to sort on, and groups that reshuffle as fetches complete are
+     * worse than groups that hold still and carry their age in the chip.
+     */
+    private fun renderNtfyGroups(
+        ctx: android.content.Context, body: LinearLayout, panel: Sections.StackPanel,
+    ) {
+        val scopes = com.diegonmarcos.superapp.rss.NtfyScopes.load()
+        val catalog = com.diegonmarcos.superapp.rss.NtfyScopes.fallbackChannels()
+        val topics = if (panel.scopes.isEmpty()) catalog else catalog.filter {
+            com.diegonmarcos.superapp.rss.NtfyScopes.scopeOf(it, scopes).id in panel.scopes
+        }
+        if (topics.isEmpty()) {
+            // Nothing is being polled, which is not the same as everything being
+            // quiet. Name the reason and the scopes that produced it.
+            body.addView(stateLine(ctx, "unavailable · no channels match", SIGNAL_UNKNOWN))
+            body.addView(caption(ctx, "No channel in build.json::ui.ntfy falls in this card's scopes (" +
+                panel.scopes.joinToString(", ").ifBlank { "all" } + "). Nothing is being polled."))
+            return
+        }
+        val executor = java.util.concurrent.Executors.newFixedThreadPool(4)
+        for (topic in topics.sorted()) {
+            val group = NotifGroup(
+                key   = topic,
+                label = com.diegonmarcos.superapp.rss.NtfyCatalog.labelOf(topic),
+                sub   = topic,
+                rows  = emptyList(),
+                url   = "https://rss.diegonmarcos.com/$topic",
+            )
+            // "checking…", never OK: an unpolled channel must not spend even its
+            // first frame looking healthy.
+            val header = groupHeaderRow(ctx, group, GroupState("checking…", SIGNAL_UNKNOWN))
+            val state  = header.findViewWithTag<TextView>(GROUP_STATE_TAG) ?: continue
+            val rowsBox = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
+            body.addView(header)
+            body.addView(rowsBox)
+
+            val cached = ntfyCache[topic]
+            if (cached != null) {
+                paintNtfyGroup(ctx, state, rowsBox, cached)
+                continue
+            }
+            runCatching {
+                executor.execute {
+                    val result = pollTopic(topic)
+                    state.post {
+                        ntfyCache[topic] = result
+                        paintNtfyGroup(ctx, state, rowsBox, result)
+                    }
+                }
+            }.onFailure {
+                // Could not even schedule the poll — say so rather than leaving
+                // the row reading "checking…" forever, which looks like progress.
+                state.text = "unavailable · not polled"
+                state.setTextColor(SIGNAL_UNKNOWN)
+            }
+        }
+        executor.shutdown()
+    }
+
+    private fun paintNtfyGroup(
+        ctx: android.content.Context, state: TextView, rowsBox: LinearLayout, result: NtfyResult,
+    ) {
+        rowsBox.removeAllViews()
+        if (!result.ok) {
+            state.text = "unavailable · ${result.error}"
+            state.setTextColor(SIGNAL_UNKNOWN)
+            return
+        }
+        val rows = withinGroup(result.rows)
+        if (rows.isEmpty()) {
+            // Empty channel and hidden-by-filter are different facts, so they get
+            // different words and different colours.
+            if (result.rows.isEmpty()) {
+                state.text = "silent 7d · publisher?"
+                state.setTextColor(SIGNAL_WARN)
+            } else {
+                state.text = "nothing new"
+                state.setTextColor(0x88FFFFFF.toInt())
+            }
+            return
+        }
+        state.text = "${rows.size} · ${ago(System.currentTimeMillis() - rows.first().ts)}"
+        state.setTextColor(SIGNAL_OK)
+        for (r in rows) rowsBox.addView(notifRowView(ctx, r, ""))
+    }
+
+    /** ntfy's poll API. Any non-200, any exception and any unparseable body is
+     *  UNAVAILABLE — the honest answer is that we did not measure, not that the
+     *  channel is empty. */
+    private fun pollTopic(topic: String): NtfyResult = try {
+        val url = java.net.URL("https://rss.diegonmarcos.com/$topic/json?poll=1&since=7d")
+        val conn = (url.openConnection() as java.net.HttpURLConnection).apply {
+            connectTimeout = 4000; readTimeout = 4000; requestMethod = "GET"
+        }
+        try {
+            if (conn.responseCode != 200) NtfyResult(false, "HTTP ${conn.responseCode}", emptyList())
+            else {
+                val rows = mutableListOf<NotifRow>()
+                conn.inputStream.bufferedReader().forEachLine { line ->
+                    if (line.isNotBlank()) runCatching {
+                        val o = org.json.JSONObject(line)
+                        if (o.optString("event") == "message") rows += NotifRow(
+                            ts    = o.optLong("time", 0L) * 1000L,
+                            title = o.optString("title").ifBlank { topic },
+                            text  = o.optString("message"),
+                        )
+                    }
+                }
+                NtfyResult(true, "", rows)
+            }
+        } finally { conn.disconnect() }
+    } catch (_: Throwable) {
+        // Includes the mesh being down, which is unknown — not healthy, not empty.
+        NtfyResult(false, "no answer", emptyList())
+    }
+
+    /**
+     * Draw [groups] as a per-app list and return how many had a visible row.
+     *
+     * The Sort toggle chooses the ORDER OF THE GROUPS — App = alphabetical,
+     * Time = most recently active app first — never whether grouping happens,
+     * because the division per app IS this page. Ordering INSIDE a group is
+     * always newest-first, so flipping Sort can never bury something fresh.
+     */
+    private fun renderGroups(
+        ctx: android.content.Context, body: LinearLayout, groups: List<NotifGroup>,
+    ): Int {
+        val visible = groups
+            .map { it.copy(rows = withinGroup(it.rows)) }
+            .filter { it.rows.isNotEmpty() }
+        val ordered =
+            if (sortMode == "app")
+                visible.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { g: NotifGroup -> g.label })
+            else visible.sortedByDescending { it.newest }
         val now = System.currentTimeMillis()
-        for (e in entries.take(50)) {
-            val row = LinearLayout(ctx).apply {
-                orientation = LinearLayout.VERTICAL
-                val pad = dp(10); setPadding(pad, pad, pad, pad)
-                val lp = LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT,
-                ).apply { topMargin = dp(6) }
-                layoutParams = lp
-                setBackgroundColor(0x331A0033)
-                isClickable = true
-                setOnClickListener {
-                    runCatching {
-                        val intent = ctx.packageManager.getLaunchIntentForPackage(e.packageName)
-                        if (intent != null) ctx.startActivity(intent)
+        for (g in ordered) {
+            body.addView(groupHeaderRow(ctx, g,
+                GroupState("${g.rows.size} · ${ago(now - g.newest)}", SIGNAL_OK)))
+            for (r in g.rows) body.addView(notifRowView(ctx, r, g.launchPackage))
+        }
+        return ordered.size
+    }
+
+    /** Show=Unread inside one group: `ts > previous visit`, then newest-first.
+     *  Derived, not stored: neither store writes a read or dismissed flag, so a
+     *  filter over one would show an empty list forever. Both already carry ts. */
+    private fun withinGroup(rows: List<NotifRow>): List<NotifRow> {
+        val shown = if (showMode == "unread") rows.filter { it.ts > visitSeenAt } else rows
+        return shown.sortedByDescending { it.ts }
+    }
+
+    /** Group header: who posted, its address, and its state. Tapping opens the
+     *  app (phone groups) or the channel (ntfy groups). */
+    private fun groupHeaderRow(
+        ctx: android.content.Context, g: NotifGroup, state: GroupState,
+    ): View {
+        val row = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+            setPadding(0, dp(12), 0, dp(2))
+            isClickable = true; isFocusable = true
+            setOnClickListener {
+                runCatching {
+                    when {
+                        g.launchPackage.isNotBlank() ->
+                            ctx.packageManager.getLaunchIntentForPackage(g.launchPackage)
+                                ?.let { ctx.startActivity(it) }
+                        g.url.isNotBlank() ->
+                            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(g.url)))
                     }
                 }
             }
-            val meta = LinearLayout(ctx).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = android.view.Gravity.CENTER_VERTICAL
-            }
-            meta.addView(android.widget.TextView(ctx).apply {
-                text = e.title.ifBlank { e.appLabel }
-                setTextColor(0xFFE9D8FD.toInt())
-                setTextAppearance(android.R.style.TextAppearance_Material_Body1)
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            })
-            val ago = (now - e.ts).let { ms -> when {
-                ms < 60_000     -> "just now"
-                ms < 3_600_000  -> "${ms / 60_000}m ago"
-                ms < 86_400_000 -> "${ms / 3_600_000}h ago"
-                else            -> "${ms / 86_400_000}d ago"
-            }}
-            meta.addView(android.widget.TextView(ctx).apply {
-                text = "${e.appLabel} · $ago"
-                setTextColor(0x88FFFFFF.toInt())
+        }
+        val names = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        names.addView(TextView(ctx).apply {
+            text = g.label
+            setTextColor(0xFFE9D8FD.toInt())
+            setTextAppearance(android.R.style.TextAppearance_Material_Subhead)
+            typeface = Typeface.DEFAULT_BOLD
+        })
+        if (g.sub.isNotBlank() && !g.sub.equals(g.label, ignoreCase = true)) {
+            names.addView(TextView(ctx).apply {
+                text = g.sub
+                setTextColor(0x77FFFFFF.toInt())
                 setTextAppearance(android.R.style.TextAppearance_Material_Caption)
             })
-            row.addView(meta)
-            if (e.text.isNotBlank()) {
-                row.addView(android.widget.TextView(ctx).apply {
-                    text = e.text
-                    setTextColor(0xCCE9D8FD.toInt())
-                    setTextAppearance(android.R.style.TextAppearance_Material_Caption)
-                    setPadding(0, dp(2), 0, 0)
-                })
-            }
-            body.addView(row)
         }
+        row.addView(names)
+        row.addView(TextView(ctx).apply {
+            text = state.text
+            setTextColor(state.color)
+            textSize = 12f
+            typeface = Typeface.DEFAULT_BOLD
+            tag = GROUP_STATE_TAG
+        })
+        return row
+    }
+
+    /** One notification, indented under its app. Unread — newer than the
+     *  previous visit — is drawn bold, so Show=All still shows what is new. */
+    private fun notifRowView(
+        ctx: android.content.Context, r: NotifRow, launchPackage: String,
+    ): View {
+        val row = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            val pad = dp(10); setPadding(pad, pad, pad, pad)
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(6); leftMargin = dp(10) }
+            setBackgroundColor(when (r.severity) {
+                "error" -> 0x55B91C1C.toInt()
+                "warn"  -> 0x55D97706.toInt()
+                else    -> 0x331A0033
+            })
+            if (launchPackage.isNotBlank()) {
+                isClickable = true
+                setOnClickListener {
+                    runCatching {
+                        ctx.packageManager.getLaunchIntentForPackage(launchPackage)
+                            ?.let { ctx.startActivity(it) }
+                    }
+                }
+            }
+        }
+        val meta = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = android.view.Gravity.CENTER_VERTICAL
+        }
+        meta.addView(TextView(ctx).apply {
+            text = r.title
+            setTextColor(0xFFE9D8FD.toInt())
+            setTextAppearance(android.R.style.TextAppearance_Material_Body1)
+            if (r.ts > visitSeenAt) typeface = Typeface.DEFAULT_BOLD
+            maxLines = 2
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            layoutParams = LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        })
+        meta.addView(TextView(ctx).apply {
+            text = ago(System.currentTimeMillis() - r.ts)
+            setTextColor(0x88FFFFFF.toInt())
+            setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+        })
+        row.addView(meta)
+        if (r.text.isNotBlank()) row.addView(TextView(ctx).apply {
+            text = r.text
+            setTextColor(0xCCE9D8FD.toInt())
+            setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+            setPadding(0, dp(2), 0, 0)
+        })
+        return row
+    }
+
+    /** A card-level verdict line, for the states that apply to a whole stream
+     *  rather than to one app. */
+    private fun stateLine(ctx: android.content.Context, text: String, color: Int): TextView =
+        TextView(ctx).apply {
+            this.text = text
+            setTextColor(color)
+            textSize = 12f
+            typeface = Typeface.DEFAULT_BOLD
+            setPadding(0, dp(8), 0, 0)
+        }
+
+    private fun ago(ms: Long): String = when {
+        ms < 60_000     -> "just now"
+        ms < 3_600_000  -> "${ms / 60_000}m ago"
+        ms < 86_400_000 -> "${ms / 3_600_000}h ago"
+        else            -> "${ms / 86_400_000}d ago"
     }
 
     /** Settings.Secure.enabled_notification_listeners is a colon-
@@ -1395,26 +1698,6 @@ class AggregatorStackFragment : Fragment(),
         render()
     }
 
-    /**
-     * Applies Show then By to either notification store. [stamp] is the
-     * entry's timestamp; [group] is the name By=App groups on — the in-app
-     * feed's producer, the phone feed's app label.
-     *
-     * Show=Unread is `ts > last visit`, NOT a per-entry read flag: neither
-     * store has one, and a filter over a field nothing writes would render
-     * an empty list forever. By=App still orders newest-first inside each
-     * app, so switching sort never buries a fresh notification.
-     */
-    private fun <T> arrange(items: List<T>, stamp: (T) -> Long, group: (T) -> String): List<T> {
-        val shown = if (showMode == "unread") items.filter { stamp(it) > visitSeenAt } else items
-        return if (sortMode == "app")
-            shown.sortedWith(
-                compareBy(String.CASE_INSENSITIVE_ORDER) { item: T -> group(item) }
-                    .thenByDescending { item: T -> stamp(item) }
-            )
-        else shown.sortedByDescending { item -> stamp(item) }
-    }
-
     /** Why a non-empty store still rendered nothing. Only Show=Unread can do
      *  this — sorting never removes a row — so the message can name the cause
      *  instead of shrugging. */
@@ -1472,6 +1755,9 @@ class AggregatorStackFragment : Fragment(),
         /** Marks the "Source hid everything" note so it is reused, not
          *  appended once per toggle tap. */
         private const val SOURCE_EMPTY_TAG = "stack_source_empty"
+        /** Marks a notification group's verdict chip so an async ntfy poll can
+         *  find it again without a field per group. */
+        private const val GROUP_STATE_TAG = "notif_group_state"
 
         fun newInstance(sectionId: String, label: String, mode: String): AggregatorStackFragment =
             AggregatorStackFragment().apply {
