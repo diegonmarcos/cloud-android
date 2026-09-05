@@ -643,7 +643,7 @@ public class JmapSync {
                 db.setTransactionSuccessful();
                 EntityLog.log(context, "JMAP added " + primary.name + " id=" + message.id
                         + " uidl=" + message.uidl
-                        + (labels == null ? "" : " labels=" + TextUtils.join(",", labels)));
+                        + (labels == null ? "" : " labels=" + TextUtils.join(",", labels.names)));
             } finally {
                 db.endTransaction();
             }
