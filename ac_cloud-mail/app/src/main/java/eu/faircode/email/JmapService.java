@@ -69,6 +69,10 @@ import rs.ltt.jmap.common.method.response.email.QueryEmailMethodResponse;
 import rs.ltt.jmap.common.method.response.email.ImportEmailMethodResponse;
 import rs.ltt.jmap.common.method.response.identity.GetIdentityMethodResponse;
 import rs.ltt.jmap.common.method.response.mailbox.GetMailboxMethodResponse;
+import rs.ltt.jmap.common.method.call.email.ChangesEmailMethodCall;
+import rs.ltt.jmap.common.method.response.email.ChangesEmailMethodResponse;
+import rs.ltt.jmap.common.method.error.CannotCalculateChangesMethodErrorResponse;
+import rs.ltt.jmap.client.api.MethodErrorResponseException;
 
 // comms: JMAP connection + data-plane helper wrapping rs.ltt.jmap.client.JmapClient.
 //
@@ -374,6 +378,152 @@ public class JmapService {
             throw ex;              // already named — do not re-wrap
         } catch (Exception ex) {
             throw wrap("Email/query+get", ex);
+        }
+    }
+
+    // ── Delta sync (Email/changes) ───────────────────────────────────────────
+
+    /**
+     * comms: the server will not enumerate the delta since our state token.
+     *
+     * RFC 8620 §5.2 lets a server answer cannotCalculateChanges whenever it
+     * cannot or will not compute the change set -- the token is too old, the
+     * change log was truncated, the store was rebuilt. It is explicitly NOT a
+     * retryable error: the ONLY correct response is to discard the token and
+     * resync in full.
+     *
+     * It gets its own type precisely so that it cannot be swallowed by a generic
+     * "JMAP call failed, try again next pass" catch. Treating it as transient
+     * would freeze the mailbox at the last known state forever -- new mail would
+     * never arrive and nothing would ever say why -- which is a far worse bug
+     * than the slow full sync it replaces.
+     */
+    static class CannotCalculateChangesException extends MessagingException {
+        CannotCalculateChangesException(String message) {
+            super(message);
+        }
+    }
+
+    /** One Email/changes result. Ids only -- callers fetch what they need. */
+    static class EmailChanges {
+        String oldState;
+        String newState;
+        boolean hasMoreChanges;
+        String[] created = new String[0];
+        String[] updated = new String[0];
+        String[] destroyed = new String[0];
+    }
+
+    // The account's CURRENT Email state, fetching no records: Email/get with an
+    // empty id list is the cheapest way to ask "what is the state right now?".
+    // This seeds the first delta -- and it is taken BEFORE a full pass, never
+    // after, so anything that lands while that pass runs is replayed by the next
+    // delta instead of falling into the gap between them.
+    @NonNull
+    String getEmailState() throws MessagingException {
+        requireAccount();
+        try {
+            JmapClient.MultiCall multiCall = client.newMultiCall();
+            JmapRequest.Call getCall = multiCall.call(
+                    GetEmailMethodCall.builder()
+                            .accountId(accountId)
+                            .ids(new String[0])
+                            .build());
+            multiCall.execute();
+            GetEmailMethodResponse got = requireMain(
+                    getCall.getMethodResponses().get(), GetEmailMethodResponse.class, "Email/get state");
+            String state = got.getState();
+            if (state == null)
+                throw new MessagingException("JMAP Email/get returned no state");
+            return state;
+        } catch (MessagingException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw wrap("Email/get state", ex);
+        }
+    }
+
+    // One Email/changes round trip.
+    @NonNull
+    EmailChanges getEmailChanges(String sinceState, int maxChanges) throws MessagingException {
+        requireAccount();
+        try {
+            JmapClient.MultiCall multiCall = client.newMultiCall();
+            JmapRequest.Call changesCall = multiCall.call(
+                    ChangesEmailMethodCall.builder()
+                            .accountId(accountId)
+                            .sinceState(sinceState)
+                            .maxChanges((long) maxChanges)
+                            .build());
+            multiCall.execute();
+            ChangesEmailMethodResponse res = requireMain(
+                    changesCall.getMethodResponses().get(),
+                    ChangesEmailMethodResponse.class, "Email/changes");
+
+            EmailChanges changes = new EmailChanges();
+            changes.oldState = res.getOldState();
+            changes.newState = res.getNewState();
+            changes.hasMoreChanges = res.isHasMoreChanges();
+            if (res.getCreated() != null)
+                changes.created = res.getCreated();
+            if (res.getUpdated() != null)
+                changes.updated = res.getUpdated();
+            if (res.getDestroyed() != null)
+                changes.destroyed = res.getDestroyed();
+            if (changes.newState == null)
+                throw new MessagingException("JMAP Email/changes returned no newState");
+            return changes;
+        } catch (MessagingException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            // A method-level error arrives as MethodErrorResponseException inside
+            // the future's ExecutionException, so it has to be unwrapped before
+            // the type can be tested -- otherwise cannotCalculateChanges would be
+            // wrapped up as a generic failure and the mandatory full resync would
+            // never happen.
+            Throwable cause = unwrap(ex);
+            if (cause instanceof MethodErrorResponseException
+                    && ((MethodErrorResponseException) cause)
+                    .getMethodErrorResponse() instanceof CannotCalculateChangesMethodErrorResponse)
+                throw new CannotCalculateChangesException(
+                        "JMAP Email/changes: server cannot calculate changes since the stored state");
+            throw wrap("Email/changes", ex);
+        }
+    }
+
+    // Fetch headers for an explicit id list (the created/updated half of a
+    // delta). Paged: a delta can name more ids than maxObjectsInGet allows.
+    @NonNull
+    List<Email> getEmails(List<String> ids) throws MessagingException {
+        requireAccount();
+        List<Email> result = new ArrayList<>();
+        if (ids == null || ids.isEmpty())
+            return result;
+        try {
+            for (int from = 0; from < ids.size(); from += JMAP_PAGE_SIZE) {
+                List<String> page = ids.subList(from, Math.min(from + JMAP_PAGE_SIZE, ids.size()));
+                JmapClient.MultiCall multiCall = client.newMultiCall();
+                JmapRequest.Call getCall = multiCall.call(
+                        GetEmailMethodCall.builder()
+                                .accountId(accountId)
+                                .ids(page.toArray(new String[0]))
+                                .properties(EMAIL_HEADER_PROPERTIES)
+                                .build());
+                multiCall.execute();
+                GetEmailMethodResponse got = requireMain(
+                        getCall.getMethodResponses().get(), GetEmailMethodResponse.class, "Email/get ids");
+                Email[] list = got.getList();
+                if (list != null)
+                    for (Email e : list)
+                        result.add(e);
+                if (from + JMAP_PAGE_SIZE < ids.size())
+                    sleepBetweenPages();
+            }
+            return result;
+        } catch (MessagingException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw wrap("Email/get ids", ex);
         }
     }
 

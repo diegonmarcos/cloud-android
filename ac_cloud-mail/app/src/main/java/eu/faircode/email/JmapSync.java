@@ -399,6 +399,44 @@ public class JmapSync {
         // 2) Messages — per synchronized (role) folder, insert any not stored.
         String backfillKey = "comms_jmap_backfill_0064";
         boolean backfilled = prefs.getBoolean(backfillKey, false);
+
+        // PHASE 1: delta. Only once the one-shot backfill has completed -- until
+        // then the local store is knowingly incomplete, and a delta only reports
+        // what changed, never what we never fetched. Every FULL_RESYNC_EVERY
+        // passes the full sweep runs anyway as a self-healing floor.
+        int deltaCount = prefs.getInt(deltaCountKey(account.id), 0);
+        boolean fullDue = (deltaCount >= FULL_RESYNC_EVERY);
+        boolean upToDate = false;
+        if (backfilled && !fullDue)
+            upToDate = deltaSync(context, account, jmap, accountHave,
+                    mailboxToFolder, folderById, prefs);
+
+        if (upToDate) {
+            prefs.edit().putInt(deltaCountKey(account.id), deltaCount + 1).apply();
+            // Retention still applies -- it is local-only and cheap.
+            for (Map.Entry<Long, String> e : folderToMailbox.entrySet()) {
+                EntityFolder folder = db.folder().getFolder(e.getKey());
+                if (folder != null && Boolean.TRUE.equals(folder.synchronize))
+                    prune(context, db, folder);
+            }
+            drainOperations(context, account, mailboxToFolder, folderById, jmap, 0);
+            return;
+        }
+
+        // The full pass below re-establishes the delta baseline. The token is
+        // read BEFORE the pass, never after: a message that arrives WHILE the
+        // pass runs would fall into the gap between "state after the pass" and
+        // "what the pass actually saw" and be lost forever. Taking it first can
+        // only cause a change to be replayed, and every apply is an idempotent
+        // upsert keyed by Email.id, so a replay is a no-op.
+        String baseline = null;
+        try {
+            baseline = jmap.getEmailState();
+        } catch (Throwable ex) {
+            // Not fatal: without a baseline the next pass is simply another full
+            // one, which is exactly the pre-delta behaviour.
+            Log.w(account.name + " JMAP state", ex);
+        }
         // PHASE 1a: reconcile-only sweep over EVERY folder before anything
         // heavy: keyword sync + stale-mirror removals on existing rows. This
         // is the whole visible read/unread fix, and it must never wait behind
@@ -482,10 +520,163 @@ public class JmapSync {
         if (!backfilled)
             prefs.edit().putBoolean(backfillKey, true).apply();
 
+        // The full pass completed, so the baseline taken before it is now a
+        // valid delta starting point. Reset the counter that forces this pass.
+        if (baseline != null)
+            prefs.edit()
+                    .putString(emailStateKey(account.id), baseline)
+                    .putInt(deltaCountKey(account.id), 0)
+                    .apply();
+
         // 3) PHASE 2: drain whatever phase 0 did not have budget for, now that
         // the visible reconcile is done. Unbudgeted: there is nothing left to
         // starve.
         drainOperations(context, account, mailboxToFolder, folderById, jmap, 0);
+    }
+
+    // Ids requested per Email/changes round trip, and the cap on rounds in one
+    // pass. Stalwart's maxObjectsInGet defaults to 500; the round cap only stops
+    // a pathological backlog from owning the pass, and whatever is left is
+    // picked up next pass because the state token advances every round.
+    private static final int CHANGES_MAX = 500;
+    private static final int CHANGES_MAX_ROUNDS = 20;
+
+    // Run a full pass every Nth pass even when deltas keep succeeding. A delta
+    // chain is only as good as its weakest link: one mis-applied change and the
+    // local store diverges from the server with nothing to ever notice. This is
+    // the self-healing floor, and it is why skipping the full pass is safe.
+    private static final int FULL_RESYNC_EVERY = 24;
+
+    // Per-account sync milestones live in SharedPreferences rather than new
+    // EntityAccount columns: no Room migration, and it is how this file already
+    // stores the backfill/label-rework milestones.
+    private static String emailStateKey(long accountId) {
+        return "jmap_email_state." + accountId;
+    }
+
+    private static String deltaCountKey(long accountId) {
+        return "jmap_delta_count." + accountId;
+    }
+
+    /**
+     * comms: bring the account up to date from the stored Email state token.
+     *
+     * The pass this replaces asked the server for the COMPLETE membership of
+     * every mailbox (Email/query + Email/get, paged, SYNC_LIMIT 5000 per folder)
+     * on every single poll, and then diffed it locally -- the entire mailbox
+     * over the wire to discover that nothing changed. Email/changes asks the
+     * question that was actually meant: what changed since I last looked.
+     *
+     * @return true if the delta applied cleanly and the account is up to date,
+     *         false if the caller MUST run the full pass instead. Returning
+     *         false is always SAFE -- it costs a slow sync, nothing more.
+     */
+    private static boolean deltaSync(Context context, EntityAccount account, JmapService jmap,
+                                     Map<String, Long> accountHave,
+                                     Map<String, Long> mailboxToFolder,
+                                     Map<Long, EntityFolder> folderById,
+                                     SharedPreferences prefs) {
+        DB db = DB.getInstance(context);
+        String key = emailStateKey(account.id);
+        String since = prefs.getString(key, null);
+        if (since == null)
+            return false; // no baseline yet: the full pass below establishes one
+
+        int rounds = 0;
+        int created = 0, updated = 0, destroyed = 0;
+        try {
+            while (rounds++ < CHANGES_MAX_ROUNDS) {
+                JmapService.EmailChanges changes;
+                try {
+                    changes = jmap.getEmailChanges(since, CHANGES_MAX);
+                } catch (JmapService.CannotCalculateChangesException ex) {
+                    // RFC 8620 §5.2: the token is unusable and will never become
+                    // usable. Drop it and resync in full -- keeping it would mean
+                    // every later delta fails the same way and the mailbox silently
+                    // stopped updating. Dropping it costs one slow pass.
+                    prefs.edit().remove(key).apply();
+                    EntityLog.log(context, "JMAP delta: server cannot calculate changes"
+                            + " since the stored state, falling back to a full resync");
+                    return false;
+                }
+
+                // Destroyed FIRST: an id can appear as destroyed in the same
+                // batch it was updated in, and the deletion is what must win.
+                for (String id : changes.destroyed) {
+                    Long local = accountHave.get(id);
+                    if (local == null)
+                        continue;
+                    db.message().deleteMessage(local);
+                    accountHave.remove(id);
+                    destroyed++;
+                }
+
+                // created + updated are fetched together: the server may report
+                // an id as created that we already hold (a delta replayed after
+                // an interrupted pass), and as updated one we have never seen.
+                // Which list an id arrived in is therefore NOT trusted -- local
+                // presence decides insert vs. reconcile, so a replay is a no-op
+                // instead of a duplicate.
+                List<String> wanted = new ArrayList<>();
+                for (String id : changes.created)
+                    wanted.add(id);
+                for (String id : changes.updated)
+                    if (!wanted.contains(id))
+                        wanted.add(id);
+                wanted.removeAll(java.util.Arrays.asList(changes.destroyed));
+
+                for (Email email : jmap.getEmails(wanted)) {
+                    Long local = accountHave.get(email.getId());
+                    if (local != null) {
+                        // Reuses the SAME reconcile the full pass uses, so the
+                        // ui_seen never-downgrade rule and the label_ids backfill
+                        // apply identically on the delta path.
+                        reconcileKeywords(db, local, email, mailboxToFolder, folderById);
+                        updated++;
+                        continue;
+                    }
+
+                    Long primaryId = primaryFolder(email, mailboxToFolder, folderById);
+                    EntityFolder primary = (primaryId == null ? null : folderById.get(primaryId));
+                    if (primary == null)
+                        continue; // not in any mailbox this phone syncs
+                    Labels labels = labelsFor(email, primary.name, mailboxToFolder, folderById);
+                    EntityMessage message = buildMessage(account, primary, email, labels);
+                    try {
+                        db.beginTransaction();
+                        message.id = db.message().insertMessage(message);
+                        db.setTransactionSuccessful();
+                    } finally {
+                        db.endTransaction();
+                    }
+                    accountHave.put(email.getId(), message.id);
+                    EntityOperation.queue(context, message, EntityOperation.BODY);
+                    created++;
+                }
+
+                // Advance the token only after the batch it describes has been
+                // applied, so an interruption mid-chain resumes from the last
+                // FULLY applied point instead of skipping the batch it died in.
+                since = changes.newState;
+                prefs.edit().putString(key, since).apply();
+
+                if (!changes.hasMoreChanges)
+                    break;
+            }
+        } catch (Throwable ex) {
+            // Any other failure (timeout, malformed response) leaves the last
+            // successfully applied token in place and asks for a full pass. The
+            // full pass re-establishes the baseline, so nothing is lost.
+            Log.w(account.name + " JMAP delta", ex);
+            EntityLog.log(context, "JMAP delta failed: " + ex.getClass().getSimpleName()
+                    + ", falling back to a full resync");
+            return false;
+        }
+
+        if (created > 0 || updated > 0 || destroyed > 0)
+            EntityLog.log(context, "JMAP delta: created=" + created
+                    + " updated=" + updated + " destroyed=" + destroyed);
+        return true;
     }
 
     /**
