@@ -75,6 +75,14 @@ class RssFeedFragment : Fragment(R.layout.fragment_rss_feed) {
         for (sc in scopes) byScope[sc] = mutableListOf()
         for (t in topics) byScope.getValue(NtfyScopes.scopeOf(t, scopes)).add(t)
 
+        // The advisory topic is pinned OPEN at the top with its live messages,
+        // ahead of every other channel. This screen is where a user is sent
+        // when their app can no longer update itself, and at that moment the
+        // difference between "the fix is here" and "the fix is three taps into
+        // an alphabetical list of twenty-six addresses" is whether they find
+        // it at all. Every other channel stays a link; this one is the page.
+        renderAdvisories(container)
+
         for ((scope, scopeTopics) in byScope) {
             if (scopeTopics.isEmpty()) continue
             container.addView(TextView(requireContext()).apply {
@@ -119,9 +127,12 @@ class RssFeedFragment : Fragment(R.layout.fragment_rss_feed) {
 
             for (topic in items.sorted()) {
                 val row = inflater.inflate(R.layout.item_rss_topic, container, false)
-                row.findViewById<TextView>(R.id.r_name).text = topic
+                // Title line is what the channel CARRIES; the address moves to
+                // the subtitle next to the URL that was already there. The raw
+                // topic stays visible because it is what you publish to.
+                row.findViewById<TextView>(R.id.r_name).text = NtfyCatalog.labelOf(topic)
                 val url = "https://rss.diegonmarcos.com/$topic"
-                row.findViewById<TextView>(R.id.r_url).text  = "rss.diegonmarcos.com/$topic"
+                row.findViewById<TextView>(R.id.r_url).text  = "$topic · rss.diegonmarcos.com/$topic"
                 row.setOnClickListener {
                     runCatching {
                         startActivity(android.content.Intent(
@@ -132,6 +143,77 @@ class RssFeedFragment : Fragment(R.layout.fragment_rss_feed) {
                 }
                 container.addView(row)
             }
+        }
+    }
+
+    /**
+     * The advisory channel, expanded in place. Fetched separately from the
+     * topic registry and rendered whatever the result: messages if there are
+     * any, "nothing published" if the channel is reachable and quiet, the
+     * error if it is not. All three are useful; a section that silently
+     * vanishes on failure teaches the user the channel is not worth checking.
+     */
+    private fun renderAdvisories(container: LinearLayout) {
+        val ctx = requireContext()
+        val topic = NtfyCatalog.advisoryTopic()
+        val dp = { v: Int -> (v * resources.displayMetrics.density).toInt() }
+
+        container.addView(TextView(ctx).apply {
+            text = NtfyCatalog.labelOf(topic)
+            setTextAppearance(android.R.style.TextAppearance_Material_Title)
+            setTextColor(resources.getColor(R.color.cloud_primary, ctx.theme))
+            setPadding(dp(10), dp(8), 0, 0)
+        })
+        val status = TextView(ctx).apply {
+            text = getString(R.string.rss_advisory_loading)
+            setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+            alpha = 0.7f
+            setPadding(dp(10), 0, dp(10), dp(4))
+        }
+        container.addView(status)
+
+        val slot = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
+        container.addView(slot)
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            val outcome = withContext(Dispatchers.IO) {
+                runCatching { AdvisoryChannel.recent(topic) }
+            }
+            if (!isAdded) return@launch
+            outcome.fold(
+                onSuccess = { msgs ->
+                    status.text = if (msgs.isEmpty()) getString(R.string.rss_advisory_empty)
+                                  else getString(R.string.rss_advisory_status, msgs.size)
+                    val inflater = LayoutInflater.from(ctx)
+                    for (m in msgs) {
+                        val row = inflater.inflate(R.layout.item_rss_topic, slot, false)
+                        row.findViewById<TextView>(R.id.r_name).text = m.title
+                        val hasLink = m.link != null
+                        row.findViewById<TextView>(R.id.r_url).text =
+                            if (hasLink) getString(R.string.rss_advisory_install) else m.body.take(160)
+                        row.setOnClickListener {
+                            runCatching {
+                                // Straight to the bootstrap installer, which
+                                // downloads, verifies the sha256 sidecar and
+                                // hands the system installer bytes it can
+                                // vouch for. Handing the raw URL to a browser
+                                // would skip every one of those steps.
+                                startActivity(
+                                    if (hasLink)
+                                        com.diegonmarcos.superapp.recovery.RecoveryActivity
+                                            .intent(ctx, m.appId)
+                                    else android.content.Intent(
+                                        android.content.Intent.ACTION_VIEW,
+                                        android.net.Uri.parse("https://rss.diegonmarcos.com/$topic"),
+                                    )
+                                )
+                            }
+                        }
+                        slot.addView(row)
+                    }
+                },
+                onFailure = { status.text = getString(R.string.rss_error, it.message ?: "?") },
+            )
         }
     }
 

@@ -6657,6 +6657,15 @@
     "ntfy": {
       "scopes": [
         {
+          "id": "advisory",
+          "label": "Advisories",
+          "subtitle": "Out-of-band install and repair notices — read this first",
+          "prefixes": [
+            "cloud-sa-notifications",
+            "fleet"
+          ]
+        },
+        {
           "id": "user",
           "label": "My channels",
           "subtitle": "This phone and its apps",
@@ -6684,25 +6693,64 @@
         }
       ],
       "default_scope": "infra",
+      "advisory_topic": "cloud-sa-notifications",
       "channels": [
+        "cloud-sa-notifications",
+        "fleet_advisory",
         "all",
         "dev_commits",
         "dev_pull-requests",
         "dev_releases",
         "deploy_ship",
         "deploy_containers",
+        "deploy_dagu",
         "health_mesh",
         "health_endpoints",
         "health_dns",
         "health_resources",
         "health_containers",
+        "health_report_cloud-health-full-daily",
+        "health_report_cloud-health-full-2",
+        "health_report_cloud-mail-health-full",
+        "health_report_cloud-sec-data-report",
+        "health_report_cloud-sec-network-report",
+        "infra_mail-health",
         "ops_backups",
         "ops_reports",
         "sec_audit",
         "sec_tls",
         "sec_connections",
         "sec_yara"
-      ]
+      ],
+      "_doc_labels": "Human titles, mirrored from the fleet's own registry at cloud-infra/a_solutions/infra-obs_ntfy/src/build.json::topics (the source of truth). A raw snake_case topic is an address, not a name: 'sec_yara' tells you nothing about what arrives there, and a list of twenty-six of them is an inventory nobody reads. A topic with no entry here still renders — under its raw name — because a missing label must degrade to less readable, never to invisible.",
+      "labels": {
+        "cloud-sa-notifications": "SuperApp advisories · direct install links",
+        "fleet_advisory": "Fleet advisories · app is stuck, here is the fix",
+        "all": "Everything · fan-out of every channel",
+        "dev_commits": "Commits pushed",
+        "dev_pull-requests": "Pull requests",
+        "dev_releases": "Releases, tags and forks",
+        "deploy_ship": "Ship runs and deploys",
+        "deploy_containers": "Container restarts and image pulls",
+        "deploy_dagu": "Dagu DAG failures",
+        "health_mesh": "WireGuard mesh reachability",
+        "health_endpoints": "HTTP endpoint checks",
+        "health_dns": "DNS resolution checks",
+        "health_resources": "VM disk, memory and CPU",
+        "health_containers": "Container health checks",
+        "health_report_cloud-health-full-daily": "Daily full cloud health report",
+        "health_report_cloud-health-full-2": "Secondary full health report",
+        "health_report_cloud-mail-health-full": "Mail stack health report",
+        "health_report_cloud-sec-data-report": "Security · data report",
+        "health_report_cloud-sec-network-report": "Security · network report",
+        "infra_mail-health": "Mail health (posted by cloud-health-mail-full.sh)",
+        "ops_backups": "Backup freshness",
+        "ops_reports": "Daily and weekly summaries",
+        "sec_audit": "Auth log analysis · brute force",
+        "sec_tls": "TLS certificate expiry",
+        "sec_connections": "SSH and sudo connections",
+        "sec_yara": "YARA malware scanner"
+      }
     },
     "_doc_c3_ops": "Where the C3 container sheet's Actions tab POSTs. c3-infra-api's operations routes, reached through the same public base the front portal uses. The API distinguishes a CONTAINER from its SERVICE — /vms/{vm}/containers/{name}/{start,stop,restart,update} against /vms/{vm}/services/{service}/{start,stop} — which is why the sheet shows Container Actions and App Actions as two lists rather than one: they are two different operations with different blast radius, and the infrastructure already says so. AUTHENTICATED: this path is behind Caddy forward_auth, so every call carries the Authelia bearer libs:ops already stores for Dagu. Empty base_url disables the Actions tab's network buttons and says so; Infos needs no network at all.",
     "c3_ops": {

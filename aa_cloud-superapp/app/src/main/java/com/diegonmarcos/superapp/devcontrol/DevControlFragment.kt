@@ -35,6 +35,9 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.diegonmarcos.superapp.BuildConfig
 import com.diegonmarcos.superapp.updater.BuildConfig as UpdBuildConfig
+import com.diegonmarcos.superapp.updater.AbiUpdateTag
+import com.diegonmarcos.superapp.updater.BuildAge
+import com.diegonmarcos.superapp.updater.Fleet
 import com.wireguard.android.backend.Tunnel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -502,6 +505,12 @@ class DevControlFragment : Fragment() {
             // Repos — data-driven from build.json::ui.profile_default.repos.
             it.addView(small(ctx, "Repos:"))
             for ((label, url) in parseProfileRepos()) row(ctx, it, label, url)
+            // Install — the repo links above tell you where the SOURCE lives,
+            // which is no help to someone holding a broken build: reading the
+            // code is not installing it. The artifact those repos produce gets
+            // its own address here, next to them, plus the button that uses it.
+            it.addView(small(ctx, getString(R.string.about_install_header)))
+            renderDirectInstall(ctx, it)
             // The consolidated cloud-data config that feeds the mesh.
             it.addView(small(ctx, "Config source:"))
             row(ctx, it, "Consolidated", BuildConfig.UI_CONSOLIDATED_CONFIG.ifBlank { "—" })
@@ -517,6 +526,11 @@ class DevControlFragment : Fragment() {
             row(ctx, it, "Name",         BuildConfig.APPLICATION_ID)
             row(ctx, it, "Version",      BuildConfig.VERSION_NAME)
             row(ctx, it, "Version code", BuildConfig.VERSION_CODE.toString())
+            // The versionCode is wall-clock encoded (3,000,000 + minutes since
+            // 2026-01-01 UTC), so "3356276" is a DATE nobody can read. Decoding
+            // it is the difference between a number and the answer to the only
+            // question anyone asks here: how old is what I am running.
+            row(ctx, it, "Built from code", BuildAge.describe(BuildConfig.VERSION_CODE.toLong()))
             row(ctx, it, "Git sha",      BuildConfig.GIT_SHORT_SHA)
             row(ctx, it, "Built (UTC)",  BuildConfig.BUILD_TIMESTAMP)
             row(ctx, it, "Build type",   BuildConfig.BUILD_TYPE)
@@ -1901,6 +1915,57 @@ class DevControlFragment : Fragment() {
         ).apply { topMargin = dp(20) }
         layoutParams = lp
         setPadding(p, dp(12), p, dp(10))
+    }
+
+    /**
+     * The APK's own address, and the button that installs it.
+     *
+     * ## Why this belongs next to the repo links
+     * The repo rows answer "where does this come from". They do not answer
+     * "how do I get a working copy", and the two get confused precisely when
+     * it matters — the user whose update chain is broken is the one reading
+     * this screen, and a GitHub source link hands them a tree they cannot
+     * build on a phone. The artifact URL is the actionable half of the same
+     * fact and it was simply missing.
+     *
+     * ## Why the URL is derived, not written down
+     * It comes from the fleet manifest ([Fleet]) that Constellation already
+     * installs from, so About cannot drift away from what the updater
+     * actually fetches. The ABI suffix is applied on top: this constellation
+     * publishes an `-x86_64` variant beside the default, and a hardcoded arm64
+     * link is a link that installs the wrong architecture on every emulator
+     * and x86 tablet in the fleet — a failure that looks like a corrupt
+     * download rather than a wrong URL.
+     */
+    private fun renderDirectInstall(ctx: Context, host: LinearLayout) {
+        val me = Fleet.parse(UpdBuildConfig.CONSTELLATION_FLEET_B64)
+            .firstOrNull { it.pkg == BuildConfig.APPLICATION_ID }
+
+        // "latest" → "", "latest-x86_64" → "-x86_64". The tag already encodes
+        // the device's ABI choice, so reusing it keeps one decision in one place.
+        val suffix = AbiUpdateTag.current().removePrefix("latest")
+        val asset = (me?.asset ?: "Cloud-SuperApp.apk").replace(Regex("\\.apk$"), "$suffix.apk")
+        val base = me?.releaseUrl?.substringBeforeLast('/')
+            ?: "https://github.com/diegonmarcos/cloud-u-android/releases/download/latest"
+        val apkUrl = "$base/$asset"
+
+        row(ctx, host, "APK", apkUrl)
+        // The sidecar is what makes the URL trustworthy rather than merely
+        // convenient, so it is shown rather than silently used.
+        row(ctx, host, "Checksum", "$apkUrl.sha256")
+        me?.repoUrl?.takeIf { it.isNotBlank() }?.let { row(ctx, host, "Release repo", it) }
+
+        host.addView(actionButton(ctx, getString(R.string.about_install_action), 0xFF7C3AED.toInt()) {
+            // Straight into the same recovery flow the advisory feed opens:
+            // download → verify sha256 → system installer. Opening the URL in
+            // a browser instead would drop the verification step, which is the
+            // only reason to prefer this over telling the user to search GitHub.
+            runCatching {
+                startActivity(
+                    com.diegonmarcos.superapp.recovery.RecoveryActivity.intent(ctx, me?.id)
+                )
+            }
+        })
     }
 
     /** Repo {label,url} list for the Profile section — data-driven from

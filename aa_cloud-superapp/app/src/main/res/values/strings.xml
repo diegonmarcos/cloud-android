@@ -66,6 +66,12 @@
     <string name="rss_empty">No channels declared in cloud-data</string>
     <string name="rss_error">Failed: %1$s</string>
     <string name="rss_group_other">Other</string>
+    <string name="rss_advisory_loading">Checking for advisories…</string>
+    <string name="rss_advisory_empty">No advisories — nothing to fix right now</string>
+    <string name="rss_advisory_status">%1$d advisory message(s)</string>
+    <string name="rss_advisory_install">Tap to install directly</string>
+    <string name="about_install_header">Install / repair:</string>
+    <string name="about_install_action">Install this APK directly</string>
 
     <!-- Drive · Connections -->
     <string name="drive_connections_title">Drive · Connections</string>
