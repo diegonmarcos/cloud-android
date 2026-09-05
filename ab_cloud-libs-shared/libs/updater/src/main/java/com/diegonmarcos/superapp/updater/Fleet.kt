@@ -302,8 +302,13 @@ object Fleet {
     /** Hand a verified APK to the installer: the first channel that accepts it
      *  wins. Shell first (installs with NO dialog at all), PackageInstaller
      *  second (prompts, but always available). Cheap — the work was the
-     *  download. */
-    fun commit(ctx: Context, app: App, apk: VerifiedApk) {
+     *  download.
+     *
+     *  Returns the name of the channel that ACTUALLY performed the install —
+     *  callers report it, and reporting the attempted channel instead is how
+     *  a completely dead `pm install` path spent a day looking like a working
+     *  one. */
+    fun commit(ctx: Context, app: App, apk: VerifiedApk): String {
         // ASK THE CANDIDATE WHAT IT IS, BEFORE COMMITTING IT.
         //
         // "Verified" answers "are these the bytes the server meant to send" —
@@ -347,7 +352,7 @@ object Fleet {
             val why = channel.install(ctx, app, apk)
             if (why == null) {
                 Log.i(TAG, "install committed via ${channel.name}: ${app.label} (${app.pkg})")
-                return
+                return channel.name
             }
             Log.w(TAG, "install channel '${channel.name}' declined ${app.pkg}: $why")
             declined += "${channel.name} → $why"
@@ -558,10 +563,18 @@ object Fleet {
         // privileged channel live there is nothing to cap.
         val limit = if (silentCapable(ctx)) Int.MAX_VALUE else BuildConfig.AU_MAX_PER_PASS
         UpdateProgress.quiet = true
+        // The same intent, PERSISTED, for the one consumer that cannot see the
+        // field: PackageInstallerReceiver. Install results land tens of seconds
+        // after commit(), off this stack entirely, and it was toasting EVERY
+        // result — including plain success — so an unattended pass over the
+        // fleet popped one toast per app. That is exactly the "progress
+        // appearing" that auto-update:ON is supposed to mean the absence of.
+        AutoUpdatePrefs.setUnattendedPass(ctx, true)
         return try {
             runBatch(ctx, apps, Mode.AUTO, limit, owner)
         } finally {
             UpdateProgress.quiet = false
+            AutoUpdatePrefs.setUnattendedPass(ctx, false)
         }
     }
 
@@ -755,6 +768,7 @@ object Fleet {
         // Sequential is not a style choice: PackageInstaller sessions collide,
         // and each unanswered prompt holds a session against the 50-session cap.
         var acted = 0
+        val usedChannels = linkedSetOf<String>()
         staged.forEachIndexed { i, (app, apk) ->
             if (UpdateProgress.cancelRequested) {
                 Log.i(TAG, "installAll cancelled by user after $acted install(s)")
@@ -769,10 +783,17 @@ object Fleet {
                 // arm/await itself any more. That moved the guarantee to the
                 // one place EVERY caller passes through - including the
                 // per-row install buttons, which never came through here.
-                commit(ctx, app, apk)
+                // NAME THE CHANNEL THAT DID IT, NOT THE ONE WE HOPED FOR.
+                // This used to print `via $channel` whenever a privileged
+                // channel merely EXISTED — so a `pm install` that failed on
+                // every single app and fell through to PackageInstaller was
+                // reported, thirty-two times, as a silent shell install. One
+                // wrong word made a completely dead code path look healthy.
+                val used = commit(ctx, app, apk)
+                usedChannels += used
                 acted++
                 Log.i(TAG, "installed ${app.kind} ${app.id} (${app.pkg}) " +
-                           "[${i + 1}/${staged.size}] via ${if (silent) channel else "PackageInstaller"}")
+                           "[${i + 1}/${staged.size}] via $used")
             } catch (t: Throwable) {
                 // The APK stays in the cache, so a retry reuses it - the whole
                 // reason downloads are content-addressed.
@@ -786,9 +807,9 @@ object Fleet {
         return Pass(acted, todo.size, batch.size, silent, channel,
             "installed $acted of ${staged.size} staged (${todo.size} needed work" +
             (if (deferred > 0) ", $deferred deferred to the next pass" else "") + ") " +
-            (if (silent) "silently via $channel"
-             else "via PackageInstaller — each one PROMPTS, because no privileged " +
-                  "shell channel is available"))
+            // Observed, not intended — see the per-app log line above.
+            (if (usedChannels.isEmpty()) "via nothing: no channel accepted any of them"
+             else "via ${usedChannels.joinToString(" + ")}"))
     }
 
     /** One-line, log-safe rendering of a [State]. No URLs, no tokens. */

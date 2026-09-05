@@ -264,6 +264,18 @@ class PackageInstallerReceiver : BroadcastReceiver() {
                 severity = severity,
             )
         }
+        // AN UNATTENDED PASS MAY NOT INTERRUPT.
+        // Nobody asked for this work, so a toast per install result — thirty-
+        // two of them over a fleet pass, success included — is precisely the
+        // "progress" that auto-update:ON is meant to mean the absence of. The
+        // in-app feed above still records every one; only the interruption is
+        // dropped, and only for routine outcomes. A FAILURE still surfaces:
+        // silence about work that did not happen is not quiet, it is hiding.
+        // Manual installs are unaffected — the flag is set only around the
+        // automatic pass — so tapping Install still confirms itself.
+        val unattended = runCatching { AutoUpdatePrefs.unattendedPass(context) }.getOrDefault(false)
+        val routine = severity != NotificationStore.Sev.ERROR
+        if (unattended && routine) return
         try {
             Toast.makeText(context, short, Toast.LENGTH_LONG).show()
         } catch (_: Throwable) { /* off-Looper thread — skip toast */ }

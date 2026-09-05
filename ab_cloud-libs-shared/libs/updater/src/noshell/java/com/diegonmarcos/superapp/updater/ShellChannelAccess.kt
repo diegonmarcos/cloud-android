@@ -24,6 +24,8 @@ import android.content.Context
  */
 internal interface ShellChannel {
     fun exec(ctx: Context, command: String): String?
+    fun probe(ctx: Context): Boolean = false
+    fun execWithStdin(ctx: Context, command: String, stdin: java.io.File): String? = null
     fun name(): String
 }
 

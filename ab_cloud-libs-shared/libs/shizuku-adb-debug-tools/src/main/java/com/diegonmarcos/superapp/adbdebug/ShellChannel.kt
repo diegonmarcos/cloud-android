@@ -29,6 +29,29 @@ interface ShellChannel {
      *  couldn't serve it. */
     fun exec(ctx: Context, command: String): String?
 
+    /**
+     * Cheap round trip that proves the channel EXECUTES, not merely that a
+     * socket is up. [isReady] only reports connection state, so a wedged
+     * channel used to be discovered by a multi-megabyte install hanging for
+     * the whole exec timeout, once per app.
+     */
+    fun probe(ctx: Context): Boolean =
+        exec(ctx, "echo shell-ok")?.contains("shell-ok") == true
+
+    /**
+     * Run [command] with the contents of [stdin] piped to its standard input,
+     * and capture stdout. Null when this channel cannot carry binary stdin —
+     * the caller then has to find another way.
+     *
+     * This is the only way to hand a file to a shell-domain command: the shell
+     * runs as uid 2000 and can read NEITHER our 0700 app-private cache NOR
+     * /Android/data (FUSE-restricted from Android 11), and it cannot be given
+     * a staging directory either (/data/local/tmp is 0771 root:shell, so an
+     * untrusted_app cannot create anything in it). Bytes over the wire, with
+     * no filesystem shared with the shell at all.
+     */
+    fun execWithStdin(ctx: Context, command: String, stdin: java.io.File): String? = null
+
     /** One-line human status for /api/adb/status. */
     fun status(ctx: Context): String
 }

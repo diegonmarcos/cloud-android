@@ -31,7 +31,29 @@ object EmbeddedAdbChannel : ShellChannel {
      * (the synchronous DevControlServer handler) can never hang even if a
      * command misbehaves.
      */
-    override fun exec(ctx: Context, command: String): String? = runCatching {
+    override fun exec(ctx: Context, command: String): String? =
+        execStream(ctx, command, stdin = null, timeoutMs = EXEC_TIMEOUT_MS)
+
+    /**
+     * A trivial round trip on a SHORT leash. Connection state is not
+     * usability: the channel can be "connected" and still never answer, and
+     * discovering that by way of a 29 MB install that hangs for the whole
+     * transfer window costs the batch its entire wall clock.
+     */
+    override fun probe(ctx: Context): Boolean =
+        execStream(ctx, "echo shell-ok", stdin = null, timeoutMs = PROBE_TIMEOUT_MS)
+            ?.contains("shell-ok") == true
+
+    /**
+     * `exec:` is bidirectional, so the same stream that returns stdout can
+     * carry the file in — which is exactly how `adb install` streams an APK.
+     */
+    override fun execWithStdin(ctx: Context, command: String, stdin: java.io.File): String? =
+        execStream(ctx, command, stdin, TRANSFER_TIMEOUT_MS)
+
+    private fun execStream(
+        ctx: Context, command: String, stdin: java.io.File?, timeoutMs: Long,
+    ): String? = runCatching {
         val stream = AdbManager.getInstance(ctx).openStream("exec:$command")
         // Read INCREMENTALLY into a buffer on a worker thread so that, on
         // timeout (or a stream that never EOFs), we return whatever ARRIVED
@@ -51,18 +73,45 @@ object EmbeddedAdbChannel : ShellChannel {
             }
         }
         reader.start()
-        reader.join(EXEC_TIMEOUT_MS)
+        // Feed stdin on its own thread: the command may already be writing
+        // stdout while we are still pushing bytes in, and a single-threaded
+        // write-then-read deadlocks as soon as the output buffer fills.
+        val writer = stdin?.let { file ->
+            Thread {
+                runCatching {
+                    val out = stream.openOutputStream()
+                    file.inputStream().use { input ->
+                        val buf = ByteArray(64 * 1024)
+                        while (true) {
+                            val n = input.read(buf)
+                            if (n < 0) break
+                            out.write(buf, 0, n)
+                        }
+                    }
+                    // Deliberately NOT closed: closing the output half closes
+                    // the adb stream, and the command still has stdout to
+                    // deliver. Size-prefixed protocols (`pm install -S <n>`)
+                    // do not need EOF on stdin.
+                    out.flush()
+                }
+            }.also { it.start() }
+        }
+        reader.join(timeoutMs)
         val timedOut = reader.isAlive
         if (timedOut) {
             runCatching { stream.close() } // unblock the read → thread exits
             reader.interrupt()
             reader.join(500)
         }
+        writer?.let { if (it.isAlive) it.interrupt(); it.join(500) }
         val text = synchronized(acc) { acc.toString("UTF-8") }
-        if (timedOut) "$text\n[…truncated at ${EXEC_TIMEOUT_MS}ms — ${text.length} bytes]" else text
+        if (timedOut) "$text\n[…truncated at ${timeoutMs}ms — ${text.length} bytes]" else text
     }.getOrNull()
 
+    private const val PROBE_TIMEOUT_MS = 4_000L
     private const val EXEC_TIMEOUT_MS = 25_000L
+    /** An APK is tens of MB and `pm` only answers once the commit has landed. */
+    private const val TRANSFER_TIMEOUT_MS = 180_000L
 
     override fun status(ctx: Context): String =
         if (isReady(ctx)) "Connected — embedded adb to 127.0.0.1 (shell uid 2000)"

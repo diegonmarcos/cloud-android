@@ -1,5 +1,6 @@
 package com.diegonmarcos.superapp.updater
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Build
 
@@ -15,6 +16,7 @@ import android.os.Build
 object AutoUpdatePrefs {
     private const val PREFS = "auto_update"
     private const val KEY_SILENT = "silent"
+    private const val KEY_UNATTENDED = "unattended_pass"
     private const val KEY_ENABLED = "enabled"
     private const val KEY_REQUIRE_SILENT = "require_silent"
 
@@ -34,6 +36,29 @@ object AutoUpdatePrefs {
 
     fun silent(ctx: Context): Boolean =
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_SILENT, true)
+
+    /**
+     * True while an UNATTENDED pass is in flight — nobody asked for this work,
+     * so nothing about it may interrupt.
+     *
+     * Persisted rather than kept in memory like [UpdateProgress.quiet] because
+     * the consumer is [PackageInstallerReceiver]: install results arrive
+     * asynchronously, tens of seconds after commit(), and a broadcast receiver
+     * has no access to the worker's stack — nor any guarantee of sharing its
+     * process lifetime. A flag in a field is simply not observable there.
+     *
+     * Set for the duration of the pass and cleared in a finally, so a crash
+     * mid-pass costs at most one silenced toast, never a permanently muted app.
+     */
+    fun unattendedPass(ctx: Context): Boolean =
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_UNATTENDED, false)
+
+    /** commit(), not apply(): the receiver may read this from a cold process. */
+    @SuppressLint("ApplySharedPref")
+    fun setUnattendedPass(ctx: Context, on: Boolean) {
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+            .putBoolean(KEY_UNATTENDED, on).commit()
+    }
 
     /**
      * "Never show me an install confirmation, even if that means not
