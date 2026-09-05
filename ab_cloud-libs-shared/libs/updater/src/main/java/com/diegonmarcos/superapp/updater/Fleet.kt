@@ -343,7 +343,7 @@ object Fleet {
         // had merely not reconnected since the last app start, or had run `pm
         // install` and been refused. Each channel now hands back a sentence.
         val declined = mutableListOf<String>()
-        for (channel in channels) {
+        for (channel in channels(ctx)) {
             val why = channel.install(ctx, app, apk)
             if (why == null) {
                 Log.i(TAG, "install committed via ${channel.name}: ${app.label} (${app.pkg})")
@@ -354,43 +354,48 @@ object Fleet {
         }
         error("no install channel accepted ${app.pkg}. " +
             declined.joinToString(" | ") +
-            if (!ALLOW_PROMPTING_FALLBACK)
-                ". The prompting PackageInstaller fallback is disabled, so there is no other " +
-                "channel to try — see Fleet.ALLOW_PROMPTING_FALLBACK"
+            if (AutoUpdatePrefs.requireSilent(ctx))
+                ". This device has opted in to \"never prompt\" (AutoUpdatePrefs.requireSilent), " +
+                "so the universal PackageInstaller fallback was not tried. Turn that setting off " +
+                "to install with a confirmation dialog instead"
             else "")
     }
 
     /**
-     * NO CONFIRMATION DIALOG, IN ANY MODE — which means no non-privileged commit.
+     * THE LADDER, AND WHY IT MUST NEVER BE ONE RUNG LONG.
      *
-     * A PackageInstaller session commit made by an ordinary app ALWAYS shows
-     * the "do you want to install this update?" sheet, and Play Protect stacks
-     * its scan on top. That is platform behaviour, not app behaviour: there is
-     * no flag, no permission short of INSTALL_PACKAGES (system-only), and no
-     * amount of USER_ACTION_NOT_REQUIRED that removes it for a package we are
-     * not already the installer of record for. It CANNOT be suppressed from
-     * inside the app, and the only honest way to never show it is to never
-     * make that kind of commit.
+     * [ShellInstall] first: it runs `pm install` as uid 2000, which holds
+     * INSTALL_PACKAGES, so it shows nothing at all and gives Play Protect no
+     * prompt to stack. That is the ONLY dialog-free path and it is the one we
+     * want whenever it can be established.
      *
-     * So [SessionInstall] is off the ladder. The shell channel runs `pm
-     * install` as uid 2000, which does hold INSTALL_PACKAGES, so it neither
-     * confirms nor gives Play Protect a prompt to stack — that is the ONLY
-     * dialog-free path, and it is now the only path. When it is unavailable an
-     * install fails loudly, with the reason above in logcat and a notification
-     * from ConstellationWorker, instead of quietly falling back to prompting —
-     * a fallback that is indistinguishable, from the user's side, from the
-     * suppression never having worked at all.
+     * [SessionInstall] second, ALWAYS: a PackageInstaller commit by an
+     * ordinary app costs one confirmation (platform behaviour — no flag, no
+     * permission short of system INSTALL_PACKAGES, and USER_ACTION_NOT_REQUIRED
+     * only applies to packages we are already the installer of record for). One
+     * tap is worse than no tap. It is enormously better than no updates.
+     *
+     * This used to be a compile-time `ALLOW_PROMPTING_FALLBACK = false`, which
+     * dropped SessionInstall for EVERY device in the fleet in order to suppress
+     * a dialog on ONE developer's phone. One APK ships to thousands of devices,
+     * so a compile-time flag is necessarily a fleet-wide flag: the overwhelming
+     * majority have never paired Wireless debugging and have no Shizuku, so
+     * they were left with no install path whatsoever — including no path to
+     * receive the fix for it. Silence is an OPTIMISATION for capable devices,
+     * never a PRECONDITION for updating.
+     *
+     * The suppression survives, but as what it always was: a per-device
+     * preference ([AutoUpdatePrefs.requireSilent], default false) that the one
+     * device with a live privileged channel can opt in to. It can only ever
+     * subtract the fallback from the device whose owner asked for it, and it
+     * is reversible without a release.
      *
      * Nothing about verification changes: every install still commits a
-     * [VerifiedApk], and ApkIntegrity/VerifiedApk are untouched. What is given
-     * up is the ability to install with NO privileged channel at all. Flip
-     * this to true to restore the old prompting fallback.
+     * [VerifiedApk], and ApkIntegrity/VerifiedApk are untouched.
      */
-    private const val ALLOW_PROMPTING_FALLBACK = false
-
-    private val channels: List<InstallChannel> =
-        if (ALLOW_PROMPTING_FALLBACK) listOf(ShellInstall, SessionInstall)
-        else listOf(ShellInstall)
+    private fun channels(ctx: Context): List<InstallChannel> =
+        if (AutoUpdatePrefs.requireSilent(ctx)) listOf(ShellInstall)
+        else listOf(ShellInstall, SessionInstall)
 
 
     /** Which apps installAll acts on. UPDATES = only apps ALREADY installed
@@ -627,23 +632,45 @@ object Fleet {
             return Pass(0, 0, 0, silent, channel,
                 "nothing to do — all ${apps.size} fleet entries are current")
         }
-        // Fail BEFORE downloading, not after. With the prompting fallback off
-        // (see [ALLOW_PROMPTING_FALLBACK]) every commit would throw once the
-        // bytes were already on disk, so this would otherwise pull tens of MB
-        // over mobile data on every pass to install none of it, and report it
-        // as N failed installs rather than as the one thing that is actually
-        // wrong. This is the loud version of "cannot install unattended".
-        if (!silent && !ALLOW_PROMPTING_FALLBACK) {
+        // NO PRIVILEGED CHANNEL IS A DEGRADE, NOT A STOP.
+        //
+        // The full chain is: privileged silent install → if none can be
+        // established, download + verify here in the background anyway and let
+        // [SessionInstall] commit a session. A session committed from the
+        // background does NOT throw a dialog over whatever the user is doing:
+        // PackageInstaller answers STATUS_PENDING_USER_ACTION, and
+        // PackageInstallerReceiver posts a tap-to-install notification instead
+        // (notifyConfirm — it goes straight to NotificationManager, so
+        // [UpdateProgress.quiet], which only gates the in-app overlay, does not
+        // suppress it). So every device still gets its updates; devices without
+        // a privileged channel pay one tap for each.
+        //
+        // Only a device that has explicitly opted in to "never prompt" stops
+        // here, and it stops BEFORE downloading: with no channel that can
+        // accept the bytes, pulling tens of MB over mobile data every pass to
+        // install none of it is pure waste, and it would report as N failed
+        // installs rather than as the one thing actually wrong.
+        if (!silent && AutoUpdatePrefs.requireSilent(ctx)) {
             val diagnosis = shellChannelDiagnosis(ctx)
-            Log.w(TAG, "NO PRIVILEGED INSTALL CHANNEL: ${todo.size} update(s) ready and " +
-                       "nothing can install them without a confirmation dialog, which is " +
-                       "disabled. Bring up the embedded adb channel (Wireless debugging → " +
-                       "pair) or Shizuku, then the next pass installs all of them silently. " +
-                       "Ladder said: $diagnosis")
+            Log.w(TAG, "NO PRIVILEGED INSTALL CHANNEL: ${todo.size} update(s) ready and this " +
+                       "device has opted in to \"never prompt\" (AutoUpdatePrefs.requireSilent), " +
+                       "so the tap-to-install fallback is not used. Bring up the embedded adb " +
+                       "channel (Wireless debugging → pair) or Shizuku and the next pass " +
+                       "installs all of them silently; or turn that setting off to update with " +
+                       "one tap each. Ladder said: $diagnosis")
             return Pass(0, todo.size, 0, silent, channel,
-                "BLOCKED: ${todo.size} update(s) ready but no privileged shell channel came " +
-                "up, and the confirmation-dialog fallback is disabled — nothing downloaded, " +
-                "nothing installed. $diagnosis")
+                "BLOCKED BY CHOICE: ${todo.size} update(s) ready but no privileged shell " +
+                "channel came up, and this device opted out of the confirmation-dialog " +
+                "fallback — nothing downloaded, nothing installed. $diagnosis")
+        }
+        // The honest chain, said out loud once per pass: no privileged channel,
+        // so these will be downloaded here and finished by one tap each.
+        if (!silent) {
+            Log.i(TAG, "no privileged install channel (${shellChannelDiagnosis(ctx)}) — " +
+                       "degrading to the universal PackageInstaller: ${todo.size} update(s) " +
+                       "will be downloaded and verified now, then offered as tap-to-install " +
+                       "notifications. Pair Wireless debugging or install Shizuku to make " +
+                       "these fully unattended")
         }
         // Cap the batch. [limit] is Int.MAX_VALUE for user-initiated "Update
         // all"/"Install all" - those run in the foreground, the system dialog

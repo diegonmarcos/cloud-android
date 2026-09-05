@@ -16,6 +16,7 @@ object AutoUpdatePrefs {
     private const val PREFS = "auto_update"
     private const val KEY_SILENT = "silent"
     private const val KEY_ENABLED = "enabled"
+    private const val KEY_REQUIRE_SILENT = "require_silent"
 
     /**
      * Master runtime on/off for auto-update. This is what the "Auto-update"
@@ -33,6 +34,32 @@ object AutoUpdatePrefs {
 
     fun silent(ctx: Context): Boolean =
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_SILENT, true)
+
+    /**
+     * "Never show me an install confirmation, even if that means not
+     * installing." OFF by default, and it must stay that way.
+     *
+     * This is the opt-in replacement for a compile-time constant that removed
+     * the prompting PackageInstaller from [Fleet]'s ladder for the whole fleet
+     * — see the ladder comment in Fleet.channels. One APK ships to thousands of
+     * devices, so a build flag cannot express "this device". A preference can:
+     * it subtracts the fallback only from the device whose owner asked for it,
+     * and it is reversible without a release.
+     *
+     * Only meaningful on a device with a live privileged shell channel
+     * (Wireless debugging / Shizuku), because that is the only case where
+     * turning the fallback off costs nothing. Anywhere else it costs every
+     * update. UI entry point for the toggle:
+     * [requireSilent] / [setRequireSilent], intended for a developer or
+     * power-user settings row.
+     */
+    fun requireSilent(ctx: Context): Boolean =
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getBoolean(KEY_REQUIRE_SILENT, false)
+
+    fun setRequireSilent(ctx: Context, on: Boolean) =
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_REQUIRE_SILENT, on).apply()
 
     fun setSilent(ctx: Context, on: Boolean) =
         ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putBoolean(KEY_SILENT, on).apply()

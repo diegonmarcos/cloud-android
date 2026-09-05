@@ -39,11 +39,26 @@ on:
         required: false
         type: boolean
         default: true
+      # DEFAULT TRUE, because "manual, same as main push" (above) has to mean
+      # it. A main push publishes the rolling `latest` release — which is the
+      # only thing the in-app updater ever downloads — and this defaulted to
+      # false, so a manual dispatch built an APK, uploaded it as a workflow
+      # artifact nobody installs, and exited GREEN having shipped nothing.
+      # Worse, `concurrency: cancel-in-progress` is keyed on the ref, so a
+      # dispatch fired seconds after a push CANCELS the push run that would
+      # have published, and replaces it with one that does not. That is exactly
+      # how commit ffe5b157c went green at 08:41 on 2026-09-05 while the served
+      # asset stayed at the previous day's build (run 33955960648 cancelled run
+      # 33955954081; "Publish to GitHub Releases" = skipped).
+      #
+      # No tag context is needed: the engine's rolling mode creates/updates the
+      # `latest` release on any ref. Set this to false only to deliberately
+      # build without publishing — the verify step below then says so loudly.
       create_release:
-        description: "Create GitHub Release (needs tag context)"
+        description: "Publish to the rolling `latest` GitHub Release (what devices download)"
         required: false
         type: boolean
-        default: false
+        default: true
   push:
     branches: [main]
     tags:
@@ -289,6 +304,7 @@ jobs:
       # the per-tag branch on every main push and create a stray
       # "main"-tagged release.
       - name: Publish to GitHub Releases
+        id: publish
         if: ${{ steps.gate.outputs.skip != 'true' && (github.event_name != 'workflow_dispatch' || inputs.create_release) }}
         working-directory: ${{ env.WORK_DIR }}
         env:
@@ -298,6 +314,30 @@ jobs:
           GITHUB_SHA: ${{ github.sha }}
           GITHUB_REF: ${{ github.ref }}
         run: ./build.sh gh-release
+
+      # A GREEN RUN THAT SHIPPED NOTHING IS THE WORST POSSIBLE OUTCOME, and it
+      # is how the 2026-09-05 update deadlock formed: the publish step above was
+      # SKIPPED (a workflow_dispatch with create_release defaulting to false,
+      # which had also cancelled the push run that would have published), every
+      # other step succeeded, and the run reported success while devices kept
+      # being served the previous day's APK. A skipped step is not a failure to
+      # GitHub, so it has to be one to us.
+      #
+      # The engine itself reads the asset back off the release and compares it
+      # to the local file (build.sh::_verify_release_asset), so a publish that
+      # RAN is already proven. The only hole left is a publish that did not run
+      # at all — which is precisely what happened — so that is what this closes.
+      - name: A run that published nothing must not be green
+        if: ${{ always() && steps.gate.outputs.skip != 'true' }}
+        run: |
+          if [ "${{ steps.publish.outcome }}" = "success" ]; then
+            echo "publish: ok — the rolling release carries this run's APK"
+            exit 0
+          fi
+          echo "::error title=Nothing was published::The 'Publish to GitHub Releases' step did" \
+               "not succeed (outcome=${{ steps.publish.outcome }}). Devices are still being" \
+               "served the PREVIOUS APK, so this run built something nobody can install."
+          exit 1
 
       - name: Stamp source identity on the published assets
         if: steps.gate.outputs.skip != 'true'

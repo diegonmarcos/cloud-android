@@ -687,6 +687,23 @@ _verify_release_asset() {
     errlog "gh-release: publish verify failed for $name on $tag (remote_size=${remote_size:-missing} local_size=$local_size)"
     exit 1
   fi
+  # AND THE BYTES, NOT JUST HOW MANY. Size is not identity: on 2026-08-30
+  # several different builds of this app all landed on exactly 32,012,393
+  # bytes, which is the same reason Fleet.releaseStatus stopped trusting size.
+  # The sidecar we just uploaded is what the app reads to decide "is this the
+  # build I already have", so read back THAT, from the release, and hold it to
+  # the file on disk. A --clobber that quietly kept the old asset now fails
+  # here instead of shipping a stale APK under a fresh commit's name.
+  local remote_sha local_sha
+  remote_sha="$(in_nix gh release view "$tag" --json assets \
+                  --jq ".assets[] | select(.name==\"$name.sha256\") | .url" \
+                | xargs -r curl -fsSL | tr -d '\r' | awk '{print $1}')"
+  local_sha="$(sha256sum "$f" | awk '{print $1}')"
+  if [ "$remote_sha" != "$local_sha" ]; then
+    errlog "gh-release: published $name on $tag is NOT what this run built (release sha256=${remote_sha:-unreadable}, local sha256=$local_sha) — refusing to report a ship that did not happen"
+    exit 1
+  fi
+  log "gh-release: verified $name on $tag = $local_sha"
 }
 
 # Sidecar + upload + hard-verify, in one call, for uploading [f] into an
@@ -746,7 +763,24 @@ step_gh_release() {
       local create_flags=("$rolling_tag" --title "$rolling_tag" --target "${GITHUB_SHA:-main}" --notes "Rolling release — overwritten on every main push." --latest)
       [ "$draft" = "true" ]      && create_flags+=(--draft)
       [ "$prerelease" = "true" ] && create_flags+=(--prerelease)
-      in_nix gh release create "${create_flags[@]}"
+      # LOSING THE CREATE RACE IS NOT A FAILURE. view-then-create is not
+      # atomic, and every ship in this repo races for the same rolling tag:
+      # both matrix ABIs run this step, and concurrent workflows do too. The
+      # losers get "a release with the same tag name already exists: latest"
+      # and — under `set -e` — died right here, BEFORE the upload below, so a
+      # ship that had already built a perfectly good APK published nothing.
+      #
+      # The postcondition we need is "the release exists", not "we are the one
+      # who made it". Re-read it; only a create failure that leaves no release
+      # behind is fatal.
+      if ! in_nix gh release create "${create_flags[@]}"; then
+        if in_nix gh release view "$rolling_tag" >/dev/null 2>&1; then
+          log "gh-release: lost the create race for $rolling_tag — it exists now, uploading into it"
+        else
+          errlog "gh-release: could not create $rolling_tag and it does not exist — nothing to upload into"
+          exit 1
+        fi
+      fi
     fi
     # Overwrite the asset on every run.
     _publish_release_asset "$rolling_tag" "$DIST_DIR/$asset"
