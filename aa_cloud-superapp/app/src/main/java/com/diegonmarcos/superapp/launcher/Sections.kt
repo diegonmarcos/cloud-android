@@ -144,6 +144,11 @@ object Sections {
          *  THIS card renders (one card per group → `group`; the Others card
          *  → `groups: [providers, mcpapi]`). */
         val dashGroupIds: List<String> = emptyList(),
+        /** Used by kind=rss — which `ui.ntfy.scopes` ids this card shows.
+         *  Empty means every scope, so Cloud-RSS stays the full browser
+         *  while My-RSS declares its personal subset here instead of
+         *  carrying a second copy of the channel list (FIRE RULE #6). */
+        val scopes: List<String> = emptyList(),
     )
 
     /** One label/value line in a kind=stats dashboard card. */
@@ -618,6 +623,12 @@ object Sections {
                     p.optJSONArray("groups")?.let { ga ->
                         for (m in 0 until ga.length()) ga.optString(m).takeIf { it.isNotBlank() }?.let(dashGroupIds::add)
                     }
+                    // kind=rss — the ntfy scope ids this card renders; absent
+                    // means all of them.
+                    val scopeIds = mutableListOf<String>()
+                    p.optJSONArray("scopes")?.let { sa ->
+                        for (m in 0 until sa.length()) sa.optString(m).takeIf { it.isNotBlank() }?.let(scopeIds::add)
+                    }
                     out.add(StackPanel(
                         kind            = p.optString("kind", "placeholder"),
                         title           = p.optString("title", ""),
@@ -633,6 +644,7 @@ object Sections {
                         repos           = reposList,
                         rows            = rowsList,
                         dashGroupIds    = dashGroupIds,
+                        scopes          = scopeIds,
                     ))
                 }
                 return out

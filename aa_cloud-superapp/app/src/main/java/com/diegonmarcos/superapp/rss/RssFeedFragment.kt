@@ -70,10 +70,18 @@ class RssFeedFragment : Fragment(R.layout.fragment_rss_feed) {
         // from the topic prefix, declared in build.json::ui.ntfy.scopes, and
         // an unrecognised prefix falls to the LAST scope rather than being
         // dropped — a new channel shows up in the wrong bucket, never in none.
+        //
+        // A page may show only SOME scopes (My-RSS is the personal inbox, not
+        // the whole registry). Classification still runs against the FULL scope
+        // list so the catch-all last scope keeps working — filtering happens
+        // after, on display, never on the rule. An unknown topic therefore
+        // still lands somewhere real; it is merely on the other page.
         val scopes = NtfyScopes.load()
+        val wanted = arguments?.getStringArrayList(ARG_SCOPES).orEmpty()
         val byScope = LinkedHashMap<NtfyScopes.Scope, MutableList<String>>()
         for (sc in scopes) byScope[sc] = mutableListOf()
         for (t in topics) byScope.getValue(NtfyScopes.scopeOf(t, scopes)).add(t)
+        if (wanted.isNotEmpty()) byScope.keys.retainAll { it.id in wanted }
 
         // The advisory topic is pinned OPEN at the top with its live messages,
         // ahead of every other channel. This screen is where a user is sent
@@ -218,6 +226,18 @@ class RssFeedFragment : Fragment(R.layout.fragment_rss_feed) {
     }
 
     companion object {
-        fun newInstance() = RssFeedFragment()
+        private const val ARG_SCOPES = "scopes"
+
+        /**
+         * [scopeIds] restricts the page to those `ui.ntfy.scopes` ids; empty
+         * shows every scope. This is the ONLY difference between Cloud-RSS
+         * (the full channel browser) and My-RSS (the personal inbox): one
+         * catalog, one grouping rule, two filters over it. A subset declared
+         * here would have been a second channel list that goes stale the day
+         * a topic is added — so it is declared in build.json instead.
+         */
+        fun newInstance(scopeIds: List<String> = emptyList()) = RssFeedFragment().apply {
+            arguments = Bundle().apply { putStringArrayList(ARG_SCOPES, ArrayList(scopeIds)) }
+        }
     }
 }

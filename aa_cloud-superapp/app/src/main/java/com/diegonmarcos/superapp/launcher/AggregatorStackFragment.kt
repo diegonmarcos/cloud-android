@@ -222,7 +222,7 @@ class AggregatorStackFragment : Fragment(),
         "c3_public"          -> embedChild(body, C3HealthFragment.newInstance(C3HealthFragment.SCOPE_PUBLIC))
         "c3_private"         -> embedChild(body, C3HealthFragment.newInstance(C3HealthFragment.SCOPE_PRIVATE))
         "wg_mesh"            -> embedChild(body, C3MeshFragment.newInstance())
-        "rss"                -> embedChild(body, RssFeedFragment.newInstance())
+        "rss"                -> embedChild(body, RssFeedFragment.newInstance(panel.scopes))
         "news_feeds"         -> embedChild(body, NewsFeedFragment.newInstance())
         "calendar_month"     -> embedChild(body, CalendarMonthFragment.newInstance())
         "calendar_agenda"    -> embedChild(body, CalendarAgendaFragment.newInstance())

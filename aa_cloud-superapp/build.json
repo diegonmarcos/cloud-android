@@ -1166,7 +1166,17 @@
             "target": "extapp:cloud-chat"
           }
         ],
+        "_doc_stack_my-rss": "My-RSS is the PERSONAL inbox, Cloud-RSS the full channel browser. Both render the same ntfy card (kind=rss) over the same catalog in ui.ntfy — the only difference is the `scopes` filter: My-RSS takes advisory + user, Cloud-RSS omits `scopes` and therefore takes all three. There is no second topic list anywhere; a topic added to ui.ntfy.channels lands on the right page by its prefix on the next build, and an unknown prefix falls to the catch-all scope (Cloud channels) under its raw name rather than disappearing. Advisories stay pinned first here for the same reason they are on Cloud-RSS: a stranded phone is told to look at exactly this card.",
         "stack_my-rss": [
+          {
+            "kind": "rss",
+            "title": "ntfy · my channels",
+            "subtitle": "Advisories and this phone's channels",
+            "scopes": [
+              "advisory",
+              "user"
+            ]
+          },
           {
             "kind": "notifications",
             "title": "Cloud-SuperApp Notifications",
