@@ -2030,6 +2030,24 @@ open class ShellActivity : AppCompatActivity(),
         // Kick a sample now + every 60s while resumed.
         energySamplerHandler.removeCallbacks(energySamplerRunnable)
         energySamplerHandler.post(energySamplerRunnable)
+        // RECOVERY BANNER. Hosted here rather than on a home fragment because
+        // any of the five home surfaces can be the user's default, and a
+        // warning most of the fleet never sees is not a warning. It renders
+        // nothing at all unless the device has something wrong with its own
+        // update chain, so the steady-state cost is one findViewById.
+        com.diegonmarcos.superapp.recovery.RecoveryBanner.attach(this)
+        // The advisory feed is the only channel that can deliver words NEWER
+        // than this build to a device that can no longer update — see
+        // AdvisoryFeed. Self-throttled to once an hour; off the main thread.
+        kotlin.concurrent.thread(name = "advisory-feed") {
+            com.diegonmarcos.superapp.recovery.AdvisoryFeed.poll(this)
+            val fleet = runCatching {
+                com.diegonmarcos.superapp.updater.Fleet.parse(
+                    com.diegonmarcos.superapp.updater.BuildConfig.CONSTELLATION_FLEET_B64)
+            }.getOrDefault(emptyList())
+            com.diegonmarcos.superapp.recovery.RecoveryNotifier.post(
+                this, com.diegonmarcos.superapp.updater.Advisory.current(this, fleet))
+        }
     }
 
     override fun onPause() {
@@ -2037,6 +2055,7 @@ open class ShellActivity : AppCompatActivity(),
         com.diegonmarcos.superapp.floatingnav.FloatingNavService.hostExit()
         com.diegonmarcos.superapp.devtools.DevControlBridge.unregister(this)
         com.diegonmarcos.superapp.updater.UpdateProgress.setListener(null)
+        com.diegonmarcos.superapp.recovery.RecoveryBanner.detach()
         if (::toolbarFx.isInitialized) toolbarFx.pause()
         musicIsland.pause()
         energySamplerHandler.removeCallbacks(energySamplerRunnable)

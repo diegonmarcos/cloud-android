@@ -19,7 +19,9 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import com.diegonmarcos.superapp.adbdebug.PackageVerifier
 import com.diegonmarcos.superapp.adbdebug.ShellAccess
+import com.diegonmarcos.superapp.updater.Advisory
 import com.diegonmarcos.superapp.updater.AutoUpdatePrefs
+import com.diegonmarcos.superapp.updater.BootstrapInstall
 import com.diegonmarcos.superapp.updater.Fleet
 import kotlin.concurrent.thread
 
@@ -410,6 +412,14 @@ class ConstellationFragment : Fragment() {
             installBtns[app.id] = installBtn
             actions.addView(installBtn)
         }
+        // THE RECOVERY FLOOR, on every row. "Install / Update" above needs a
+        // privileged shell channel; this one needs nothing at all beyond the
+        // standard Android install confirmation, which is the whole point —
+        // a device that has lost its privileged channel cannot install the
+        // build that would give it back, and that dead end had no escape from
+        // inside the app.
+        if (!app.blocked)
+            actions.addView(btn(ctx, "Direct", 0xFF1F6F43.toInt()) { directInstall(ctx, app) })
         actions.addView(btn(ctx, "Uninstall", 0xFF4A4A55.toInt()) {
             runCatching { Fleet.uninstall(ctx, Fleet.installedId(ctx, app) ?: app.pkg) }
                 .onFailure { Toast.makeText(ctx, "Uninstall: ${it.message}", Toast.LENGTH_LONG).show() }
@@ -497,10 +507,51 @@ class ConstellationFragment : Fragment() {
         Toast.makeText(ctx, "Installing ${app.label}…", Toast.LENGTH_SHORT).show()
         thread(name = "fleet-install-${app.id}") {
             com.diegonmarcos.superapp.updater.UpdateProgress.beginDownload()
-            try { Fleet.install(ctx, app) }
-            catch (t: Throwable) { view?.post { Toast.makeText(ctx, "${app.label}: ${t.message}", Toast.LENGTH_LONG).show() } }
+            try {
+                Fleet.install(ctx, app)
+                // Success CLEARS the advisory: a warning that outlives the
+                // problem is noise, and noise is how the next real one is
+                // ignored.
+                Advisory.recordSuccess(ctx, app.id)
+            } catch (t: Throwable) {
+                // The Toast used to be the ONLY record of this, and it said
+                // "no install channel accepted <pkg>" — a permanent dead end
+                // phrased as a transient error, gone in four seconds, with no
+                // way out offered. It is still shown, because the reason is
+                // worth showing, but it now also feeds the advisory so a third
+                // consecutive failure raises the banner and the notification
+                // that point at Direct install.
+                Advisory.recordFailure(ctx, app.id, app.label, t.message ?: "install failed")
+                view?.post { Toast.makeText(ctx, "${app.label}: ${t.message}", Toast.LENGTH_LONG).show() }
+            }
             val st = Fleet.status(ctx, app)
             body.post { paint(app.id, st); updateSummary(current()) }
+        }
+    }
+
+    /**
+     * THE FLOOR, one tap from every row: fetch through the ordinary verified
+     * source ladder and hand the result to the SYSTEM package installer.
+     *
+     * Deliberately a separate button rather than a silent fallback inside
+     * [install]. The two are not the same offer — this one always shows the
+     * Android confirmation sheet — and a fallback that quietly changes what
+     * the button does is indistinguishable, from the user's side, from the
+     * silent path never having worked.
+     */
+    private fun directInstall(ctx: Context, app: Fleet.App) {
+        Toast.makeText(ctx, "Fetching ${app.label}…", Toast.LENGTH_SHORT).show()
+        thread(name = "fleet-bootstrap-${app.id}") {
+            val r = BootstrapInstall.launch(ctx, app)
+            view?.post {
+                r.onSuccess { c ->
+                    Toast.makeText(ctx,
+                        "${app.label}: ${c.versionName ?: c.versionCode}\n${c.evidence}",
+                        Toast.LENGTH_LONG).show()
+                }.onFailure {
+                    Toast.makeText(ctx, "${app.label}: ${it.message}", Toast.LENGTH_LONG).show()
+                }
+            }
         }
     }
 

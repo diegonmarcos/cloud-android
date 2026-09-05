@@ -17,5 +17,26 @@
         <receiver
             android:name=".PackageInstallerReceiver"
             android:exported="false" />
+
+        <!-- BootstrapInstall's zero-privilege install path: hands a content://
+             URI for a VERIFIED APK to the system package installer, which is
+             the only channel that survives losing every privileged one.
+
+             Declared HERE, not per app, for the same reason as
+             UPDATE_PACKAGES_WITHOUT_USER_ACTION above — and additionally
+             because the authority MUST be unique across the constellation.
+             Every app shares the com.diegonmarcos.* prefix, and two installed
+             packages declaring the same provider authority makes the second
+             one refuse to install at all. ${applicationId} is unique by
+             construction; a hand-written suffix per app is not. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.updater.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/updater_apk_paths" />
+        </provider>
     </application>
 </manifest>

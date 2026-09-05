@@ -18,14 +18,35 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Configs → Profile — three free-form fields (Name · Email · Initials)
- * bound to [ProfilePrefs]. Auto-saves on every text change (no explicit
- * Save button) — the drawer header reads from the same prefs on every
- * open, so changes are visible immediately next time the drawer slides in.
+ * Configs → Profile — the contact card, bound to [ProfilePrefs]. Auto-saves on
+ * every text change (no explicit Save button) — the drawer header reads from
+ * the same prefs on every open, so changes are visible immediately next time
+ * the drawer slides in.
+ *
+ * MANDATORY NAME + EMAIL, enforced in three places that escalate rather than
+ * block. The app stays completely usable if someone declines to fill them in;
+ * what is not allowed is for the omission to be INVISIBLE, because a silently
+ * blank contact record is indistinguishable from a working one right up until
+ * the day the fleet needs it:
+ *   1. inline — the field shows its own error while it is unacceptable;
+ *   2. persistent — [statusBanner] sits at the top of the screen and states
+ *      whether the profile is complete, and stays there until it is;
+ *   3. sync gate — [ProfileSync.push] refuses to upload an incomplete profile,
+ *      so a half-filled record never overwrites a good one on the server.
+ * No dialog, no interstitial, nothing to dismiss and nothing gated behind it.
+ *
+ * PERSONAL DATA IS DISCLOSED IN PLACE. The "What is stored and where" section
+ * below lists exactly which fields leave the device and offers the erase
+ * action, so the answer to "what do you have on me, and take it down" is on
+ * the same screen that collects it rather than in a policy nobody opens.
  */
 class ProfileFragment : Fragment() {
 
     private lateinit var prefs: ProfilePrefs
+
+    /** Live handle to the completeness banner so every field's TextWatcher can
+     *  refresh it without rebuilding the form (which would drop focus). */
+    private var statusBanner: TextView? = null
 
     /** Gallery picker for the profile photo (round avatar). */
     private val picturePicker =
@@ -60,20 +81,57 @@ class ProfileFragment : Fragment() {
         scroll.addView(col)
 
         col.addView(sectionHeader(ctx, "Profile"))
-        col.addView(caption(ctx, "Edit your identity — auto-saved on change. Initials show in the drawer; the rest powers the Virtual Business Card."))
+        col.addView(caption(ctx, "Edit your contact card — auto-saved on change. Your initials in the drawer are derived from your name; the rest powers the Virtual Business Card."))
 
-        col.addView(label(ctx, "Name"))
-        col.addView(field(ctx, prefs.name) { prefs.name = it })
+        // Persistent completeness banner — enforcement step 2. Added first so
+        // it is the first thing read, and never removed while incomplete.
+        val banner = TextView(ctx).apply {
+            setTextAppearance(android.R.style.TextAppearance_Material_Body2)
+            setPadding(dp(ctx, 12), dp(ctx, 10), dp(ctx, 12), dp(ctx, 10))
+        }
+        statusBanner = banner
+        col.addView(banner)
+        refreshStatus()
 
-        col.addView(label(ctx, "Email"))
-        col.addView(field(ctx, prefs.email) { prefs.email = it }.apply {
+        // ── Required ─────────────────────────────────────────────────────
+        // Name and email are what make a person reachable when the app itself
+        // can no longer be updated, which is the entire reason this screen
+        // syncs anywhere. Everything below them is optional.
+        col.addView(label(ctx, "Name  *required"))
+        col.addView(requiredField(ctx, prefs.name, { prefs.name = it }) { prefs.nameError })
+
+        col.addView(label(ctx, "Email  *required"))
+        col.addView(requiredField(ctx, prefs.email, { prefs.email = it }) { prefs.emailError }.apply {
             inputType = android.text.InputType.TYPE_CLASS_TEXT or
                 android.text.InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
         })
 
-        col.addView(label(ctx, "Initials"))
-        col.addView(field(ctx, prefs.initials) { prefs.initials = it }.apply {
-            filters = arrayOf(android.text.InputFilter.LengthFilter(4))
+        col.addView(label(ctx, "Phone"))
+        col.addView(field(ctx, prefs.phone) { prefs.phone = it }.apply {
+            inputType = android.text.InputType.TYPE_CLASS_PHONE
+        })
+
+        col.addView(label(ctx, "Date of birth  (YYYY-MM-DD)"))
+        col.addView(field(ctx, prefs.birth) { prefs.birth = it }.apply {
+            hint = "1990-04-23"
+            inputType = android.text.InputType.TYPE_CLASS_DATETIME or
+                android.text.InputType.TYPE_DATETIME_VARIATION_DATE
+            // Advisory only — a wrong-looking date is flagged, never rejected,
+            // and never blocks saving. The field is optional to begin with.
+            addTextChangedListener(object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) = Unit
+                override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) = Unit
+                override fun afterTextChanged(s: Editable?) {
+                    val text = s?.toString().orEmpty().trim()
+                    error = if (text.isEmpty() || DATE_PATTERN.matches(text)) null
+                            else "Use YYYY-MM-DD"
+                }
+            })
+        })
+
+        col.addView(label(ctx, "City of origin"))
+        col.addView(field(ctx, prefs.cityFrom) { prefs.cityFrom = it }.apply {
+            hint = "Where you are from"
         })
 
         col.addView(label(ctx, "Titles  (use ' | ' to separate)"))
@@ -101,6 +159,22 @@ class ProfileFragment : Fragment() {
         col.addView(label(ctx, "Banner photo"))
         col.addView(pickButton(ctx, prefs.bannerUri.ifBlank { "Pick from gallery…" }) {
             bannerPicker.launch("image/*")
+        })
+
+        // ── Social profiles ──────────────────────────────────────────────
+        col.addView(sectionHeader(ctx, "Social profiles"))
+        col.addView(caption(ctx, "Any number of {platform, link} pairs — GitHub, Mastodon, LinkedIn, whatever you use. Clearing both boxes of a row removes it."))
+        col.addView(socialEditor(ctx))
+
+        // ── Privacy ──────────────────────────────────────────────────────
+        // Disclosure lives on the collecting screen on purpose: "what is held
+        // about me and how do I get rid of it" should not require finding a
+        // separate policy page.
+        col.addView(sectionHeader(ctx, "What is stored and where"))
+        col.addView(caption(ctx, PRIVACY_TEXT))
+        col.addView(syncStateView(ctx))
+        col.addView(actionTile(ctx, "Erase my profile (device + server)", 0xFFB91C1C.toInt()) {
+            confirmErase()
         })
 
         // ── Config import ────────────────────────────────────────────────
@@ -142,6 +216,199 @@ class ProfileFragment : Fragment() {
         col.addView(authRow)
 
         return scroll
+    }
+
+    /** Retry a queued upload whenever this screen comes back — a plausible
+     *  moment for connectivity to have returned since the last failure. */
+    override fun onResume() {
+        super.onResume()
+        ProfileSync.flush(requireContext())
+        refreshStatus()
+    }
+
+    /**
+     * Leaving the screen is the send point: fields auto-save as they are typed,
+     * so by now prefs hold the finished card and one upload carries all of it.
+     * [ProfileSync.push] itself no-ops when the profile is incomplete or no
+     * endpoint is configured, and never blocks — it writes the queue and hands
+     * off to a background thread.
+     */
+    override fun onPause() {
+        super.onPause()
+        ProfileSync.push(requireContext(), prefs)
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        statusBanner = null
+    }
+
+    // ── mandatory-field enforcement ──────────────────────────────────────
+
+    /**
+     * A [field] that additionally reports [validate]'s complaint on itself and
+     * refreshes the banner on every keystroke.
+     *
+     * The value is SAVED even while invalid. Refusing to persist a half-typed
+     * name would mean losing it on rotation, and the enforcement goal is that
+     * the gap is loud, not that the text box fights the user.
+     */
+    private fun requiredField(
+        ctx: android.content.Context,
+        initial: String,
+        save: (String) -> Unit,
+        validate: () -> String?,
+    ): EditText = field(ctx, initial) {
+        save(it)
+        refreshStatus()
+    }.apply {
+        error = validate()
+        addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) = Unit
+            override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) = Unit
+            // Runs after the save watcher installed by field(), so prefs are
+            // already current when validate() reads them back.
+            override fun afterTextChanged(s: Editable?) { error = validate() }
+        })
+    }
+
+    /**
+     * Repaint the completeness banner. Called on every keystroke, so it does
+     * no I/O beyond reading prefs — the upload is NOT driven from here.
+     *
+     * Syncing per keystroke would mean a POST per character typed. The edits
+     * are already durable in prefs the moment they are typed, and the profile
+     * is full-state, so the natural send point is leaving the screen
+     * ([onPause]) — one upload carrying the finished card.
+     */
+    private fun refreshStatus() {
+        val banner = statusBanner ?: return
+        val complete = prefs.isComplete
+        if (complete) {
+            banner.setBackgroundColor(0x2216A34A)
+            banner.setTextColor(GREEN)
+            banner.text = if (ProfileSync.isPending(banner.context))
+                "Profile complete — saved, waiting to reach the server (it will retry)."
+            else
+                "Profile complete — saved and synced."
+        } else {
+            banner.setBackgroundColor(0x22DC2626)
+            banner.setTextColor(RED)
+            banner.text = "Profile incomplete — " +
+                listOfNotNull(prefs.nameError, prefs.emailError).joinToString("; ") + ".\n" +
+                "Nothing is blocked, but without a name and an email there is no way to reach " +
+                "you if an update ever breaks the app, and your profile is not synced."
+        }
+    }
+
+    /** Small read-only line stating whether a document is still queued. */
+    private fun syncStateView(ctx: android.content.Context): TextView =
+        caption(ctx, if (ProfileSync.isPending(ctx))
+            "Sync status: an edit is queued on this device and has not reached the server yet. It retries automatically."
+        else
+            "Sync status: nothing queued.")
+
+    // ── social profiles ──────────────────────────────────────────────────
+
+    /**
+     * Rows of {platform, url}, plus one always-blank row to type into.
+     *
+     * The whole editor re-reads and re-writes the entire list on every
+     * keystroke. That is O(rows) per character and completely fine at the
+     * handful of rows a person actually has — and it means there is exactly
+     * one representation of the list (the prefs) rather than a view-model that
+     * can drift from it.
+     */
+    private fun socialEditor(ctx: android.content.Context): LinearLayout {
+        val container = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
+
+        fun rebuild() {
+            container.removeAllViews()
+            // A trailing blank row is what makes "add another" work without an
+            // Add button: fill it in and the next rebuild grows a fresh one.
+            val rows = prefs.socialLinks + ProfilePrefs.SocialLink("", "")
+            rows.forEachIndexed { index, link ->
+                val row = LinearLayout(ctx).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                    ).apply { topMargin = dp(ctx, 4) }
+                }
+                fun update(platform: String, url: String) {
+                    val next = rows.toMutableList()
+                    next[index] = ProfilePrefs.SocialLink(platform, url)
+                    prefs.socialLinks = next.filterNot { it.platform.isBlank() && it.url.isBlank() }
+                }
+                val platformBox = EditText(ctx).apply {
+                    setText(link.platform); hint = "Platform"; setSingleLine()
+                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                }
+                val urlBox = EditText(ctx).apply {
+                    setText(link.url); hint = "https://…"; setSingleLine()
+                    inputType = android.text.InputType.TYPE_CLASS_TEXT or
+                        android.text.InputType.TYPE_TEXT_VARIATION_URI
+                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 2f)
+                }
+                // Watchers are attached AFTER both boxes exist so each one can
+                // read the other's current text instead of a stale capture.
+                platformBox.addTextChangedListener(afterText {
+                    update(it, urlBox.text.toString())
+                })
+                urlBox.addTextChangedListener(afterText {
+                    update(platformBox.text.toString(), it)
+                })
+                row.addView(platformBox)
+                row.addView(urlBox)
+                container.addView(row)
+            }
+        }
+        rebuild()
+        return container
+    }
+
+    /** TextWatcher that only cares about the final text. */
+    private fun afterText(onChange: (String) -> Unit) = object : TextWatcher {
+        override fun beforeTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) = Unit
+        override fun onTextChanged(s: CharSequence?, a: Int, b: Int, c: Int) = Unit
+        override fun afterTextChanged(s: Editable?) { onChange(s?.toString().orEmpty()) }
+    }
+
+    // ── erasure ──────────────────────────────────────────────────────────
+
+    /**
+     * Confirm, then erase locally AND ask the server to drop the record.
+     *
+     * Two-step because it is destructive and irreversible; the result is
+     * reported verbatim (including a failed server delete) rather than
+     * optimistically claiming success, so an erasure that did not fully happen
+     * can be chased instead of assumed.
+     */
+    private fun confirmErase() {
+        val ctx = requireContext()
+        com.google.android.material.dialog.MaterialAlertDialogBuilder(ctx)
+            .setTitle("Erase your profile?")
+            .setMessage(
+                "This deletes your name, email, phone, date of birth, city of origin, " +
+                "location, company, website, titles, social links and photos from this " +
+                "device, and asks the server to delete its copy.\n\n" +
+                "Your device also gets a new random sync id, so the old server-side " +
+                "record can no longer be linked to this install.\n\nThis cannot be undone."
+            )
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Erase") { _, _ ->
+                ProfileSync.forgetMe(ctx) { message ->
+                    // Callback arrives on the delete thread.
+                    view?.post {
+                        view?.snack(message)
+                        if (isAdded) {
+                            parentFragmentManager.beginTransaction().detach(this).commitNow()
+                            parentFragmentManager.beginTransaction().attach(this).commitNow()
+                        }
+                    }
+                }
+            }
+            .show()
     }
 
     // ── OWebAuth · Authelia auto-import ──────────────────────────────────
@@ -687,6 +954,28 @@ class ProfileFragment : Fragment() {
         private val GREEN   = 0xFF16A34A.toInt()
         private val RED     = 0xFFDC2626.toInt()
         private val NEUTRAL = 0xFF9CA3AF.toInt()
+
+        /** Advisory shape check for the birth field. Range/real-calendar
+         *  validity is deliberately not checked — the field is optional and a
+         *  false rejection is worse than a typo here. */
+        private val DATE_PATTERN = Regex("^\\d{4}-\\d{2}-\\d{2}$")
+
+        /**
+         * In-screen disclosure. Kept specific — field names, destination and
+         * the erasure route — because a vague notice is what makes people
+         * unable to reason about their own data.
+         */
+        private const val PRIVACY_TEXT =
+            "Your name, email, phone, date of birth, city of origin, location, company, " +
+            "website, titles and social links are stored on this device and mirrored to " +
+            "the constellation server over HTTPS, so the fleet operator can contact you " +
+            "out-of-band when an update breaks the app and it can no longer fix itself. " +
+            "That is the only reason this is collected.\n\n" +
+            "Your photos stay on this device and are never uploaded. Your profile is " +
+            "identified by a random id generated on this install — not by any device, " +
+            "SIM or advertising identifier. It is not synced until name and email are " +
+            "filled in, and it is never written to logs or crash reports.\n\n" +
+            "Erase removes it here and asks the server to delete its copy."
 
         fun newInstance(): ProfileFragment = ProfileFragment()
     }

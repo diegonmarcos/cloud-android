@@ -31,7 +31,8 @@ import java.io.File
  *
  * All data comes from [ProfilePrefs]. The two photos are picked by
  * the user in Configs → Profile (gallery picker); falls back to a
- * solid brand colour + an initials avatar when neither is set.
+ * solid brand colour + an initials avatar (initials derived from the
+ * name, not stored) when neither is set.
  */
 class BusinessCardFragment : Fragment() {
 
@@ -87,7 +88,7 @@ class BusinessCardFragment : Fragment() {
                 FrameLayout.LayoutParams.MATCH_PARENT,
             )
             val bmp = loadBitmap(profile.pictureUri)
-            setImageBitmap(circularBitmap(bmp ?: initialsBitmap(profile.initials, avatarSize), avatarSize))
+            setImageBitmap(circularBitmap(bmp ?: initialsBitmap(profile.derivedInitials(), avatarSize), avatarSize))
         }
         avatar.addView(avatarIv)
         hero.addView(avatar)

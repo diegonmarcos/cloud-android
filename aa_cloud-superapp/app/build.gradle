@@ -338,7 +338,12 @@ def notifInfosB64    = notifInfosJson.bytes.encodeBase64().toString()
 def profileDefault   = buildJson.ui.profile_default ?: [:]
 def profileName      = (profileDefault.name     ?: '').toString()
 def profileEmail     = (profileDefault.email    ?: '').toString()
-def profileInitials  = (profileDefault.initials ?: '').toString()
+def profilePhone     = (profileDefault.phone     ?: '').toString()
+def profileBirth     = (profileDefault.birth     ?: '').toString()
+def profileCityFrom  = (profileDefault.city_from ?: '').toString()
+// Where the profile is mirrored so the fleet operator can reach users
+// out-of-band. Blank disables sync entirely (ProfileSync no-ops).
+def profileSyncUrl   = (buildJson.ui.profile_sync?.url ?: '').toString()
 def profileCompany   = (profileDefault.company  ?: '').toString()
 def profileLocation  = (profileDefault.location ?: '').toString()
 def profileWebsite   = (profileDefault.website  ?: '').toString()
@@ -687,7 +692,10 @@ android {
         buildConfigField "String",  "UI_NOTIFICATION_INFOS_B64", "\"${notifInfosB64}\""
         buildConfigField "String", "UI_PROFILE_NAME",       "\"${profileName}\""
         buildConfigField "String", "UI_PROFILE_EMAIL",      "\"${profileEmail}\""
-        buildConfigField "String", "UI_PROFILE_INITIALS",   "\"${profileInitials}\""
+        buildConfigField "String", "UI_PROFILE_PHONE",      "\"${profilePhone}\""
+        buildConfigField "String", "UI_PROFILE_BIRTH",      "\"${profileBirth}\""
+        buildConfigField "String", "UI_PROFILE_CITY_FROM",  "\"${profileCityFrom}\""
+        buildConfigField "String", "UI_PROFILE_SYNC_URL",   "\"${profileSyncUrl}\""
         buildConfigField "String", "UI_PROFILE_COMPANY",    "\"${profileCompany}\""
         buildConfigField "String", "UI_PROFILE_LOCATION",   "\"${profileLocation}\""
         buildConfigField "String", "UI_PROFILE_WEBSITE",    "\"${profileWebsite}\""

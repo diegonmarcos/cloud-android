@@ -278,6 +278,24 @@
             </intent-filter>
         </activity>
 
+        <!-- RECOVERY — the direct-install screen, and the tap target for both
+             the home banner and the advisory notification.
+
+             Its own Activity, and its own task affinity, on purpose: it is the
+             screen a device reaches when the normal update path is broken, so
+             it must not depend on the launcher's tile-routing grammar to be
+             reachable (a notification that routes through that grammar lands
+             on Home the day the grammar changes). singleTop so a second
+             advisory tap re-targets the open screen through onNewIntent
+             instead of stacking copies of it. -->
+        <activity
+            android:name=".recovery.RecoveryActivity"
+            android:exported="false"
+            android:label="Recovery"
+            android:launchMode="singleTop"
+            android:taskAffinity="${applicationId}.recovery"
+            android:excludeFromRecents="false" />
+
         <!-- PowerStateReceiver moved to :libs:battery (manifest-merged). -->
 
         <!-- LockScreenAdminReceiver — Device Admin bind target needed for

@@ -19,6 +19,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import com.diegonmarcos.superapp.updater.Advisory
 import com.diegonmarcos.superapp.updater.AutoUpdatePrefs
 import com.diegonmarcos.superapp.updater.Fleet
 // AUTO_UPDATE_* knobs are baked into the libs:updater BuildConfig (shared AU
@@ -68,6 +69,25 @@ class ConstellationWorker(appCtx: Context, params: WorkerParameters) :
             // old line was "acted on 0 app(s)" for all three, which reads
             // identically to the feature being broken.
             Log.i(TAG, "auto-update: ${pass.reason}")
+            // The pass outcome is also the primary STRANDED-DEVICE signal, so
+            // it is recorded, not only logged. A pass that considered work and
+            // acted on none of it with no privileged channel is not a bad night
+            // on the network — it is a device that can no longer take the fix
+            // that would let it update. Advisory turns that into a banner the
+            // user sees on next open and a direct-install button that works
+            // without any privileged channel at all.
+            Advisory.recordPass(applicationContext, pass)
+            // Staleness is independent of the pass: a device whose worker never
+            // runs never fails, so it would never raise a failure-based
+            // advisory. Our own versionCode is a wall-clock timestamp, so "how
+            // old am I" costs nothing beyond the status we just computed.
+            Advisory.recordSelfAge(
+                applicationContext,
+                updateAvailable = fleet.any {
+                    it.pkg == applicationContext.packageName &&
+                        Fleet.status(applicationContext, it) is Fleet.State.UpdateAvailable
+                },
+            )
             if (pass.acted > 0)
                 notify(applicationContext, NOTIF_ID,
                     "${pass.acted} constellation update${if (pass.acted == 1) "" else "s"} installed",

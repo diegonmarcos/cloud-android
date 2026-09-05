@@ -77,7 +77,7 @@ class HomeDrawerFragment : Fragment() {
             }
         }
 
-        // User-banner row — avatar (initials) + 3 stacked text lines:
+        // User-banner row — avatar (initials derived from the name) + 3 stacked text lines:
         // [Name]  /  [Email]  /  Mode: {Apps|Admin} + toggle glyph.
         // The whole row is the click target; tap flips Apps↔Admin. Bound
         // from ProfilePrefs + ModePrefs so it always reflects current
@@ -94,7 +94,10 @@ class HomeDrawerFragment : Fragment() {
                 val profile = ProfilePrefs(ctx)
                 val mode    = ModePrefs(ctx).mode
                 val modeLabel = if (mode == "admin") "Admin" else "Apps"
-                avatar.text  = profile.initials
+                // Derived from the name, not stored: one less personal field
+                // to hold, disclose and delete, and it can no longer disagree
+                // with the name shown right next to it.
+                avatar.text  = profile.derivedInitials()
                 nameTv.text  = profile.name
                 emailTv.text = profile.email
                 modeTv.text  = "Mode: $modeLabel"

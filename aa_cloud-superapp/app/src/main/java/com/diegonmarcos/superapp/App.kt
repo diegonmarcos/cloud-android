@@ -62,6 +62,12 @@ class App : Application(), WorkManagerConfiguration.Provider {
                 androidx.work.OneTimeWorkRequestBuilder<com.diegonmarcos.superapp.system.PrivilegedPlaneWorker>().build())
         }
 
+        // Retry any profile edit that never reached the server. The profile is
+        // the out-of-band contact channel for exactly the situations where the
+        // update chain is broken, so "it failed once and was never sent again"
+        // is the one outcome it must not have. No-op when nothing is queued.
+        runCatching { com.diegonmarcos.superapp.profile.ProfileSync.flush(this) }
+
         // Tell libs:appstore what it cannot know: this app's entry Activity,
         // its notification icon, how this launcher routes a tap, and the
         // host-side toggle that gates the periodic check. The store moved out

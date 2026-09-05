@@ -28,6 +28,7 @@ import com.diegonmarcos.superapp.adbdebug.ShizukuShellChannel
 import com.diegonmarcos.superapp.adbdebug.ShellChannel
 import com.diegonmarcos.superapp.adbdebug.LocalHotspot
 import com.diegonmarcos.superapp.adbdebug.WifiDirect
+import com.diegonmarcos.superapp.adbdebug.WirelessDebugging
 import android.util.Base64
 import org.json.JSONArray
 import android.content.pm.PackageManager
@@ -166,11 +167,27 @@ class PermissionsFragment : Fragment() {
         if (wifiDirectStatus is WifiDirect.Status.Active) col.addView(small(ctx,
             "WiFi Direct up — SSID: ${wifiDirectStatus.ssid}  ·  password: ${wifiDirectStatus.passphrase}" +
             (wifiDirectStatus.ownerIp?.let { "  ·  owner IP: $it" } ?: "")))
-        // Step 0: open the OS page where Wireless Debugging is turned on and the
-        // pairing dialog (IP:port + code) lives — the app cannot toggle it, only
-        // deep-link to it. Without this the "Pair" fields have no source.
+        // Step 1: Wireless Debugging itself. This used to be a deep link ONLY —
+        // "the app cannot toggle it" was written here as though it were a
+        // platform fact, and it was not: `adb_wifi_enabled` is a Settings.Global
+        // key, this app holds WRITE_SECURE_SETTINGS, and PrivilegedPlaneWorker
+        // has been writing that exact key on every boot the whole time. The
+        // toggle is the same mechanism, reachable by the user.
+        //
+        // The deep link STAYS beside it, because the write is refused on any
+        // device the privileged plane has never reached — and there the system
+        // page is the only door.
+        val wdOn = WirelessDebugging.isOn(ctxAny())
+        row(ctx, col, "Wireless debugging", if (wdOn) "✓ ON" else "◯ OFF")
+        if (wdOn) col.addView(small(ctx,
+            "Turning this OFF also ends the embedded adb channel that installs " +
+            "updates without a dialog. Updates keep working, they just ask first. " +
+            "The toggle refuses while an install is in flight."))
         col.addView(permButtonRow(ctx,
-            permButton(ctx, "① Open Wireless Debugging", null) { openWirelessDebuggingSettings() },
+            permButton(ctx, "① Wireless debugging: " + (if (wdOn) "ON" else "OFF"), wdOn) {
+                toggleWirelessDebugging(!wdOn)
+            },
+            permButton(ctx, "Open Wireless Debugging", null) { openWirelessDebuggingSettings() },
         ))
         col.addView(permButtonRow(ctx,
             permButton(ctx, "② Pair", plane != null) {
@@ -256,6 +273,37 @@ class PermissionsFragment : Fragment() {
             permButton(ctx, "Set Install-unknown-apps",
                        com.diegonmarcos.superapp.updater.AutoUpdatePrefs.canInstallSilently(ctxAny())) { openUnknownAppSourcesSettings() },
         ))
+        // ── RECOVERY ────────────────────────────────────────────────────────
+        // Everything above this line assumes the update chain works. This is
+        // what is left when it does not.
+        //
+        // "Set Install-unknown-apps" was the closest thing the screen had to a
+        // recovery action and it only granted a PERMISSION — nothing on this
+        // screen ever downloaded or installed anything. So a device on a stale
+        // build with no privileged channel could not self-update, and therefore
+        // could never receive the fix that would let it update: terminal, with
+        // a human and a USB cable as the only exit. That does not scale to one
+        // fleet, let alone thousands of users.
+        val playProtect = com.diegonmarcos.superapp.adbdebug.PackageVerifier.state(ctxAny()).on
+        row(ctx, col, "Play Protect scanning", if (playProtect) "✓ ON" else "◯ OFF")
+        col.addView(small(ctx,
+            "Recovery downloads the published build through the ordinary verified " +
+            "source and hands it to Android's own installer. It needs NO pairing, " +
+            "NO Shizuku and no special access — only the standard install " +
+            "confirmation — which is exactly why it still works when nothing else " +
+            "does. Play Protect can delay a sideloaded install with a scan; turning " +
+            "it off removes Google's malware check on installs, so leave it ON " +
+            "unless a recovery install is being blocked."))
+        col.addView(permButtonRow(ctx,
+            permButton(ctx, "Recovery: install directly", null) {
+                startActivity(com.diegonmarcos.superapp.recovery.RecoveryActivity
+                    .intent(ctxAny(), null))
+            },
+            permButton(ctx, "Play Protect: " + (if (playProtect) "ON" else "OFF"), playProtect) {
+                togglePlayProtect(!playProtect)
+            },
+        ))
+
         col.addView(actionButton(ctx, "Copy All Perms Status", DARK_VIOLET) {
             copy(ctxAny(), buildAllPermsStatus(ctxAny()))
             Toast.makeText(ctxAny(), "Copied full permission status", Toast.LENGTH_SHORT).show()
@@ -396,6 +444,66 @@ class PermissionsFragment : Fragment() {
             android.provider.Settings.Global.putInt(ctxAny().contentResolver, "adb_wifi_enabled", 1)
         }
     }.let { }
+
+    /**
+     * The real ON/OFF, reporting WHICH mechanism did it.
+     *
+     * Off the main thread because the ladder can bind Shizuku, and the verdict
+     * comes from [WirelessDebugging.Result] — which re-reads the setting rather
+     * than trusting the write — so the Toast can never claim a change that did
+     * not happen. A toggle that silently no-ops is worse than no toggle: that
+     * exact pattern is what made the stranded-fleet incident take hours to see.
+     */
+    private fun toggleWirelessDebugging(on: Boolean) {
+        val ctx = ctxAny().applicationContext
+        Toast.makeText(ctxAny(), if (on) "Enabling Wireless debugging…" else "Disabling…",
+            Toast.LENGTH_SHORT).show()
+        kotlin.concurrent.thread(name = "wireless-debug-toggle") {
+            // busy = an install batch holds the Fleet lease. Turning the channel
+            // off underneath one would strand a half-finished install with
+            // nothing left to finish it on.
+            val st = com.diegonmarcos.superapp.updater.UpdateProgress.state
+            val busy = com.diegonmarcos.superapp.updater.UpdateProgress.batchLabel != null ||
+                st is com.diegonmarcos.superapp.updater.UpdateProgress.State.Downloading ||
+                st is com.diegonmarcos.superapp.updater.UpdateProgress.State.Installing
+            val r = WirelessDebugging.set(ctx, on, busy = busy)
+            view?.post {
+                Toast.makeText(ctxAny(),
+                    (if (r.ok) "Wireless debugging ${if (r.on) "ON" else "OFF"} via ${r.channel}"
+                     else "NOT changed (${r.channel}) — still ${if (r.on) "ON" else "OFF"}") +
+                        "\n${r.detail}",
+                    Toast.LENGTH_LONG).show()
+                rebuildFragment()
+            }
+        }
+    }
+
+    /**
+     * Play Protect install scanning, on or off.
+     *
+     * [com.diegonmarcos.superapp.adbdebug.PackageVerifier] has been able to do
+     * this the whole time and NOTHING on any screen called it — a capability
+     * that exists in code with no way for the user to reach it is, from the
+     * user's side, a capability that does not exist. It belongs here because
+     * the one time it matters is a recovery install being held up by a scan.
+     *
+     * Reports the channel that did it, and re-reads the three Settings.Global
+     * values rather than assuming the write took — [PackageVerifier.Result.ok]
+     * is the re-read agreeing, never the call not throwing.
+     */
+    private fun togglePlayProtect(scan: Boolean) {
+        val ctx = ctxAny().applicationContext
+        kotlin.concurrent.thread(name = "play-protect-toggle") {
+            val r = com.diegonmarcos.superapp.adbdebug.PackageVerifier.setScanning(ctx, scan)
+            view?.post {
+                Toast.makeText(ctxAny(),
+                    (if (r.ok) "Play Protect scan ${if (scan) "ON" else "OFF"} via ${r.channel}"
+                     else "NOT changed (${r.channel})") + "\n" + r.state.describe(),
+                    Toast.LENGTH_LONG).show()
+                rebuildFragment()
+            }
+        }
+    }
 
     private fun openWirelessDebuggingSettings() {
         val dev = android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)

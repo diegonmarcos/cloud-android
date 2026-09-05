@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Exported paths for BootstrapInstall's FileProvider — the zero-privilege
+  install path. ONLY the two directories the updater itself writes APKs into
+  are listed; a `path="."` on the cache root would export every cached file the
+  app has, and this provider is granted read access to the package installer on
+  every direct install.
+
+  ApkSource writes fleet-<id>-*.apk straight into cacheDir, and the
+  BootstrapInstall.uriFor fallback copies under cacheDir/bootstrap, so one
+  cache root covers both.
+-->
+<paths>
+    <cache-path name="updater_cache" path="." />
+</paths>

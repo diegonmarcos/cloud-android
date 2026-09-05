@@ -4772,10 +4772,16 @@
     "default_section": "home",
     "default_mode": "apps",
     "_doc_profile_default": "Seeds the drawer-header identity row + the Configs/Profile form + the Virtual Business Card. User-editable at runtime via ProfileFragment (persisted in ProfilePrefs SharedPreferences); these values are only the FIRST-RUN defaults. Photo URIs (picture, banner) are NOT seeded — they're picked by the user via the gallery picker in Configs → Profile.",
+    "_doc_profile_sync": "Where the user profile is mirrored so the fleet operator has an out-of-band contact channel when the update chain breaks. Baked as UI_PROFILE_SYNC_URL; an empty url disables sync entirely (ProfileSync no-ops, nothing is queued or sent). MUST be https — ProfileSyncClient refuses plain http rather than sending personal data in clear text. Contract: aa_cloud-superapp/docs/profile-sync-contract.md.",
+    "profile_sync": {
+      "url": "https://api.diegonmarcos.com/c3-infra-api/fleet/profile"
+    },
     "profile_default": {
       "name": "Diego Coelho Marcos",
       "email": "me@diegonmarcos.com",
-      "initials": "DCM",
+      "phone": "",
+      "birth": "",
+      "city_from": "",
       "company": "LEAFY",
       "location": "Berlin/DE",
       "website": "linktree.diegonmarcos.com",
