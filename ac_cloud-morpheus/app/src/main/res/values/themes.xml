@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Same palette as the watchdog panel, so the two apps read as one
+         system. The window background matches the WebView's so there is no
+         white flash before a remote page paints. -->
+    <style name="Theme.Morpheus" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowBackground">#0b0e14</item>
+        <item name="android:statusBarColor">#101520</item>
+        <item name="android:navigationBarColor">#0b0e14</item>
+    </style>
+</resources>

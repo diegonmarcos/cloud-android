@@ -1,0 +1,126 @@
+{
+  "name": "cloud-morpheus",
+  "description": "c3-morpheus on a phone: the cloud's workflow orchestrator. Four panels — the Dagu workflow list, the probe registry that declares what 'healthy' means, the fleet control panel, and the PM board (Paca). c3-watchdog keeps what is running alive; c3-morpheus decides what runs.",
+  "category": "android",
+  "build": {
+    "type": "gradle",
+    "entry": "build.sh"
+  },
+  "_doc": "WHY MOSTLY WEBVIEWS, AND WHY THAT IS NOT A COP-OUT. Dagu and Paca are live authenticated surfaces that already draw themselves; Paca in particular has NO board API (/api/health, /api/v1/boards and /api/boards all 404, and every route 302s to auth.diegonmarcos.com behind Authelia forward_auth), so the board IS the Paca app and the SuperApp already renders it inline for exactly this reason. Reimplementing either would be inventing a second truth. ac_c3-watchdog is a WebView on the same reasoning.",
+  "_doc_no_dead_buttons": "Every panel either shows a real surface or states on screen what is not wired and why. A page that fails to load renders an explanation, never a blank rectangle — which matters most on Boards, because Paca is mesh-only and a phone off the WireGuard mesh would otherwise show white space that reads as an outage.",
+  "surfaces": {
+    "_doc": "The surfaces this app opens, as DATA. app/build.gradle turns each into a BuildConfig field; nothing here is a Kotlin constant, because a URL hardcoded in a class is a URL that gets copied and then diverges from the one the rest of the fleet uses. Mirrors the rule libs/ops follows for DAGU_DEFAULT_SERVER.",
+    "dagu_url": "https://workflows.diegonmarcos.com",
+    "paca_url": "https://paca.diegonmarcos.com",
+    "_doc_paca": "MESH-ONLY. There is no public edge certificate for this name — it measures 000 from the public edge while the service is healthy on 10.0.0.6:8095. The app says so when the load fails instead of implying an outage.",
+    "superapp_package": "com.diegonmarcos.superapp",
+    "_doc_superapp": "The fleet control panel is the SuperApp's Constellation page, managing ~57 fleet apps. Morpheus hands off to it with a launch intent and says so when it is not installed. It deliberately ships NO second fleet updater: two updaters keyed on the same package ids would fight each other."
+  },
+  "reuses": {
+    "_doc": "What this app CONSUMES rather than reimplements. Each of these would silently diverge if copied, and the copy is always the one that goes stale.",
+    "dagu": "The Dagu web UI, with Dagu's own Start button. The same server Cloud/C3/Observability reads through DaguClient.listDags().",
+    "probes": "app/src/main/assets/probes.json is a committed MIRROR of cloud-u-linux/da_morpheus/data/probes.json, which is the source of truth. Mirrored, not fetched, because the APK must render the registry with no network; the file's own _mirror_of key says which copy wins.",
+    "paca": "Rendered inline. There is no board API to wrap.",
+    "constellation": "ab_cloud-libs-shared/libs/appstore/.../ConstellationFragment.kt, reached by launch intent."
+  },
+  "not_wired": {
+    "_doc": "Stated here as well as on screen, so nobody has to launch the app to find out. NOTHING in this APK can start a workflow or a probe.",
+    "triggering": "Being built once in ab_cloud-libs-shared/libs/ops — Dagu POST /api/v1/dags/{name}/start with a fresh client_credentials token per run, plus a server-side GHA dispatch proxy. Morpheus will call that client rather than grow a second one to keep in sync with Authelia. Until then the Workflows tab shows Dagu's own Start button, which does work.",
+    "live_probe_results": "The Health tab shows DECLARATIONS. Live results come from the cloud-health-*.sh family, scheduled by Dagu and published to ntfy. A green tile drawn here would be a colour with nothing behind it."
+  },
+  "android": {
+    "application_id": "com.diegonmarcos.morpheus",
+    "_doc_application_id": "NEW app, so there is no update chain to break — but the fleet updater identifies apps by package id, so this is fixed from the first publish. The obvious mirror of com.diegonmarcos.watchdog.",
+    "compile_sdk": 36,
+    "min_sdk": 26,
+    "target_sdk": 34,
+    "version_code": 1,
+    "version_name": "0.1.0-dev",
+    "abi_filters": [
+      "arm64-v8a"
+    ]
+  },
+  "modules": {
+    "_doc": "settings.gradle iterates this (FIRE rule 6: never hardcode the list). One module. v1 depends on no shared library — pulling ab_cloud-libs-shared in now would add its whole build to this app's critical path for nothing. That changes when `run` gets wired and takes the trigger client from libs/ops.",
+    "app": {
+      "type": "application"
+    }
+  },
+  "toolchain": {
+    "_doc": "Pinned for reproducibility, all derived in flake.nix. Mirrors ac_c3-watchdog / aa_cloud-superapp so every Android project here shares one toolchain story.",
+    "agp": "8.7.3",
+    "gradle": "8.10.2",
+    "kotlin": "1.9.24",
+    "jdk": "17"
+  },
+  "signing": {
+    "_doc": "ONE shared Cloud-constellation signing key for ALL Android apps. The SAME key signs every app so cross-app signature-IPC and the in-app fleet updater never hit a signature mismatch. The raw keystore and its sops-encrypted passwords live ONLY in the private vault repo. build.sh::_resolve_signing reads $VAULT_DIR and sops-decrypts (SOPS_AGE_KEY), exporting ANDROID_KEYSTORE_* for gradle. THERE IS NO FALLBACK: without the key the build fails loud rather than shipping an app signed by a random key.",
+    "vault_keystore": "A0_keys/providers/android/release.jks",
+    "vault_secrets": "A0_keys/providers/android/signing.secrets.yaml"
+  },
+  "release": {
+    "_doc": "Per-APK distribution, the same data-driven block every app here has. build.sh oras-push and gh-release read it; the workflow hardcodes no registry or tag. This block is ALSO what makes the app discoverable: aa_cloud-superapp/data/regen.sh admits a sibling on .android.application_id + .release.ghcr, so registering in the constellation is a property of the app rather than a list to edit by hand. {sha} -> git short sha, {version_name} -> android.version_name.",
+    "artifact": {
+      "debug": "Cloud-Morpheus.apk",
+      "release": "Cloud-Morpheus-release.apk"
+    },
+    "ghcr": {
+      "_doc": "Login with GITHUB_TOKEN, never a PAT: a PAT creates an ACCOUNT-owned package that is born private and cannot be patched afterwards, because visibility is decided at CREATION and inherited silently forever. GITHUB_TOKEN creates the package FOR THE REPOSITORY and it takes the repository's visibility. This is a NEW package, so it gets exactly one chance to be created correctly.",
+      "enabled": true,
+      "registry": "ghcr.io",
+      "namespace": "diegonmarcos",
+      "image": "cloud-morpheus",
+      "media_type": "application/vnd.android.package-archive",
+      "tags": [
+        "latest",
+        "sha-{sha}",
+        "v{version_name}"
+      ]
+    },
+    "auto_update": {
+      "_doc": "The in-app updater reads release_url first and falls back to GHCR. NOTE: version_code in this file is 1 and never bumped by hand — the real code is computed in app/build.gradle from wall clock, which is what actually lands.",
+      "enabled": true,
+      "tag": "latest",
+      "interval_hours": 6,
+      "max_installs_per_pass": 3
+    },
+    "gh_release": {
+      "_doc": "rolling_tag is canonical: one release the ship workflow overwrites on every main push, so /releases/latest/download/Cloud-Morpheus.apk is a stable URL.",
+      "enabled": true,
+      "rolling_tag": "latest",
+      "tag_pattern": "ac_cloud-morpheus-v*",
+      "asset_name": "Cloud-Morpheus.apk"
+    },
+    "variants": [
+      {
+        "_doc": "Per-ABI variants with DISTINCT asset names. Without them both matrix legs upload one asset name to the rolling release and race: the second leg's --clobber deletes the first's asset mid-upload, and worse than the error, the winner is arbitrary — an x86_64 APK can land under the arm64 name and be installed on a phone.",
+        "id": "arm64",
+        "abis": [
+          "arm64-v8a"
+        ],
+        "supported_abis": [
+          "arm64-v8a",
+          "armeabi-v7a"
+        ],
+        "artifact_debug": "Cloud-Morpheus.apk",
+        "gh_asset": "Cloud-Morpheus.apk",
+        "ghcr_tag_suffix": "",
+        "update_tag": "latest"
+      },
+      {
+        "id": "x86_64",
+        "abis": [
+          "x86_64"
+        ],
+        "supported_abis": [
+          "x86_64",
+          "x86"
+        ],
+        "artifact_debug": "Cloud-Morpheus-x86_64.apk",
+        "gh_asset": "Cloud-Morpheus-x86_64.apk",
+        "ghcr_tag_suffix": "-x86_64",
+        "update_tag": "latest-x86_64"
+      }
+    ]
+  }
+}

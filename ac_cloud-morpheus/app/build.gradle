@@ -1,0 +1,75 @@
+apply plugin: 'com.android.application'
+apply plugin: 'org.jetbrains.kotlin.android'
+
+def buildJson = new groovy.json.JsonSlurper().parse(file("${rootDir}/build.json"))
+def a = buildJson.android
+def s = buildJson.surfaces
+
+// versionCode MUST move on every build, or nothing lands.
+//
+// Same encoding as ac_c3-watchdog, ac_cloud-mail and lib-apks, and for the
+// same reason: minutes since 2026-01-01 UTC over a 3,000,000 base. A build
+// counter (GITHUB_RUN_NUMBER) is per-WORKFLOW, so the moment an app is built by
+// a different workflow than the one that produced the installed APK the number
+// handed out can be SMALLER and Android refuses the update outright. Wall clock
+// only moves forward and is identical for every workflow, runner and trigger.
+// COMMS_BUILD_TIMESTAMP is honoured when CI provides one so the code matches
+// the release tag; otherwise build time.
+def codeFinal = { ->
+    def base  = java.time.LocalDateTime.of(2026, 1, 1, 0, 0)
+    def built = java.time.LocalDateTime.now(java.time.ZoneOffset.UTC)
+    def stamp = System.getenv('COMMS_BUILD_TIMESTAMP')
+    if (stamp) {
+        try {
+            built = java.time.LocalDateTime.parse(stamp,
+                java.time.format.DateTimeFormatter.ofPattern('yyyyMMdd.HHmmss'))
+        } catch (ignored) { }
+    }
+    long mins = java.time.Duration.between(base, built).toMinutes()
+    return mins > 0 ? (int) (3000000L + mins) : 3000000
+}()
+
+android {
+    namespace 'com.diegonmarcos.morpheus'
+    compileSdk a.compile_sdk
+
+    defaultConfig {
+        applicationId a.application_id
+        minSdk        a.min_sdk
+        targetSdk     a.target_sdk
+        versionCode   codeFinal
+        versionName   a.version_name
+        ndk { abiFilters a.abi_filters as String[] }
+
+        // The surfaces are DATA, in build.json — never Kotlin constants. Same
+        // rule libs/ops follows for DAGU_DEFAULT_SERVER, and the reason is that
+        // a URL hardcoded in a class is a URL that gets copied and then
+        // diverges from the one the rest of the fleet uses.
+        buildConfigField "String", "DAGU_URL", "\"${s.dagu_url}\""
+        buildConfigField "String", "PACA_URL", "\"${s.paca_url}\""
+        buildConfigField "String", "SUPERAPP_PACKAGE", "\"${s.superapp_package}\""
+    }
+
+    buildFeatures { buildConfig = true }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions { jvmTarget = '17' }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+}
+
+dependencies {
+    // No shared lib module. v1 draws four panels over surfaces that already
+    // exist and needs nothing from libs/ — depending on ab_cloud-libs-shared
+    // now would add its whole build to this app's critical path for nothing.
+    // When `run` gets wired, it takes the trigger client from libs/ops rather
+    // than growing one here, and THAT is when this line changes.
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+}

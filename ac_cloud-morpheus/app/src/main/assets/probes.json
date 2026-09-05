@@ -1,0 +1,99 @@
+{
+  "_mirror_of": "cloud-u-linux/da_morpheus/data/probes.json — THAT file is the source of truth. This is a committed mirror because the two products live in different repositories and this APK must render the registry with no network. If they ever disagree, the CLI copy wins: it is the one `c3-morpheus probes validate` checks against the ntfy topic registry. Re-copy it verbatim rather than editing this file.",
+  "_doc": "THE PROBE REGISTRY — what 'healthy' means, as data.\n\nc3-watchdog samples ONE machine's vitals and acts locally. c3-morpheus asks fleet-wide questions: is this service serving, is this endpoint answering, did this probe even run. So the declarations live here, in one file, instead of being implied by whichever cron happens to exist.\n\nNOTHING HERE REIMPLEMENTS A PROBE. The cloud-health-*.sh family in cloud-infra/1_cicd/src/ops already does the work and Dagu already schedules it; this file is the INVENTORY morpheus orchestrates and validates against. A second copy of those checks would be a second thing to keep true.",
+  "_doc_reach": "reach is the field that stops a naive probe lying. `paca.diegonmarcos.com` has NO public edge certificate — measured 000 from the edge IP, while auth answers 403 and linktree 200 from the same source. Paca is mesh-only and perfectly healthy on 10.0.0.6:8095. An HTTPS probe run from off-mesh against the public name would call it DOWN when it is fine, so every target declares whether it is `public` or `mesh` and carries the address that is actually true for that class.",
+  "_doc_states": "THREE states, never two. up / down / unavailable.\n  up          answered, with a status this probe expects\n  down        answered, with a status it does not — the service is reachable and wrong\n  unavailable COULD NOT MEASURE: no route, DNS failure, timeout, missing tool\nA probe that cannot run is NOT a healthy probe and is NOT a failing service. Collapsing `unavailable` into either one is how a false outage and a false all-clear both get manufactured — cloud-health-mail-full.sh printed maddy=0 stalwart=0 while both stores held mail, and 0 read as data loss. That script already carries a -1 sentinel for exactly this reason; this registry makes the distinction structural instead of per-script.",
+  "_doc_topic": "topic MUST name a topic that exists in cloud-infra/a_solutions/infra-obs_ntfy/src/build.json::topics[]. ntfy runs auth-default-access: read-write, so publishing to a topic nobody registered returns HTTP 200 and the alert lands where nothing subscribes. cloud-health-mail-full.sh posted to `infra_mail-health` for a long time while the registry declared `health_report_cloud-mail-health-full`, and every single publish looked successful. `c3-morpheus probes validate` cross-checks this file against that registry, because a 200 from ntfy proves nothing.",
+  "endpoint_probes": [
+    {
+      "name": "authelia",
+      "description": "The SSO edge. 403 is a healthy answer here — it means forward_auth is live and challenging, which is the whole job.",
+      "reach": "public",
+      "url": "https://auth.diegonmarcos.com/",
+      "expect_status": [
+        200,
+        302,
+        401,
+        403
+      ],
+      "topic": "health_endpoints"
+    },
+    {
+      "name": "dagu",
+      "description": "The workflow engine morpheus reads. Gated by Authelia, so an unauthenticated probe legitimately gets 401/403 — that is the edge working, not Dagu being down. Only a connection failure or a 5xx means anything is wrong.",
+      "reach": "public",
+      "url": "https://workflows.diegonmarcos.com/",
+      "expect_status": [
+        200,
+        302,
+        401,
+        403
+      ],
+      "topic": "health_endpoints"
+    },
+    {
+      "name": "paca",
+      "description": "The PM board. MESH-ONLY: there is no public edge certificate for paca.diegonmarcos.com, so the public name measures 000 while the service is healthy. Probed at its mesh address, which is the only address that is true.",
+      "reach": "mesh",
+      "url": "http://10.0.0.6:8095/",
+      "public_url": "https://paca.diegonmarcos.com",
+      "expect_status": [
+        200,
+        302,
+        401,
+        403
+      ],
+      "topic": "health_endpoints"
+    }
+  ],
+  "_doc_script_probes": "The REAL probe suite. Owned by cloud-infra, scheduled by Dagu, reporting to ntfy. morpheus declares them so there is one inventory and so `probes validate` can check their topics; it does not run them, and v1 cannot trigger them either — see `c3-morpheus run`.",
+  "script_probes": [
+    {
+      "name": "health_mesh-connectivity",
+      "dag": "health_mesh-connectivity",
+      "topic": "health_mesh",
+      "description": "WireGuard mesh connectivity across the fleet."
+    },
+    {
+      "name": "health_service-endpoints",
+      "dag": "health_service-endpoints",
+      "topic": "health_endpoints",
+      "script": "1_cicd/src/ops/cloud-health-http-public.sh",
+      "description": "HTTP service endpoint checks."
+    },
+    {
+      "name": "health_dns-resolution",
+      "dag": "health_dns-resolution",
+      "topic": "health_dns",
+      "description": "DNS resolution checks."
+    },
+    {
+      "name": "health_system-resources",
+      "dag": "health_system-resources",
+      "topic": "health_resources",
+      "script": "1_cicd/src/ops/cloud-health-all-vms.sh",
+      "description": "Per-VM disk, memory and CPU. The FLEET-WIDE view; c3-watchdog is the per-machine one, and they are not substitutes for each other."
+    },
+    {
+      "name": "health_docker-containers",
+      "dag": "health_docker-containers",
+      "topic": "health_containers",
+      "description": "Docker container health."
+    },
+    {
+      "name": "health_cloud-full",
+      "dag": "health_cloud-full",
+      "topic": "health_report_cloud-health-full-daily",
+      "script": "1_cicd/src/ops/cloud-health-full.sh",
+      "description": "The daily full sweep."
+    },
+    {
+      "name": "health_mail-full",
+      "dag": "health_mail-full",
+      "topic": "health_report_cloud-mail-health-full",
+      "script": "1_cicd/src/ops/cloud-health-mail-full.sh",
+      "description": "Mail store reconciliation across gmail, maddy and stalwart.",
+      "known_defect": "Reports a FALSE OUTAGE — prints maddy=0 stalwart=0 while both stores demonstrably hold mail (maddy at UID 39167; Stalwart serving JMAP 307 and an IMAP4rev2 banner). The counting command is wrong; being fixed in cloud-infra, not here. Listed so this registry does not present a known-lying probe as trustworthy."
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A workflow, not a gauge. One node fanning out to three, which is what this
+     product is: the holder of the workflows and the thing that decides what
+     runs. Deliberately NOT the watchdog meter-and-sparkline — the two apps sit
+     next to each other in the launcher and the whole point of the split is
+     that they are different products.
+
+     A vector rather than a PNG set, so there is one file instead of five
+     densities and it stays sharp everywhere. Same accent the dashboards use
+     (rgb 120,200,255). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- the edges, drawn first so the nodes sit on top of them -->
+    <path
+        android:strokeColor="#5A7A8C"
+        android:strokeWidth="3"
+        android:pathData="M40,54 L67,38 M40,54 L67,54 M40,54 L67,70" />
+
+    <!-- the source node — one decision -->
+    <path
+        android:fillColor="#78C8FF"
+        android:pathData="M28,48h12v12h-12z" />
+
+    <!-- the three it fans out to. The third is at the graph floor colour:
+         a workflow that has not run is not a workflow that ran green. -->
+    <path
+        android:fillColor="#78C8FF"
+        android:pathData="M67,33h11v11h-11z" />
+    <path
+        android:fillColor="#78C8FF"
+        android:pathData="M67,49h11v11h-11z" />
+    <path
+        android:fillColor="#404040"
+        android:pathData="M67,65h11v11h-11z" />
+</vector>
