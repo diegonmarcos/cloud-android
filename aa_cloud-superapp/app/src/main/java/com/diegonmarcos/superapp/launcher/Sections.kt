@@ -726,6 +726,22 @@ object Sections {
         sec.allPages.firstOrNull { it.id == pageId && it.mode.isNotBlank() }?.mode
     }
 
+    /** `<section>` to `<page>` for the page that DECLARES this dispatch
+     *  target and OPENS A SCREEN with it — Configs ▸ Constellation
+     *  (`action:constellation`) is the case. [Page.isAction] pages are
+     *  excluded on purpose: they do something and return, so they have no
+     *  screen to give a home to.
+     *
+     *  Lets the shell establish the declaring section as the back-stack base
+     *  before such a page renders, so Back leaves it for the section that
+     *  lists it rather than for whatever launched it. Source:
+     *  build.json::sections[*].pages[*].action. */
+    fun screenPageForTarget(target: String): Pair<String, String>? =
+        all().firstNotNullOfOrNull { sec ->
+            sec.allPages.firstOrNull { it.action == target && !it.isAction }
+                ?.let { sec.id to it.id }
+        }
+
     /** Aggregator's tiles for a page. The page's OWN `tiles_<id>` wins; only
      *  a page that declares none falls back to the section-wide lists
      *  (tile_groups flattened, then tiles_shared).

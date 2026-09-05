@@ -1555,6 +1555,16 @@ open class ShellActivity : AppCompatActivity(),
      *  the system picks the installed handler — same scheme dispatch the
      *  tile click router uses. */
     private fun dispatchHomeAction(actionType: String) {
+        // An action that OPENS A SCREEN listed by a section (Configs ▸
+        // Constellation) must render inside that section, or the toolbar Back
+        // and the system gesture both leave for whatever launched it — the
+        // Home row, the Home-Apps sheet, the arc menu — instead of Configs.
+        // [LauncherNavController.openSectionPage] establishes the section grid
+        // as the back-stack base and then dispatches the action right back
+        // here, by which point currentSection matches and this is a no-op.
+        Sections.screenPageForTarget("action:$actionType")
+            ?.takeIf { it.first != currentSection }
+            ?.let { (sectionId, pageId) -> openSectionPage(sectionId, pageId); return }
         val anchor = findViewById<View>(R.id.fragment_container)
         when {
             actionType == "check_updates" -> {
