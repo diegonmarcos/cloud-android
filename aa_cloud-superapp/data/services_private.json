@@ -10,16 +10,6 @@
     "db_engine": null
   },
   {
-    "name": "cloud-vault-mcp",
-    "service": "cloud-vault-mcp",
-    "vm": "local",
-    "private_dns": "cloud-vault-mcp",
-    "port": null,
-    "protocol": "tcp",
-    "category": "data",
-    "db_engine": null
-  },
-  {
     "name": "cloud-builder-x",
     "service": "cloud-builder-x",
     "vm": "local",
@@ -330,26 +320,6 @@
     "db_engine": null
   },
   {
-    "name": "claude-superset-api",
-    "service": "claude-superset-api",
-    "vm": "oci-A1-f_0",
-    "private_dns": "claude-superset-api.app:3117",
-    "port": 3117,
-    "protocol": "http",
-    "category": "agi",
-    "db_engine": null
-  },
-  {
-    "name": "cloud-cgc-pvt-mcp",
-    "service": "cloud-cgc-pub-mcp",
-    "vm": "oci-A1-f_0",
-    "private_dns": "cloud-cgc-pvt-mcp:3107",
-    "port": 3107,
-    "protocol": "http",
-    "category": "obs",
-    "db_engine": null
-  },
-  {
     "name": "db-agent",
     "service": "db-agent",
     "vm": "all",
@@ -400,6 +370,16 @@
     "db_engine": null
   },
   {
+    "name": "my-ai_claude-api",
+    "service": "my-ai_claude-api",
+    "vm": "oci-A1-f_0",
+    "private_dns": "my-ai-claude-api.app:3117",
+    "port": 3117,
+    "protocol": "http",
+    "category": "agi",
+    "db_engine": null
+  },
+  {
     "name": "session-memory",
     "service": "session-memory",
     "vm": "oci-A1-f_0",
@@ -430,6 +410,16 @@
     "db_engine": null
   },
   {
+    "name": "cloud-webmail",
+    "service": "cloud-webmail",
+    "vm": "oci-A1-f_0",
+    "private_dns": "webmail.app:3000",
+    "port": 3000,
+    "protocol": "http",
+    "category": "app",
+    "db_engine": null
+  },
+  {
     "name": "mail-puller",
     "service": "mail-puller",
     "vm": "oci-E2-f_0",
@@ -445,16 +435,6 @@
     "vm": "oci-A1-f_0",
     "private_dns": "matrix-mautrix-whatsapp.app:29318",
     "port": 29318,
-    "protocol": "http",
-    "category": "app",
-    "db_engine": null
-  },
-  {
-    "name": "snappymail",
-    "service": "snappymail",
-    "vm": "oci-E2-f_0",
-    "private_dns": "snappymail.app:8888",
-    "port": 8888,
     "protocol": "http",
     "category": "app",
     "db_engine": null

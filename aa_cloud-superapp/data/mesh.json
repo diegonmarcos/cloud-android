@@ -125,6 +125,19 @@
       "wstunnel_client": false
     },
     {
+      "name": "gcp-L4-e_0",
+      "role": "spoke",
+      "alias": "gcp-gpu-embed",
+      "public_ip": "34.66.107.117",
+      "wg_ip": "",
+      "region": "us-central1-a",
+      "provider": "gcloud",
+      "os": "NixOS",
+      "ports_public": [],
+      "wstunnel_server": false,
+      "wstunnel_client": false
+    },
+    {
       "name": "vast-RTX-p_0",
       "role": "spoke",
       "alias": "vast-ollama",
@@ -189,6 +202,22 @@
     },
     {
       "from": "gcp-E2-f_0",
+      "to": "gcp-L4-e_0",
+      "allowed_ips": [
+        "/32"
+      ],
+      "persistent_keepalive": 25
+    },
+    {
+      "from": "gcp-L4-e_0",
+      "to": "gcp-E2-f_0",
+      "allowed_ips": [
+        "10.0.0.0/24"
+      ],
+      "persistent_keepalive": 25
+    },
+    {
+      "from": "gcp-E2-f_0",
       "to": "vast-RTX-p_0",
       "allowed_ips": [
         "/32"
@@ -213,7 +242,7 @@
       "endpoint": "35.226.147.64:51820",
       "primary": true,
       "fallback": false,
-      "active_peers": 4,
+      "active_peers": 5,
       "use_case": "Default high-speed path. UDP-friendly networks."
     },
     {
@@ -241,6 +270,11 @@
     },
     {
       "src_node": "oci-A1-f_0",
+      "dst_subnet": "10.0.0.0/24",
+      "via_transport": "wg0"
+    },
+    {
+      "src_node": "gcp-L4-e_0",
       "dst_subnet": "10.0.0.0/24",
       "via_transport": "wg0"
     },

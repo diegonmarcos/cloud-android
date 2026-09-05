@@ -1158,6 +1158,13 @@
           "url": "https://diegonmarcos.github.io/cloud",
           "icon": "settings.svg"
         },
+        "primary_links": [
+          {
+            "label": "Cloud Mobile",
+            "url": "https://diegonmarcos.github.io/cloud-mobile",
+            "icon": "device-mobile.svg"
+          }
+        ],
         "profile_icons": [
           {
             "url": "https://github.com/diegonmarcos/diegonmarcos.github.io",

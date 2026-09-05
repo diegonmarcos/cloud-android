@@ -90,6 +90,26 @@
     "category": "obs"
   },
   {
+    "name": "cloud-superapp-mcp",
+    "service": "cloud-superapp-mcp",
+    "vm": "oci-A1-f_0",
+    "public_url": "mcp.diegonmarcos.com/cloud-superapp-mcp",
+    "auth": "none",
+    "private_dns": "superapp-mcp.app:3110",
+    "port": 3110,
+    "category": "app"
+  },
+  {
+    "name": "cloud-vault-mcp",
+    "service": "cloud-vault-mcp",
+    "vm": "oci-A1-f_0",
+    "public_url": "mcp.diegonmarcos.com/cloud-vault-mcp",
+    "auth": "none",
+    "private_dns": "vault-mcp.app:3111",
+    "port": 3111,
+    "category": "data"
+  },
+  {
     "name": "google-personal-mcp",
     "service": "google-personal-mcp",
     "vm": "oci-A1-f_0",
@@ -227,6 +247,16 @@
     "auth": "none",
     "private_dns": "cloud-cgc-pub-mcp.app:3105",
     "port": 3105,
+    "category": "obs"
+  },
+  {
+    "name": "cloud-cgc-pvt-mcp",
+    "service": "cloud-cgc-pub-mcp",
+    "vm": "oci-A1-f_0",
+    "public_url": "mcp.diegonmarcos.com/cloud-cgc-pvt-mcp",
+    "auth": "none",
+    "private_dns": "cloud-cgc-pvt-mcp:3107",
+    "port": 3107,
     "category": "obs"
   },
   {
