@@ -1,0 +1,124 @@
+# Keeps the superapp's committed topology snapshots in step with live infra.
+#
+# THE HOP THIS CLOSES
+# -------------------
+# regen.sh has two halves. The constellation half is already automated:
+# aa_cloud-superapp/app/build.gradle runs `regen.sh --constellation-only` on
+# every build, so constellation-fleet.json is never stale. But
+# `--constellation-only` exits at regen.sh:274, BEFORE the topology section —
+# so mesh.json, services_public.json, services_private.json and linktree.json
+# refreshed only when a human remembered to run bare `./regen.sh`. They went
+# 5 days stale (last regen 2026-08-31; inputs moved 09-03 and 09-05).
+#
+# This is NOT the ship-gen-configs.yml bug. That one keeps the INPUTS
+# (cloud-infra 1_cloud-configs/dist) fresh. Nothing carried those inputs into
+# this repo's committed snapshots — that hop simply did not exist. This is it.
+#
+# WHY A SCHEDULED CI JOB AND NOT A GRADLE TASK
+# --------------------------------------------
+# Dropping `--constellation-only` from build.gradle was the other option. It
+# is the wrong one, twice over:
+#   1. A build that mutates tracked files hands every unrelated agent a dirty
+#      tree they did not ask for, and a build still cannot PUSH — so the
+#      snapshots would drift from origin exactly as before.
+#   2. The topology half needs cloud-infra and front checked out beside this
+#      repo. On a build machine they are absent, and regen.sh:306 hard-fails
+#      (`projects.json not found`) — turning a data refresh into a broken
+#      build.
+# Committing regenerated output from CI is what this fleet already does:
+# cloud-infra's ship-gen-configs.yml regenerates dist/ and pushes it to main.
+# This mirrors that pattern rather than inventing a new one.
+#
+# Trigger is schedule + manual: a push to cloud-infra cannot trigger a
+# workflow in this repo without a cross-repo PAT, and no such PAT pattern
+# exists anywhere in this fleet. Both input repos are PUBLIC, so the default
+# GITHUB_TOKEN checks them out with no new secret.
+
+name: ship-superapp-data-regen
+
+on:
+  schedule:
+    # Daily, after the infra side has settled.
+    - cron: "17 5 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: superapp-data-regen
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  regen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Both inputs live in sibling PUBLIC repos, so no deploy key or PAT is
+      # needed. Checked out under .inputs/ — untracked, and the commit step
+      # stages explicit paths only, so this can never leak into a commit.
+      - name: Checkout cloud-infra (topology inputs)
+        uses: actions/checkout@v4
+        with:
+          repository: diegonmarcos/cloud-infra
+          path: .inputs/cloud-infra
+
+      - name: Checkout front (linktree input)
+        uses: actions/checkout@v4
+        with:
+          repository: diegonmarcos/diegonmarcos.github.io
+          path: .inputs/front
+
+      # regen.sh takes all three inputs as positional args, so it needs no
+      # ~/git/... layout on the runner. All three are mandatory and it aborts
+      # loudly if one is missing — a missing input can never silently produce
+      # a degraded snapshot. jq is preinstalled on ubuntu-latest; regen.sh is
+      # pure jq with no network access.
+      - name: Regenerate topology snapshots
+        run: |
+          set -eu
+          cd aa_cloud-superapp/data
+          bash regen.sh \
+            "$GITHUB_WORKSPACE/.inputs/cloud-infra/1_cloud-configs/dist/_cloud-data-consolidated.json" \
+            "$GITHUB_WORKSPACE/.inputs/cloud-infra/1_cloud-configs/dist/mesh-snapshot.json" \
+            "$GITHUB_WORKSPACE/.inputs/front/a-Portals/linktree/src/data/projects.json"
+
+      - name: Commit refreshed snapshots
+        run: |
+          set -eu
+
+          # OWNERSHIP BOUNDARY — do not remove.
+          # A bare regen.sh run regenerates constellation-fleet.json FIRST,
+          # before the topology section. That file belongs to the gradle
+          # build, which rewrites it on every build from a different input
+          # set. If this job also committed it, the two would fight and every
+          # run would land a diff nobody asked for — the "someone ran regen.sh
+          # for another reason and regenerated files" trap that caused three
+          # bad commits on 2026-09-05. Reverting it here confines this job's
+          # diff to exactly the four files it owns.
+          git checkout -- aa_cloud-superapp/data/constellation-fleet.json
+
+          # `git add` is ATOMIC: one rejected pathspec aborts the whole
+          # invocation and stages NOTHING, while the tree still looks correct.
+          # ship-gen-configs.yml shipped a green-but-empty pipeline for weeks
+          # on exactly this. One add per path so a single failure cannot
+          # silence the rest.
+          for f in mesh.json services_public.json services_private.json linktree.json; do
+            git add -- "aa_cloud-superapp/data/$f" || echo "::warning::could not stage $f"
+          done
+
+          # The expected steady state. Only a real upstream change commits.
+          if git diff --cached --quiet; then
+            echo "::notice::topology snapshots already current — nothing to commit"
+            exit 0
+          fi
+
+          # Per-command identity; does not pollute .git/config.
+          # Subject-only message on ONE line — a multi-line message inside a
+          # YAML run-block breaks the block scalar and fails validation.
+          git \
+            -c user.name="Claude" \
+            -c user.email="noreply@anthropic.com" \
+            commit -m "ci(superapp-data): refresh topology snapshots via run ${GITHUB_RUN_ID} [skip ci]"
+          git push origin HEAD:main
