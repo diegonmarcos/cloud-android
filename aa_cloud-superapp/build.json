@@ -419,8 +419,8 @@
           "target": "page:infos/work-pm"
         },
         {
-          "label": "Projects Cloud",
-          "icon": "ic_p_sol_cloud",
+          "label": "Projects C3",
+          "icon": "ic_pm_boards",
           "target": "page:infos/cloud"
         },
         {
@@ -1300,14 +1300,15 @@
             "facet": true
           },
           {
+            "_doc": "Projects ▸ C3 is the PM BOARD and NOTHING else. Paca — the `paca` container (oci-apps, port 8095, https://paca.diegonmarcos.com) — IS the board, so this page declares its `url` and WebPageFragment renders it inline; Paca has no anonymous board API (every route sits behind Authelia forward_auth and answers 302 to auth.diegonmarcos.com), so embedding the app is the board, not a wrapper around one. NOT a facet: a page that declares a `url` IS that page, and the facet branch would swallow it. The id stays `cloud` on purpose — it is the data key `page:infos/cloud` resolves against (drawer, home_groups, radial menu, swipe walk), exactly the rule the Apps-RSS rename follows: relabel, never rename. The cloud's build/run activity that used to live here moved to Cloud ▸ C3 ▸ Observability, which is where the rest of C3 already lives.",
             "id": "cloud",
-            "label": "Cloud",
-            "icon": "ic_p_sol_cloud",
-            "facet": true
+            "label": "C3",
+            "icon": "ic_pm_boards",
+            "url": "https://paca.diegonmarcos.com"
           }
         ],
         "tabs": true,
-        "_doc_pages": "Projects = what you WORK ON, the counterpart to Inboxes' what ARRIVES. My-PM is personal planning, Work-PM the work boards, Cloud the cloud's own build/run activity. Same rule as Inboxes: one stack_<page id> per page.",
+        "_doc_pages": "Projects = what you WORK ON, the counterpart to Inboxes' what ARRIVES. My-PM is personal planning, Work-PM the work boards, C3 the cloud's PM board (Paca). Same rule as Inboxes: one stack_<page id> per page — except C3, which is a `url` page and therefore declares no stack of its own.",
         "stack_my-pm": [
           {
             "kind": "calendar_month",
@@ -1413,83 +1414,7 @@
             "subtitle": "paca.diegonmarcos.com"
           }
         ],
-        "stack_cloud": [
-          {
-            "_doc": "Live GHA workflow runs across the watched repos. Fetches api.github.com/repos/{owner}/{repo}/actions/runs unauthenticated (60 req/h limit shared across panels, 60s cache).",
-            "kind": "gha_runs",
-            "title": "GHA · Workflow runs",
-            "subtitle": "Latest 3 runs per repo",
-            "repos": [
-              {
-                "owner": "diegonmarcos",
-                "repo": "cloud-u-android",
-                "label": "android"
-              },
-              {
-                "owner": "diegonmarcos",
-                "repo": "cloud-infra",
-                "label": "cloud"
-              },
-              {
-                "owner": "diegonmarcos",
-                "repo": "diegonmarcos.github.io",
-                "label": "front"
-              }
-            ]
-          },
-          {
-            "_doc": "Recent commits from the watched repos — separate from GHA so workflows news and code news don't conflate. Same cache.",
-            "kind": "repos",
-            "title": "Repos · Commits",
-            "subtitle": "Latest 3 commits per repo",
-            "repos": [
-              {
-                "owner": "diegonmarcos",
-                "repo": "cloud-u-android",
-                "label": "android"
-              },
-              {
-                "owner": "diegonmarcos",
-                "repo": "cloud-infra",
-                "label": "cloud"
-              },
-              {
-                "owner": "diegonmarcos",
-                "repo": "diegonmarcos.github.io",
-                "label": "front"
-              }
-            ]
-          },
-          {
-            "kind": "open_link",
-            "title": "Dagu · Workflow runs",
-            "url": "page:c3/dagu",
-            "icon": "ic_robot",
-            "_doc": "Was the bare URL — opening the WebView at the live Dagu page bypassed our native DaguFragment entirely. AggregatorStackFragment.openUrlOrTarget handles both URLs AND page:* targets, so the in-app deeplink routes through MainActivity.onTileClicked → SectionPages → OpsPages.fragmentForDagu() to render the native list view instead."
-          }
-        ],
-        "tiles_cloud": [
-          {
-            "id": "cal-workflows",
-            "label": "Workflows cal",
-            "icon": "ic_calendar",
-            "target": "page:c3/workflows"
-          },
-          {
-            "id": "gha-events",
-            "label": "GHA events",
-            "icon": "ic_p_c3_workflows",
-            "target": "page:c3/gha"
-          },
-          {
-            "id": "dagu",
-            "label": "Dagu events",
-            "icon": "ic_p_c3_workflows",
-            "target": "page:c3/dagu",
-            "dagu_default_server": "https://workflows.diegonmarcos.com",
-            "_doc": "Native DaguFragment — REST API GET /api/v1/dags listing with per-DAG last-run status (success / error / running / unknown). Mirrors GitHub Actions workflow-list style: 1 row per DAG, coloured dot + relative timestamp. Auth via Authelia bearer token pasted into the login form on first open (same pattern as Mattermost section). Default server URL baked into BuildConfig via this dagu_default_server field so login form pre-fills correctly."
-          }
-        ]
+        "_doc_moved_cloud": "stack_cloud / tiles_cloud USED to hang here — GHA runs, repo commits and the Dagu deeplink. They are now sections[cloud].stack_c3-observability, under Cloud ▸ C3 ▸ Observability, next to the C3 pages that already served the same story. Nothing else keyed off them: `page:infos/cloud` addresses the PAGE, not these lists."
       },
       {
         "_doc_icons": "Per-mode icons: Apps mode = multi-tools glyph (mymovies / mymusic / etc.); Admin mode = C3-stack glyph (infra dashboard read). Both the bottom-nav item AND the home_groups tile resolve via Section.iconForMode(mode).",
@@ -1503,7 +1428,7 @@
         "icon_admin": "ic_p_c3_stack",
         "module": null,
         "bottom_nav": true,
-        "_doc_hidden_pages": "Cloud's listed children are Cloud | Labs | C3. The six subject Labs (Data & ML, Engineering, Quant, Aero & Space, Circus) render INSIDE the Labs page via tiles_labs; `hidden` keeps them routable as page:cloud/<id> without listing them as top-level children.",
+        "_doc_hidden_pages": "Cloud's listed children are Cloud | Labs | C3. The six subject Labs (Data & ML, Engineering, Quant, Aero & Space, Circus) render INSIDE the Labs page via tiles_labs; `hidden` keeps them routable as page:cloud/<id> without listing them as top-level children. C3's own two children, c3-observability and c3-topology, use the same device: reached from tiles_c3, not from the Cloud tab strip.",
         "is_aggregator": true,
         "pages": [
           {
@@ -1526,8 +1451,26 @@
             "label": "C3",
             "icon": "ic_p_c3_stack",
             "facet": true,
-            "_doc": "Cloud Control Center. The page id used to be `admin` ONLY because LauncherNavController.syncModeForPage inferred ModePrefs from it - rename the id and nothing ever selected admin mode again. That coupling is gone: `mode` below declares it, so the id is free to say what the page is. Data keys followed the id: tiles_admin/stack_admin -> tiles_c3/stack_c3.",
+            "_doc": "Cloud Control Center. The page id used to be `admin` ONLY because LauncherNavController.syncModeForPage inferred ModePrefs from it - rename the id and nothing ever selected admin mode again. That coupling is gone: `mode` below declares it, so the id is free to say what the page is. Data keys followed the id: tiles_admin/stack_admin -> tiles_c3/stack_c3. C3 is now an INDEX of its two halves: it declares tiles_c3 (Observability | Topology) and NO stack_c3, because a page that declares a stack renders it and its tiles are never reached — which is exactly why the ten-tile tiles_c3 index was invisible for as long as stack_c3 sat beside it.",
             "mode": "admin"
+          },
+          {
+            "id": "c3-observability",
+            "label": "Observability",
+            "icon": "ic_p_c3_workflows",
+            "facet": true,
+            "hidden": true,
+            "mode": "admin",
+            "_doc": "Cloud ▸ C3 ▸ Observability — what the cloud is DOING: GHA + Dagu workflow runs, the workflow declarations, and per-repo commit history. `hidden` keeps Cloud's listed children at Apps | Lnktree | C3 | Configs while `page:cloud/c3-observability` stays routable (Section.allPages). Reached from tiles_c3."
+          },
+          {
+            "id": "c3-topology",
+            "label": "Topology",
+            "icon": "ic_p_c3_stack",
+            "facet": true,
+            "hidden": true,
+            "mode": "admin",
+            "_doc": "Cloud ▸ C3 ▸ Topology — what the cloud IS: the container/stack dashboard that used to BE Cloud ▸ C3, moved down one level unchanged (stack_c3 → stack_c3-topology, panel for panel). Same `hidden` + routable contract as its Observability sibling."
           },
           {
             "id": "configs",
@@ -1609,65 +1552,150 @@
         ],
         "tiles_c3": [
           {
-            "id": "c3-health",
-            "label": "C3 health",
-            "icon": "ic_p_c3_health",
-            "target": "page:c3/health"
-          },
-          {
-            "id": "c3-stack",
-            "label": "C3 stack",
-            "icon": "ic_p_c3_stack",
-            "target": "page:c3/stack"
-          },
-          {
-            "id": "wg-mesh",
-            "label": "WG mesh",
-            "icon": "ic_wg",
-            "target": "page:wg/status"
-          },
-          {
-            "id": "vms",
-            "label": "VMs",
-            "icon": "ic_p_c3_vms",
-            "target": "page:c3/vms"
-          },
-          {
-            "id": "workflows",
-            "label": "Workflows",
+            "id": "c3-observability",
+            "label": "Observability",
             "icon": "ic_p_c3_workflows",
-            "target": "page:c3/workflows"
+            "target": "page:cloud/c3-observability"
           },
           {
-            "id": "logs",
-            "label": "Logs",
-            "icon": "ic_p_logs",
-            "target": "page:c3/logs"
-          },
-          {
-            "id": "reports",
-            "label": "Reports",
-            "icon": "ic_p_c3_reports",
-            "target": "page:c3/reports"
-          },
-          {
-            "id": "drive-conn",
-            "label": "Drive · Connections",
-            "icon": "ic_p_sol_cloud",
-            "target": "page:drive/connections"
-          },
-          {
-            "label": "Dagu",
-            "icon": "ic_robot",
-            "target": "page:c3/dagu"
-          },
-          {
-            "label": "GHA",
-            "icon": "ic_code",
-            "target": "page:c3/gha"
+            "id": "c3-topology",
+            "label": "Topology",
+            "icon": "ic_p_c3_stack",
+            "target": "page:cloud/c3-topology"
           }
         ],
-        "stack_c3": [
+        "stack_c3-observability": [
+          {
+            "_doc": "The C3 pages that answer 'what is the cloud DOING' — the same targets the old ten-tile tiles_c3 index declared, minus the topology half. Every one of them still resolves: page:c3/workflows (declarations · schedule), page:c3/gha, page:c3/dagu (native DaguFragment), page:c3/logs (per-VM).",
+            "kind": "tile_row",
+            "title": "Workflows · declarations",
+            "subtitle": "GHA · Dagu · logs per VM",
+            "tiles": [
+              {
+                "id": "workflows",
+                "label": "Workflows",
+                "icon": "ic_p_c3_workflows",
+                "target": "page:c3/workflows"
+              },
+              {
+                "id": "gha",
+                "label": "GHA",
+                "icon": "ic_code",
+                "target": "page:c3/gha"
+              },
+              {
+                "id": "dagu",
+                "label": "Dagu",
+                "icon": "ic_robot",
+                "target": "page:c3/dagu"
+              },
+              {
+                "id": "logs",
+                "label": "Logs",
+                "icon": "ic_p_logs",
+                "target": "page:c3/logs"
+              }
+            ]
+          },
+          {
+            "_doc": "Live GHA workflow runs across the watched repos. Fetches api.github.com/repos/{owner}/{repo}/actions/runs unauthenticated (60 req/h limit shared across panels, 60s cache). Moved here verbatim from sections[infos].stack_cloud. UNAUTHENTICATED is also why there is no 'run this workflow' button beside a row: POST /actions/workflows/{id}/dispatches needs a repo-scoped GitHub token, and this app stores none — the only credential it keeps is the Authelia bearer, which GitHub does not accept.",
+            "kind": "gha_runs",
+            "title": "GHA · Workflow runs",
+            "subtitle": "Latest 3 runs per repo",
+            "repos": [
+              {
+                "owner": "diegonmarcos",
+                "repo": "cloud-u-android",
+                "label": "android"
+              },
+              {
+                "owner": "diegonmarcos",
+                "repo": "cloud-infra",
+                "label": "cloud"
+              },
+              {
+                "owner": "diegonmarcos",
+                "repo": "diegonmarcos.github.io",
+                "label": "front"
+              }
+            ]
+          },
+          {
+            "_doc": "Recent commits from the watched repos — separate from GHA so workflows news and code news don't conflate. Same cache. Moved here verbatim from sections[infos].stack_cloud.",
+            "kind": "repos",
+            "title": "Repos · Commits",
+            "subtitle": "Latest 3 commits per repo",
+            "repos": [
+              {
+                "owner": "diegonmarcos",
+                "repo": "cloud-u-android",
+                "label": "android"
+              },
+              {
+                "owner": "diegonmarcos",
+                "repo": "cloud-infra",
+                "label": "cloud"
+              },
+              {
+                "owner": "diegonmarcos",
+                "repo": "diegonmarcos.github.io",
+                "label": "front"
+              }
+            ]
+          },
+          {
+            "kind": "open_link",
+            "title": "Dagu · Workflow runs",
+            "url": "page:c3/dagu",
+            "icon": "ic_robot",
+            "_doc": "Was the bare URL — opening the WebView at the live Dagu page bypassed our native DaguFragment entirely. AggregatorStackFragment.openUrlOrTarget handles both URLs AND page:* targets, so the in-app deeplink routes through MainActivity.onTileClicked → SectionPages → OpsPages.fragmentForDagu() to render the native list view instead. That fragment LISTS runs; it does not start them — libs:ops DaguClient speaks GET /api/v1/dags only, so POST /api/v1/dags/{name}/start has no client here."
+          }
+        ],
+        "stack_c3-topology": [
+          {
+            "_doc": "The C3 pages that answer 'what the cloud IS' — the topology half of the old ten-tile tiles_c3 index, which was declared but never rendered because stack_c3 sat beside it and a stack always wins. Every target is unchanged.",
+            "kind": "tile_row",
+            "title": "Topology · inventory",
+            "subtitle": "Health · stack · VMs · mesh · reports",
+            "tiles": [
+              {
+                "id": "c3-health",
+                "label": "C3 health",
+                "icon": "ic_p_c3_health",
+                "target": "page:c3/health"
+              },
+              {
+                "id": "c3-stack",
+                "label": "C3 stack",
+                "icon": "ic_p_c3_stack",
+                "target": "page:c3/stack"
+              },
+              {
+                "id": "wg-mesh",
+                "label": "WG mesh",
+                "icon": "ic_wg",
+                "target": "page:wg/status"
+              },
+              {
+                "id": "vms",
+                "label": "VMs",
+                "icon": "ic_p_c3_vms",
+                "target": "page:c3/vms"
+              },
+              {
+                "id": "reports",
+                "label": "Reports",
+                "icon": "ic_p_c3_reports",
+                "target": "page:c3/reports"
+              },
+              {
+                "id": "drive-conn",
+                "label": "Drive · Connections",
+                "icon": "ic_p_sol_cloud",
+                "target": "page:drive/connections"
+              }
+            ]
+          },
           {
             "_doc": "Cloud dashboard — section_title dividers + 3 collapsible cloud_dashboard CARDS. 'Containers' heading → Infra Apps + User Apps (every container exactly once). 'Stack' heading → the Stack card (free cross-cut lists: Providers/VMs · DBs · MCP & API). Grouping + inventory DATA-DRIVEN from data/cloud_services.json (BuildConfig.CLOUD_SERVICES_B64), generated by data/gen_cloud_services.js from cloud/a_solutions. renderCloudDashboard draws an icon grid (ui.tile_columns/line) with a STATUS LIGHT under each icon (TCP-ping over WireGuard) + opens the URL in the in-app browser on tap. `group`/`groups` selects which cloud_services.json group(s) a card renders.",
             "kind": "section_title",
@@ -1958,7 +1986,7 @@
             "subtitle": "Misc experiments and side quests"
           }
         ],
-        "_doc_tiles_c3": "C3 index — one tile per page the c3 section declares, plus the two cross-section entries (WG mesh, Drive · Connections) that belong to the ops story but live elsewhere. Dagu and GHA were the two c3 pages with no tile: both were wired and reachable only through an open_link block on Projects/Cloud, so the index under-reported what C3 actually has. Icons come from the page declarations in sections[c3].pages[] rather than being restated here, which is why fixing the duplicate glyph was a one-line edit there and not three edits here."
+        "_doc_tiles_c3": "C3 index — now TWO tiles, Observability and Topology, the two halves C3 was always made of. The ten tiles that used to be here (one per c3-section page plus WG mesh and Drive · Connections) were never actually drawn: a facet that declares a stack renders the stack and its tiles are unreachable, and stack_c3 had sat beside them the whole time. They are alive again, split by which half they belong to, as the leading tile_row panel of stack_c3-observability and stack_c3-topology. Every target is byte-identical to what was declared here; the SECTION `c3` still owns the pages themselves, this list only points at them."
       },
       {
         "id": "phone",

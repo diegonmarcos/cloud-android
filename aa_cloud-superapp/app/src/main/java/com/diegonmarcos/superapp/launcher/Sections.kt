@@ -842,9 +842,16 @@ object Sections {
             // what a section whose pages are no longer called apps/admin
             // answers with. Only then the blind first-page fallback, which
             // silently served Labs' stack for admin mode.
+            // The mode-matching step takes the first page declaring this mode
+            // that actually HAS a stack, not just the first one declaring it:
+            // Cloud ▸ C3 declares mode=admin and is now a two-tile index with
+            // no stack of its own, so stopping at it dropped the drawer
+            // straight into the blind fallback and served Lnktree's panels for
+            // Admin. Both steps read allPages — a hidden page (C3's
+            // Observability / Topology) is declared, only unlisted.
             else -> sec.stackByPage[mode]
-                ?: sec.pages.firstOrNull { it.mode == mode }?.let { sec.stackByPage[it.id] }
-                ?: sec.pages.firstNotNullOfOrNull { sec.stackByPage[it.id] }
+                ?: sec.allPages.filter { it.mode == mode }.firstNotNullOfOrNull { sec.stackByPage[it.id] }
+                ?: sec.allPages.firstNotNullOfOrNull { sec.stackByPage[it.id] }
                 ?: emptyList()
         }
         return raw.flatMap { panel ->

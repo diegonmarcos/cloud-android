@@ -214,7 +214,13 @@ class LauncherNavController(private val host: NavHost) {
      */
     fun pageFragment(sectionId: String, pageId: String, args: Bundle? = null): Fragment {
         val section = Sections.byId(sectionId)
-        val page = section?.pages?.firstOrNull { it.id == pageId }
+        // allPages, not pages: `page:<section>/<id>` resolves against every
+        // DECLARED page — that is [Sections.Section.allPages]'s whole contract.
+        // Looking in the visible list only worked while no hidden page was a
+        // facet; C3's Observability and Topology are both, and both would have
+        // fallen through to the generic placeholder instead of rendering their
+        // stack_<id> data.
+        val page = section?.allPages?.firstOrNull { it.id == pageId }
         return when {
             sectionId == "mail" -> MailPages.fragmentFor(pageId, args)
             section != null && page != null && page.facet -> aggregatorPage(section, page)
