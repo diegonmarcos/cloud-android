@@ -985,9 +985,11 @@ object DevControlServer {
         )
     }
 
-    /** Runs `logcat -d -t N -v threadtime`. Works without any extra
-     *  permission because the app is reading ITS OWN logs (Android
-     *  filters logcat by uid for unprivileged processes since 4.1). */
+    /** Runs `logcat -d -t N -v threadtime`. Needs no permission to return this
+     *  app's OWN lines. NOTE this app (unlike the rest of the fleet) does hold
+     *  READ_LOGS for the cross-app viewer, so here the read is device-wide AND
+     *  goes through the unpersistable log-consent dialog; see
+     *  PrivilegedGrants.staleGrants. */
     private fun readLogcat(n: Int): String = runCatching {
         val p = Runtime.getRuntime().exec(arrayOf("logcat", "-d", "-t", n.toString(), "-v", "threadtime"))
         p.inputStream.bufferedReader().readText()

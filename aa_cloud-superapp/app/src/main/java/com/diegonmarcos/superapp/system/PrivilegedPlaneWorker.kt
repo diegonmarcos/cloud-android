@@ -85,6 +85,15 @@ class PrivilegedPlaneWorker(ctx: Context, params: WorkerParameters) : Worker(ctx
             val out = PrivilegedGrants.grant(ctx, t) { cmd -> EmbeddedAdbChannel.exec(ctx, cmd) }
             Log.i(TAG, "grant ${t.pkg} ${t.perm} -> ${out?.trim()?.take(160) ?: "no output (channel down?)"}")
         }
+        // Withdraw what policy no longer sanctions. Narrowing an entry to fewer
+        // apps only stops FUTURE grants; the grant a previous build already
+        // made outlives it, so without this pass the plane can widen but never
+        // narrow. Runs after the grants so a package that is both granted and
+        // stale (different permissions) ends up in the right state either way.
+        for (t in PrivilegedGrants.staleGrants(ctx)) {
+            val out = PrivilegedGrants.revoke(ctx, t) { cmd -> EmbeddedAdbChannel.exec(ctx, cmd) }
+            Log.i(TAG, "revoke ${t.pkg} ${t.perm} -> ${out?.trim()?.take(160) ?: "no output (channel down?)"}")
+        }
         // Whitelist the WHOLE fleet, NOT the resolved targets. resolve() skips
         // permissions that are already granted, so on the steady-state boot —
         // every grant already done — the target list is EMPTY and deriving the

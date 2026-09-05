@@ -151,6 +151,64 @@ object PrivilegedGrants {
     }
 
     /**
+     * Curated permissions a fleet app still HOLDS that policy no longer grants it.
+     *
+     * Narrowing an entry with an `apps` array stops us re-granting, but it
+     * cannot un-grant what a previous build already handed out — the plane is
+     * idempotent and stateless, so without this the old grant simply survives
+     * forever. Scoped deliberately: only permissions the curated list actually
+     * names, only fleet packages, never this app (revoking our own
+     * WRITE_SECURE_SETTINGS would tear down the plane that does the revoking).
+     *
+     * The case that forced it: READ_LOGS. Holding it is what maps a process
+     * into the `log` supplementary gid (platform.xml), and logd's
+     * clientHasLogCredentials() sends exactly those processes through
+     * LogcatManagerService's user-consent dialog — which is unpersistable and
+     * re-prompts every 60s. An app that only ever reads its OWN logs is
+     * strictly better off WITHOUT the permission: no dialog, and
+     * SimpleLogBuffer still hands it every one of its own lines.
+     */
+    fun staleGrants(ctx: Context): List<Target> {
+        val sanctioned = resolve(ctx, includeGranted = true).mapTo(hashSetOf()) { it.pkg to it.perm }
+        val curated = curatedEntries().mapNotNullTo(hashSetOf()) {
+            it.optString("perm").takeIf(String::isNotEmpty)
+        }
+        val out = mutableListOf<Target>()
+        for (pkg in fleetPackages(ctx, installedOnly = true)) {
+            if (pkg == ctx.packageName) continue
+            for (perm in curated) {
+                if ((pkg to perm) in sanctioned) continue
+                if (ctx.packageManager.checkPermission(perm, pkg)
+                    != PackageManager.PERMISSION_GRANTED) continue
+                out += Target(pkg, perm, shortName(perm))
+            }
+        }
+        return out
+    }
+
+    /**
+     * `pm revoke`, then kill the app so the revocation actually takes effect.
+     *
+     * The force-stop is the load-bearing half, not tidiness: the supplementary
+     * gids a permission maps to are fixed when the process is forked from
+     * zygote, so a RUNNING process keeps the capability — and keeps triggering
+     * the log-consent dialog — until it dies, however revoked it looks in
+     * `dumpsys package`. Verifying the revoke without restarting the app would
+     * report success while the behaviour was unchanged.
+     */
+    fun revoke(ctx: Context, t: Target, exec: (String) -> String?): String? {
+        val revokeOut = exec("pm revoke ${t.pkg} ${t.perm} 2>&1 && echo OK")
+        val op = runCatching { AppOpsManager.permissionToOp(t.perm) }.getOrNull()
+        val opOut = op?.let { exec("appops set ${t.pkg} $it default 2>&1 && echo OK") }
+        val stopOut = exec("am force-stop ${t.pkg} 2>&1 && echo OK")
+        return listOfNotNull(
+            revokeOut?.trim(),
+            opOut?.trim()?.let { "appops $op: $it" },
+            stopOut?.trim()?.let { "force-stop: $it" },
+        ).joinToString(" · ").takeIf { it.isNotEmpty() }
+    }
+
+    /**
      * Ask the running platform whether `perm` carries PROTECTION_FLAG_DEVELOPMENT.
      *
      * runCatching is mandatory, not defensive habit: getPermissionInfo throws
