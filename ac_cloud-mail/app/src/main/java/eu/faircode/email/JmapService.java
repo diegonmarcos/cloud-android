@@ -459,6 +459,44 @@ public class JmapService {
         }
     }
 
+    // Fetch MANY bodies in one Email/get. One POST per body cost ~600ms on the
+    // DE→Iowa→Marseille path, so a folder's post-insert BODY backlog was
+    // strictly round-trip bound. Callers batch in BODY_BATCH_MAX-sized chunks:
+    // bodies are unbounded in size, so the request is bounded by COUNT rather
+    // than by maxBodyValueBytes — truncating a body would silently mangle mail.
+    //
+    // Returns id → Email for whatever the server actually returned; a missing id
+    // is the caller's to report (mirrors getMessageBody returning null).
+    static final int BODY_BATCH_MAX = 20;
+
+    @NonNull
+    Map<String, Email> getMessageBodies(List<String> emailIds) throws MessagingException {
+        requireAccount();
+        Map<String, Email> out = new HashMap<>();
+        if (emailIds == null || emailIds.isEmpty())
+            return out;
+        try {
+            MethodResponses r = client.call(
+                    GetEmailMethodCall.builder()
+                            .accountId(accountId)
+                            .ids(emailIds.toArray(new String[0]))
+                            .properties(EMAIL_BODY_PROPERTIES)
+                            .fetchHTMLBodyValues(true)
+                            .fetchTextBodyValues(true)
+                            .build()).get();
+            Email[] list = requireMain(r, GetEmailMethodResponse.class, "Email/get bodies").getList();
+            if (list != null)
+                for (Email email : list)
+                    if (email != null && email.getId() != null)
+                        out.put(email.getId(), email);
+            return out;
+        } catch (MessagingException ex) {
+            throw ex;              // already named — do not re-wrap
+        } catch (Exception ex) {
+            throw wrap("Email/get bodies", ex);
+        }
+    }
+
     // ── Mutations (drive EntityOperation SEEN/FLAG/MOVE/DELETE from Core) ─────
 
     // Set or clear a JMAP keyword (e.g. Keyword.SEEN, Keyword.FLAGGED) on emails.

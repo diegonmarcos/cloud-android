@@ -780,6 +780,13 @@ public class JmapSync {
         Email email = jmap.getMessageBody(message.uidl);
         if (email == null)
             throw new IllegalArgumentException("JMAP body missing uidl=" + message.uidl);
+        storeBody(context, db, message, email);
+    }
+
+    // Persist one fetched body. Split out of onBody so the coalesced fetch
+    // (flushBodies) shares the identical local write path.
+    private static void storeBody(Context context, DB db, EntityMessage message, Email email)
+            throws Exception {
         String html = bodyHtml(email);
         File file = message.getFile(context);
         Helper.writeText(file, html);
@@ -854,7 +861,7 @@ public class JmapSync {
             SetBatch shape = describeBatch(op, message, mailboxToFolder);
 
             if (shape != null && batch != null && shape.key.equals(batch.key)
-                    && batch.ops.size() < SET_BATCH_MAX) {
+                    && batch.ops.size() < batch.max) {
                 batch.ops.add(op);
                 batch.ids.add(message.uidl);
                 continue;
@@ -948,6 +955,7 @@ public class JmapSync {
         boolean value;   // SEEN / FLAG / KEYWORD boolean
         String keyword;  // KEYWORD name
         String mailbox;  // MOVE target mailbox id
+        int max = SET_BATCH_MAX;
         final List<EntityOperation> ops = new ArrayList<>();
         final List<String> ids = new ArrayList<>();
     }
@@ -1001,6 +1009,14 @@ public class JmapSync {
                 case EntityOperation.DELETE:
                     b.key = "DELETE";
                     return b;
+                case EntityOperation.BODY:
+                    // A pure read: no server state is touched, so batching it
+                    // cannot lose or mislabel anything. Bounded by COUNT (bodies
+                    // have no size ceiling) rather than by maxBodyValueBytes,
+                    // because a truncated body would be silently mangled mail.
+                    b.key = "BODY";
+                    b.max = JmapService.BODY_BATCH_MAX;
+                    return b;
                 default:
                     return null;
             }
@@ -1014,6 +1030,10 @@ public class JmapSync {
                                    JmapService jmap, SetBatch batch) {
         if (batch == null || batch.ops.isEmpty())
             return;
+        if (EntityOperation.BODY.equals(batch.name)) {
+            flushBodies(context, db, folder, jmap, batch);
+            return;
+        }
         try {
             switch (batch.name) {
                 case EntityOperation.SEEN:
@@ -1047,6 +1067,43 @@ public class JmapSync {
             for (EntityOperation op : batch.ops)
                 failOperation(context, db, folder, op, ex);
         }
+    }
+
+    // Fetch a run of queued bodies in ONE Email/get, then persist them locally.
+    //
+    // WHY THIS CANNOT LOSE MAIL: Email/get is a read. If the request fails, no
+    // operation is deleted and every one retries. If it succeeds but the server
+    // omits an id, only THAT operation fails -- exactly what the per-message
+    // path did when getMessageBody returned null -- and it retries on the next
+    // pass. A body is never marked stored unless its own bytes were written.
+    private static void flushBodies(Context context, DB db, EntityFolder folder,
+                                    JmapService jmap, SetBatch batch) {
+        Map<String, Email> bodies;
+        try {
+            bodies = jmap.getMessageBodies(batch.ids);
+        } catch (Throwable ex) {
+            for (EntityOperation op : batch.ops)
+                failOperation(context, db, folder, op, ex);
+            return;
+        }
+        for (EntityOperation op : batch.ops)
+            try {
+                EntityMessage message = (op.message == null ? null : db.message().getMessage(op.message));
+                if (message == null) {
+                    db.operation().deleteOperation(op.id);
+                    continue;
+                }
+                Email email = bodies.get(message.uidl);
+                if (email == null)
+                    throw new IllegalArgumentException("JMAP body missing uidl=" + message.uidl);
+                storeBody(context, db, message, email);
+                db.operation().deleteOperation(op.id);
+            } catch (Throwable ex) {
+                failOperation(context, db, folder, op, ex);
+            }
+        if (batch.ops.size() > 1)
+            EntityLog.log(context, "JMAP " + folder.name + " coalesced "
+                    + batch.ops.size() + " bodies into one Email/get");
     }
 
     // One poisoned op must not wedge every other op behind it in this folder --
