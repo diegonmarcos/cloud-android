@@ -625,6 +625,13 @@ class AggregatorStackFragment : Fragment(),
     // app — so it may not own a child fragment at all. The page also no longer
     // declares any embedChild-routed panel, so [nextEmbedIdx] never advances
     // here and the fixed pool cannot be exhausted by a rebuild.
+    //
+    // The shade layout below — icon headers, collapsible groups, dense rows —
+    // is built entirely from LinearLayout, TextView, ImageView and View, for
+    // the same reason. A collapsible group is a header View that flips its
+    // sibling container's visibility, NOT a hosted fragment; the collapse
+    // state lives on the fragment in [collapsedGroups] so it survives the
+    // body rebuild a toggle tap causes.
 
     /** One app / publisher and everything it has posted. [key] is the stable
      *  identity we grouped on — a package name, an ntfy topic, an in-app
@@ -659,7 +666,23 @@ class AggregatorStackFragment : Fragment(),
      *  the body; without this every tap would re-poll every channel. */
     private val ntfyCache = mutableMapOf<String, NtfyResult>()
 
+    /** Which groups the user has folded away, keyed on the same stable
+     *  identity we grouped on. Held on the fragment, not on the view, because
+     *  every toggle tap rebuilds the body from scratch — a collapse state
+     *  stored in the header would spring open again on the next tap. */
+    private val collapsedGroups = mutableSetOf<String>()
+
     private fun renderNotificationCenter(
+        ctx: android.content.Context, body: LinearLayout, panel: Sections.StackPanel,
+    ): Unit = run {
+        // A notification shade is edge-to-edge: the group headers and rows
+        // supply their own structure, so the card's inner gutter is chrome
+        // that only steals width and vertical space from the list.
+        body.setPadding(dp(6), 0, dp(6), dp(6))
+        renderStream(ctx, body, panel)
+    }
+
+    private fun renderStream(
         ctx: android.content.Context, body: LinearLayout, panel: Sections.StackPanel,
     ) = when (panel.stream) {
         "phone" -> renderPhoneCenter(ctx, body)
@@ -756,7 +779,7 @@ class AggregatorStackFragment : Fragment(),
                 as? android.app.NotificationManager)?.cancelAll()
         }
 
-        body.addView(groupHeader(ctx, "In-app feed"))
+        body.addView(shadeLabel(ctx, "IN-APP FEED"))
         val stored = NotificationStore.all(ctx)
         val local = stored.groupBy { it.source.ifBlank { "SuperApp" } }.map { (source, entries) ->
             NotifGroup(
@@ -782,7 +805,7 @@ class AggregatorStackFragment : Fragment(),
             }
         }
 
-        body.addView(groupHeader(ctx, "Channels"))
+        body.addView(shadeLabel(ctx, "CHANNELS"))
         renderNtfyGroups(ctx, body, panel)
     }
 
@@ -834,11 +857,10 @@ class AggregatorStackFragment : Fragment(),
             )
             // "checking…", never OK: an unpolled channel must not spend even its
             // first frame looking healthy.
-            val header = groupHeaderRow(ctx, group, GroupState("checking…", SIGNAL_UNKNOWN))
-            val state  = header.findViewWithTag<TextView>(GROUP_STATE_TAG) ?: continue
-            val rowsBox = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL }
-            body.addView(header)
-            body.addView(rowsBox)
+            val block   = groupBlock(ctx, group, GroupState("checking…", SIGNAL_UNKNOWN))
+            val state   = block.findViewWithTag<TextView>(GROUP_STATE_TAG) ?: continue
+            val rowsBox = block.findViewWithTag<LinearLayout>(GROUP_ROWS_TAG) ?: continue
+            body.addView(block)
 
             val cached = ntfyCache[topic]
             if (cached != null) {
@@ -940,9 +962,18 @@ class AggregatorStackFragment : Fragment(),
             else visible.sortedByDescending { it.newest }
         val now = System.currentTimeMillis()
         for (g in ordered) {
-            body.addView(groupHeaderRow(ctx, g,
-                GroupState("${g.rows.size} · ${ago(now - g.newest)}", SIGNAL_OK)))
-            for (r in g.rows) body.addView(notifRowView(ctx, r, g.launchPackage))
+            // The chip carries the per-app COUNT first, because that is what a
+            // shade is scanned for; when something in the group is newer than
+            // the last visit the count of those leads instead, in the same
+            // green the healthy verdicts use.
+            val unread = g.rows.count { it.ts > visitSeenAt }
+            val chip =
+                if (unread > 0) GroupState("$unread new · ${g.rows.size}", SIGNAL_OK)
+                else GroupState("${g.rows.size} · ${ago(now - g.newest)}", 0x99FFFFFF.toInt())
+            val block = groupBlock(ctx, g, chip)
+            val rows = block.findViewWithTag<LinearLayout>(GROUP_ROWS_TAG)
+            for (r in g.rows) rows?.addView(notifRowView(ctx, r, g.launchPackage))
+            body.addView(block)
         }
         return ordered.size
     }
@@ -955,73 +986,188 @@ class AggregatorStackFragment : Fragment(),
         return shown.sortedByDescending { it.ts }
     }
 
-    /** Group header: who posted, its address, and its state. Tapping opens the
-     *  app (phone groups) or the channel (ntfy groups). */
-    private fun groupHeaderRow(
+    /**
+     * One app / publisher drawn as a notification-shade GROUP: a real header
+     * bar — icon, name, count chip — with its notifications folded under it.
+     *
+     * Tapping the header COLLAPSES the group, so a noisy app is one tap from
+     * gone. That is why launching moved onto the icon: a header that both
+     * folded and launched could only ever do one of the two, and folding is
+     * the thing a shade full of one app's chatter actually needs.
+     *
+     * Everything here is a plain View. The block is returned whole, and the
+     * row container is reached back through [GROUP_ROWS_TAG] — the same
+     * tag-lookup trick the verdict chip uses via [GROUP_STATE_TAG] — so a late
+     * ntfy poll can fill a group in without a field per group and without a
+     * child fragment.
+     */
+    private fun groupBlock(
         ctx: android.content.Context, g: NotifGroup, state: GroupState,
-    ): View {
-        val row = LinearLayout(ctx).apply {
+    ): LinearLayout {
+        val block = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT,
+            ).apply { topMargin = dp(8) }
+        }
+        val rows = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            tag = GROUP_ROWS_TAG
+            isVisible = g.key !in collapsedGroups
+        }
+        val header = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = android.view.Gravity.CENTER_VERTICAL
-            setPadding(0, dp(12), 0, dp(2))
-            isClickable = true; isFocusable = true
-            setOnClickListener {
-                runCatching {
-                    when {
-                        g.launchPackage.isNotBlank() ->
-                            ctx.packageManager.getLaunchIntentForPackage(g.launchPackage)
-                                ?.let { ctx.startActivity(it) }
-                        g.url.isNotBlank() ->
-                            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(g.url)))
-                    }
-                }
+            setPadding(dp(10), dp(8), dp(10), dp(8))
+            background = android.graphics.drawable.GradientDrawable().apply {
+                cornerRadius = dp(10).toFloat()
+                setColor(0x1FFFFFFF)
             }
+            isClickable = true; isFocusable = true
         }
+        header.addView(groupAvatar(ctx, g))
         val names = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             layoutParams = LinearLayout.LayoutParams(
-                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f,
+            ).apply { leftMargin = dp(10) }
         }
         names.addView(TextView(ctx).apply {
             text = g.label
-            setTextColor(0xFFE9D8FD.toInt())
-            setTextAppearance(android.R.style.TextAppearance_Material_Subhead)
+            setTextColor(0xFFF2E9FF.toInt())
+            textSize = 15f
             typeface = Typeface.DEFAULT_BOLD
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END
         })
         if (g.sub.isNotBlank() && !g.sub.equals(g.label, ignoreCase = true)) {
             names.addView(TextView(ctx).apply {
                 text = g.sub
-                setTextColor(0x77FFFFFF.toInt())
-                setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+                setTextColor(0x66FFFFFF.toInt())
+                textSize = 10f
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.MIDDLE
             })
         }
-        row.addView(names)
-        row.addView(TextView(ctx).apply {
+        header.addView(names)
+        // The count chip. Kept as ONE TextView holding the whole verdict,
+        // because an async ntfy group repaints it with a failure sentence that
+        // has no count in it at all.
+        header.addView(TextView(ctx).apply {
             text = state.text
             setTextColor(state.color)
-            textSize = 12f
+            textSize = 11f
             typeface = Typeface.DEFAULT_BOLD
+            setPadding(dp(8), dp(3), dp(8), dp(3))
+            background = android.graphics.drawable.GradientDrawable().apply {
+                cornerRadius = dp(9).toFloat()
+                setColor(0x22FFFFFF)
+            }
             tag = GROUP_STATE_TAG
         })
-        return row
+        val chevron = ImageView(ctx).apply {
+            setImageResource(R.drawable.ic_chevron_right)
+            alpha = 0.5f
+            rotation = if (rows.isVisible) 90f else 0f
+            val sz = dp(16)
+            layoutParams = LinearLayout.LayoutParams(sz, sz).apply { leftMargin = dp(6) }
+        }
+        header.addView(chevron)
+        header.setOnClickListener {
+            val open = !rows.isVisible
+            rows.isVisible = open
+            if (open) collapsedGroups -= g.key else collapsedGroups += g.key
+            chevron.animate().rotation(if (open) 90f else 0f).setDuration(140).start()
+        }
+        block.addView(header)
+        block.addView(rows)
+        return block
     }
 
-    /** One notification, indented under its app. Unread — newer than the
-     *  previous visit — is drawn bold, so Show=All still shows what is new. */
+    /**
+     * The app's own launcher icon when there is a package to ask for one, and
+     * a coloured monogram when there is not.
+     *
+     * An ntfy topic has no launcher icon, and a shade with a blank column
+     * where every icon should be reads as broken rather than as cloud — so the
+     * cloud groups get a monogram instead of nothing. Tapping opens the app or
+     * the channel, which is the affordance the header gave up to collapsing.
+     */
+    private fun groupAvatar(ctx: android.content.Context, g: NotifGroup): View {
+        val icon: android.graphics.drawable.Drawable? =
+            if (g.launchPackage.isBlank()) null
+            else runCatching { ctx.packageManager.getApplicationIcon(g.launchPackage) }.getOrNull()
+        val view: View = if (icon != null) ImageView(ctx).apply { setImageDrawable(icon) }
+            else TextView(ctx).apply {
+                text = g.label.trim().take(1).uppercase()
+                gravity = android.view.Gravity.CENTER
+                setTextColor(0xFFFFFFFF.toInt())
+                textSize = 13f
+                typeface = Typeface.DEFAULT_BOLD
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    shape = android.graphics.drawable.GradientDrawable.OVAL
+                    setColor(monogramColor(g.key))
+                }
+            }
+        val sz = dp(30)
+        view.layoutParams = LinearLayout.LayoutParams(sz, sz)
+        if (g.launchPackage.isNotBlank() || g.url.isNotBlank()) {
+            view.isClickable = true
+            view.setOnClickListener {
+                runCatching {
+                    if (g.launchPackage.isNotBlank())
+                        ctx.packageManager.getLaunchIntentForPackage(g.launchPackage)
+                            ?.let { ctx.startActivity(it) }
+                    else startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(g.url)))
+                }
+            }
+        }
+        return view
+    }
+
+    /** A stable colour per publisher, derived from the grouping key, so the
+     *  same topic keeps the same monogram between visits and no colour table
+     *  has to be maintained alongside the channel catalog. */
+    private fun monogramColor(key: String): Int {
+        val hues = intArrayOf(
+            0xFF6D5AE6.toInt(), 0xFF1F8A70.toInt(), 0xFFB5556D.toInt(),
+            0xFF2C6FB5.toInt(), 0xFF9A6A2F.toInt(), 0xFF4E7A2A.toInt(),
+        )
+        return hues[((key.hashCode() % hues.size) + hues.size) % hues.size]
+    }
+
+    /**
+     * One notification as a shade ROW: a status stripe, then title and
+     * relative time on one line with the snippet under it.
+     *
+     * Dense on purpose. A notification centre shows many items, so the row
+     * carries no card, no margin and no elevation, and neighbours are parted
+     * by a hairline rather than by empty space.
+     *
+     * Unread is the one thing that must survive a glance, so it is said three
+     * times over: the stripe lights up, the title goes bold, and the row takes
+     * a faint tint. A read row says it by staying quiet.
+     */
     private fun notifRowView(
         ctx: android.content.Context, r: NotifRow, launchPackage: String,
     ): View {
-        val row = LinearLayout(ctx).apply {
+        val unread = r.ts > visitSeenAt
+        val holder = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
-            val pad = dp(10); setPadding(pad, pad, pad, pad)
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT,
-            ).apply { topMargin = dp(6); leftMargin = dp(10) }
-            setBackgroundColor(when (r.severity) {
-                "error" -> 0x55B91C1C.toInt()
-                "warn"  -> 0x55D97706.toInt()
-                else    -> 0x331A0033
+            )
+        }
+        val row = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, dp(7), dp(10), dp(7))
+            setBackgroundColor(when {
+                r.severity == "error" -> 0x33B91C1C
+                r.severity == "warn"  -> 0x33D97706
+                unread                -> 0x14FFFFFF
+                else                  -> 0x00000000
             })
             if (launchPackage.isNotBlank()) {
                 isClickable = true
@@ -1033,34 +1179,74 @@ class AggregatorStackFragment : Fragment(),
                 }
             }
         }
-        val meta = LinearLayout(ctx).apply {
+        row.addView(View(ctx).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                dp(3), LinearLayout.LayoutParams.MATCH_PARENT,
+            ).apply { rightMargin = dp(9) }
+            setBackgroundColor(when {
+                r.severity == "error" -> 0xFFFF6B6B.toInt()
+                r.severity == "warn"  -> 0xFFFFB020.toInt()
+                unread                -> 0xFF7C5CFF.toInt()
+                else                  -> 0x00000000
+            })
+        })
+        val col = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            layoutParams = LinearLayout.LayoutParams(
+                0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+        val line = LinearLayout(ctx).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = android.view.Gravity.CENTER_VERTICAL
         }
-        meta.addView(TextView(ctx).apply {
+        line.addView(TextView(ctx).apply {
             text = r.title
-            setTextColor(0xFFE9D8FD.toInt())
-            setTextAppearance(android.R.style.TextAppearance_Material_Body1)
-            if (r.ts > visitSeenAt) typeface = Typeface.DEFAULT_BOLD
-            maxLines = 2
+            setTextColor(if (unread) 0xFFF2E9FF.toInt() else 0xBBE9D8FD.toInt())
+            textSize = 13f
+            if (unread) typeface = Typeface.DEFAULT_BOLD
+            maxLines = 1
             ellipsize = android.text.TextUtils.TruncateAt.END
             layoutParams = LinearLayout.LayoutParams(
                 0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         })
-        meta.addView(TextView(ctx).apply {
+        line.addView(TextView(ctx).apply {
             text = ago(System.currentTimeMillis() - r.ts)
-            setTextColor(0x88FFFFFF.toInt())
-            setTextAppearance(android.R.style.TextAppearance_Material_Caption)
+            setTextColor(0x77FFFFFF.toInt())
+            textSize = 10f
+            setPadding(dp(8), 0, 0, 0)
         })
-        row.addView(meta)
-        if (r.text.isNotBlank()) row.addView(TextView(ctx).apply {
+        col.addView(line)
+        if (r.text.isNotBlank()) col.addView(TextView(ctx).apply {
             text = r.text
-            setTextColor(0xCCE9D8FD.toInt())
-            setTextAppearance(android.R.style.TextAppearance_Material_Caption)
-            setPadding(0, dp(2), 0, 0)
+            setTextColor(if (unread) 0xAAE9D8FD.toInt() else 0x77E9D8FD.toInt())
+            textSize = 12f
+            maxLines = 2
+            ellipsize = android.text.TextUtils.TruncateAt.END
+            setPadding(0, dp(1), 0, 0)
         })
-        return row
+        row.addView(col)
+        holder.addView(row)
+        holder.addView(View(ctx).apply {
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, 1)
+            setBackgroundColor(0x11FFFFFF)
+        })
+        return holder
     }
+
+    /** The divider between two halves of one stream — small, upper-case and
+     *  quiet, the way a shade separates "Silent" from "Notifications". It is
+     *  deliberately lighter than a group header: a group is a thing you can
+     *  fold and tap, and this is not. */
+    private fun shadeLabel(ctx: android.content.Context, text: String): TextView =
+        TextView(ctx).apply {
+            this.text = text
+            setTextColor(0x66FFFFFF.toInt())
+            typeface = Typeface.DEFAULT_BOLD
+            textSize = 10f
+            letterSpacing = 0.12f
+            setPadding(dp(2), dp(14), 0, dp(2))
+        }
 
     /** A card-level verdict line, for the states that apply to a whole stream
      *  rather than to one app. */
@@ -1758,6 +1944,10 @@ class AggregatorStackFragment : Fragment(),
         /** Marks a notification group's verdict chip so an async ntfy poll can
          *  find it again without a field per group. */
         private const val GROUP_STATE_TAG = "notif_group_state"
+        /** Marks a notification group's row container, so a late ntfy poll and
+         *  the collapse toggle can both find it from the block they were
+         *  handed — the alternative is a field per group. */
+        private const val GROUP_ROWS_TAG = "notif_group_rows"
 
         fun newInstance(sectionId: String, label: String, mode: String): AggregatorStackFragment =
             AggregatorStackFragment().apply {
