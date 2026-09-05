@@ -59,7 +59,14 @@ class UpdateWorker(
             // updated the superapp forever and never once touched the other
             // apps. Unattended only — a forced "check for updates" is the user
             // asking about THIS app.
-            if (!force) updateFleet()
+            // The metered gate below protects the SELF download only, and it sits
+            // after this line, so the fleet pass — the far bigger payload, N APKs
+            // against one — was downloading over mobile data on every unattended
+            // wake-up. Fleet.autoPass has no metered check of its own (Fleet.kt
+            // does not import ConnectivityManager at all), so the gate has to be
+            // here, at the call site.
+            if (!force && !(BuildConfig.AU_REQUIRE_UNMETERED && isMetered(applicationContext)))
+                updateFleet()
             // THE BUG, and it is a nesting bug. Fleet.autoPass raises both flags
             // for itself and lowers them UNCONDITIONALLY in its own finally — it
             // has no idea it was called from inside a larger unattended pass. So

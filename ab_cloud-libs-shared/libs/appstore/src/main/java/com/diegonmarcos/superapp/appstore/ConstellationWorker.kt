@@ -108,11 +108,15 @@ class ConstellationWorker(appCtx: Context, params: WorkerParameters) :
         Result.success()
     }
 
-    /** Metered per the ACTIVE network. Unknown network ⇒ not metered, so a
-     *  transient null can only defer, never permanently suppress, the pass. */
+    /** Metered per the ACTIVE network. Unknown network ⇒ metered: the cost of
+     *  guessing wrong is the user's mobile data, and a deferred pass costs only
+     *  the wait until the next one. This used to return false (⇒ download), which
+     *  also disagreed with the identically-named helper in UpdateWorker; since
+     *  the two workers race for the same Fleet lease, which policy applied to a
+     *  given pass was decided by whoever won. */
     private fun isMetered(ctx: Context): Boolean {
-        val cm = ctx.getSystemService(ConnectivityManager::class.java) ?: return false
-        val caps = cm.activeNetwork?.let { cm.getNetworkCapabilities(it) } ?: return false
+        val cm = ctx.getSystemService(ConnectivityManager::class.java) ?: return true
+        val caps = cm.activeNetwork?.let { cm.getNetworkCapabilities(it) } ?: return true
         return !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
     }
 
