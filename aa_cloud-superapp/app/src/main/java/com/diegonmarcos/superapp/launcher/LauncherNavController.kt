@@ -32,6 +32,25 @@ class LauncherNavController(private val host: NavHost) {
     /** Guards the walk re-sync from firing while a walk step drives goSection. */
     var inWalkNav: Boolean = false
 
+    /** Which tab each tabbed section is currently sitting on, by section id.
+     *  A [SectionTabsFragment] is destroyed and rebuilt every time its section
+     *  is (re-)entered, and its own selection dies with it — so the strip can
+     *  only be restored to the tab the user left if that tab is remembered OUT
+     *  here, on the controller, which outlives the fragment. Written by the
+     *  strip on every selection, read wherever a strip is built. */
+    private val activeTabBySection = mutableMapOf<String, String>()
+
+    /** Record the tab a section is now showing. Called by [SectionTabsFragment]
+     *  for the landing tab and for every user selection after it. */
+    fun recordActiveTab(sectionId: String, pageId: String) {
+        activeTabBySection[sectionId] = pageId
+    }
+
+    /** The tab [sectionId] was last left on, or "" if it has not been visited.
+     *  Blank is the pre-existing behaviour (strip falls to [startIndex]), so an
+     *  unvisited section is unaffected. */
+    fun activeTabFor(sectionId: String): String = activeTabBySection[sectionId].orEmpty()
+
     fun goHome() {
         val ctx = host.navContext()
         host.currentSection = "home"
@@ -170,7 +189,12 @@ class LauncherNavController(private val host: NavHost) {
         // the page never landed in its own section. No-op when already in the
         // section — preserves any existing in-section back stack.
         if (host.currentSection != sectionId) {
-            goSection(sectionId, Sections.byId(sectionId)?.label ?: sectionId)
+            // Land the base on the tab the section was left on. Without this the
+            // rebuilt strip falls to [SectionTabsFragment.startIndex]'s default —
+            // tab 0 — so Back out of a page opened from tab N returned to tab 0,
+            // not to the tab the page was opened from.
+            goSection(sectionId, Sections.byId(sectionId)?.label ?: sectionId,
+                activeTabFor(sectionId))
         }
         // Pages that declare an `action` dispatch it instead of opening a fragment.
         val pageAction = Sections.byId(sectionId)?.pages
@@ -333,7 +357,7 @@ class LauncherNavController(private val host: NavHost) {
             // and Topology, and rendering it as two icons you have to tap
             // through is not a mirror of it.
             mirrored != null && isTabbed(mirrored) ->
-                SectionTabsFragment.newInstance(mirrored.id)
+                SectionTabsFragment.newInstance(mirrored.id, activeTabFor(mirrored.id))
             mirrored != null -> sectionGrid(mirrored, page.label)
             // What the PAGE declares, in order — stack_<id>, then tiles_<id>.
             // Only a page that declares neither falls back to the section-wide

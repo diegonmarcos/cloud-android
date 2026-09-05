@@ -116,7 +116,10 @@ class SectionTabsFragment : Fragment(), Collapsible {
         // Sync the mode for the landing tab explicitly. The listener below is
         // attached AFTER this, and selecting tab 0 is a no-op anyway, so
         // neither would fire onTabSelected for the page we start on.
-        pages.getOrNull(start)?.let { (activity as? ShellActivity)?.nav?.syncModeForPage(it.id) }
+        pages.getOrNull(start)?.let {
+            (activity as? ShellActivity)?.nav?.syncModeForPage(it.id)
+            (activity as? ShellActivity)?.nav?.recordActiveTab(sectionId, it.id)
+        }
 
         tabs.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
             override fun onTabSelected(tab: TabLayout.Tab) {
@@ -127,6 +130,7 @@ class SectionTabsFragment : Fragment(), Collapsible {
                 // on SELECTION, not at render time: with every pane on screen
                 // rendering both would call it twice and the last would win.
                 (activity as? ShellActivity)?.nav?.syncModeForPage(page.id)
+                (activity as? ShellActivity)?.nav?.recordActiveTab(sectionId, page.id)
                 if (paneCount == 1) render(0, page.id)
             }
             override fun onTabUnselected(tab: TabLayout.Tab) = Unit
